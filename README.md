@@ -2,12 +2,14 @@
 Full Stack Application for Bio-Acoustic Montoring of Amphibian Species
 ## Features 
 
-### Sensor Network Status 
+### IoT Network Monitor
   To increase the chances of detecting the target species (Eleutherodactylus spp.), multiple nodes will be places in areas of interest within a forest. These areas of interest must be determined by the researcher. Each of these nodes will consist of a microcontroller with microphone and meteorological sensors such as thermometer (temperature), hygrometers (humidity), Barometer (pressure) and rain sensors. From 6pm - 6am, the nodes will have a schedule of recording for 5 minutes every 30 minutes for a total of 120 minutes of audio per node every 24 hours.  After this recording, both the audio and sensor data will be transmitted and relayed to neighboring nodes until it is uploaded to the remote server. 
 
 By having multiple of these nodes, Data is collected simultaneously from various points of interest, thus increasing the probability of detecting the target species. The data collected by the entire network will be uploaded to a remote server to allow remote data access and reduce the amount of time in the field for researchers.   
 
 This Web Application includes an interface for keeping tabs on the network nodes. 
+
+To Build your own IoT network use the code found [HERE](https://github.com/CoquiTones/Hardware)
 
 ### Classifier
   To automate the detection of a target species (Eleutherodactylus spp.) from the acoustic data, a machine learning model was created. This machine learning model was trained on 
