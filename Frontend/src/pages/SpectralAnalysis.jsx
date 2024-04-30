@@ -17,9 +17,8 @@ import SpectrogramControls from "../components/SoundAnalysisTools/SpectrogramCon
 import { handleLoad } from "../components/SoundAnalysisTools/SpectrogramDataReader"
 import Navbar from "../components/shared/Navbar";
 import Footer from "../components/shared/Footer";
-import coquiSample from "../components/assets/audio/ZOOM0010_LR_03.WAV"
 
-
+import coqui from "../components/assets/audio/ZOOM0010_LR_03.WAV"
 const SpectralAnalysis = () => {
 
     const [isOpen, setIsOpen] = useState(false)
@@ -85,7 +84,18 @@ const SpectralAnalysis = () => {
     const handleDemo = () => {
 
         setDemo(true)
-        setRawAudioFile(coquiSample)
+        // const filepath = "https://github.com/CoquiTones/CoquiTonesWeb/blob/SampleSpectrogram/Frontend/src/components/assets/audio/ZOOM0010_LR_03.WAV";
+        fetch(coqui)
+            .then(response => response.blob())
+            .then(blob => {
+                const file = new File([blob], "ZOOM0010_LR_03.WAV", { type: "audio/wav" });
+                console.log('File object:', file);
+                setXrange([0, 12])
+                setRawAudioFile(file)
+            })
+            .catch(error => {
+                console.error('Error fetching file:', error);
+            });
 
     }
     return (
@@ -163,10 +173,9 @@ const SpectralAnalysis = () => {
                                         currentTime={currentTime}
                                         demo={demo}
                                     />
-                                    {!demo &&
+                                    {(!demo && !rawAudioFile) &&
                                         <Button
                                             variant="condensed"
-
                                             onClick={handleDemo}
                                         >
                                             DEMO
