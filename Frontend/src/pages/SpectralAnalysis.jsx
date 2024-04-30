@@ -89,7 +89,6 @@ const SpectralAnalysis = () => {
             .then(response => response.blob())
             .then(blob => {
                 const file = new File([blob], "coqui_sample.wav", { type: "audio/wav" });
-                console.log('File object:', file);
                 setXrange([0, 12])
                 setRawAudioFile(file)
             })
@@ -126,7 +125,7 @@ const SpectralAnalysis = () => {
                                 </Paper>
                             </Grid>
                             <Grid item xs={12} md={12} lg={12}>
-                                <Paper elevation={4} sx={{ p: 2, height: 'auto' }}>
+                                <Paper elevation={4} sx={{ p: 2, height: 'auto', }}>
                                     {zData ?
                                         (<Spectrogram
                                             xData={xData}

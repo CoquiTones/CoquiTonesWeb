@@ -29,9 +29,6 @@ export default function SoundPlayer({ file, setCurrentTime, yrange, xrange, curr
         bandpassFilter.type = 'bandpass'; // Set filter type to bandpass
         bandpassFilter.frequency.value = centerFrequency;
         bandpassFilter.Q.value = qualityFactor; // Set quality factor
-        console.log(qualityFactor)
-
-        console.log("Filtered Audio!")
 
 
     }
@@ -56,7 +53,6 @@ export default function SoundPlayer({ file, setCurrentTime, yrange, xrange, curr
         if ((currentTime > xrange[1])) {
 
             audioElementRef.current.currentTime = xrange[0]
-            console.log("changed time")
         }
 
 
