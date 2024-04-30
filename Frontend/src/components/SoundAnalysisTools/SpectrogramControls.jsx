@@ -110,10 +110,10 @@ export default function SpectrogramControls({ setAudioFile, type, setType, color
                 Frequency (Hz) Range
             </Typography>
             <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                <IconButton onClick={() => handleYRangeChange([yrange[0] - 1, yrange[1]])}>
+                <IconButton onClick={() => handleYRangeChange([yrange[0] - 25, yrange[1]])}>
                     <RemoveIcon />
                 </IconButton>
-                <IconButton onClick={() => handleYRangeChange([yrange[0] + 1, yrange[1]])}>
+                <IconButton onClick={() => handleYRangeChange([yrange[0] + 25, yrange[1]])}>
                     <AddIcon />
                 </IconButton>
                 <StyledSlider
@@ -125,10 +125,10 @@ export default function SpectrogramControls({ setAudioFile, type, setType, color
                     min={0}
                     max={10000}
                 />
-                <IconButton onClick={() => handleYRangeChange([yrange[0], yrange[1] - 1])}>
+                <IconButton onClick={() => handleYRangeChange([yrange[0], yrange[1] - 25])}>
                     <RemoveIcon />
                 </IconButton>
-                <IconButton onClick={() => handleYRangeChange([yrange[0], yrange[1] + 1])}>
+                <IconButton onClick={() => handleYRangeChange([yrange[0], yrange[1] + 25])}>
                     <AddIcon />
                 </IconButton>
             </Box>
