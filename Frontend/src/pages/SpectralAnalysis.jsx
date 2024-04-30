@@ -18,7 +18,7 @@ import { handleLoad } from "../components/SoundAnalysisTools/SpectrogramDataRead
 import Navbar from "../components/shared/Navbar";
 import Footer from "../components/shared/Footer";
 
-import coqui from "../components/assets/audio/ZOOM0010_LR_03.WAV"
+import coqui from "../components/assets/audio/coqui_sample.WAV"
 const SpectralAnalysis = () => {
 
     const [isOpen, setIsOpen] = useState(false)
@@ -88,7 +88,7 @@ const SpectralAnalysis = () => {
         fetch(coqui)
             .then(response => response.blob())
             .then(blob => {
-                const file = new File([blob], "ZOOM0010_LR_03.WAV", { type: "audio/wav" });
+                const file = new File([blob], "coqui_sample.wav", { type: "audio/wav" });
                 console.log('File object:', file);
                 setXrange([0, 12])
                 setRawAudioFile(file)
