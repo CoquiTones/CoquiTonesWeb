@@ -1,8 +1,8 @@
 import React from "react";
 import { styled } from "@mui/material/styles";
-import DiegoPFP from "../images/DiegoProfessionalPFP.jpg";
-import EdwinPFP from "../images/EdwinCamuyPFP.png";
-import RolandoPFP from "../images/RolandoProfessionalPFP.jpg";
+import DiegoPFP from "../assets/images/DiegoProfessionalPFP.jpg";
+import EdwinPFP from "../assets/images/EdwinCamuyPFP.png";
+import RolandoPFP from "../assets/images/RolandoProfessionalPFP.jpg";
 
 export const AboutUsContainer = styled('div')(({ theme }) => ({
     height: '800px',
@@ -10,14 +10,14 @@ export const AboutUsContainer = styled('div')(({ theme }) => ({
     flexDirection: 'column',
     justifyContent: 'center',
     alignItems: 'center',
-    marginTop:'-80px',
+    marginTop: '-80px',
     background: '#191716',
     [theme.breakpoints.down('md')]: {
         height: '1100px',
     },
     [theme.breakpoints.down('sm')]: {
         height: '1300px',
-        marginTop:'0px'
+        marginTop: '0px'
     }
 
 }));
@@ -86,28 +86,28 @@ export const AboutUsP = styled('p')({
 })
 
 const AboutUsSection = () => {
-  return (
-    <AboutUsContainer>
-        <AboutUsH1>About Us</AboutUsH1>
-        <AboutUsWrapper>
-            <AboutUsCard>
-                <AboutUsPFP src={DiegoPFP}/>
-                <AboutUsH2>Diego A. Santiago Uriarte</AboutUsH2>
-                <AboutUsP>5th year Software Engineering Undergraduate interested in playing piano whenever possible</AboutUsP>
-            </AboutUsCard>
-            <AboutUsCard>
-                <AboutUsPFP src={EdwinPFP}/>
-                <AboutUsH2>Edwin J. Camuy Medina</AboutUsH2>
-                <AboutUsP>4th year Software Engineering Undergraduate interested in creating new unorthodox things</AboutUsP>
-            </AboutUsCard>
-            <AboutUsCard>
-                <AboutUsPFP src={RolandoPFP}/>
-                <AboutUsH2>Rolando Ríos Bonilla</AboutUsH2>
-                <AboutUsP>6th year Computer Science & Engineering student interested in anything sports-related and music</AboutUsP>
-            </AboutUsCard>
-        </AboutUsWrapper>
-    </AboutUsContainer>
-  )
+    return (
+        <AboutUsContainer>
+            <AboutUsH1>About Us</AboutUsH1>
+            <AboutUsWrapper>
+                <AboutUsCard>
+                    <AboutUsPFP src={DiegoPFP} />
+                    <AboutUsH2>Diego A. Santiago Uriarte</AboutUsH2>
+                    <AboutUsP>5th year Software Engineering Undergraduate interested in playing piano whenever possible</AboutUsP>
+                </AboutUsCard>
+                <AboutUsCard>
+                    <AboutUsPFP src={EdwinPFP} />
+                    <AboutUsH2>Edwin J. Camuy Medina</AboutUsH2>
+                    <AboutUsP>4th year Software Engineering Undergraduate interested in creating new unorthodox things</AboutUsP>
+                </AboutUsCard>
+                <AboutUsCard>
+                    <AboutUsPFP src={RolandoPFP} />
+                    <AboutUsH2>Rolando Ríos Bonilla</AboutUsH2>
+                    <AboutUsP>6th year Computer Science & Engineering student interested in anything sports-related and music</AboutUsP>
+                </AboutUsCard>
+            </AboutUsWrapper>
+        </AboutUsContainer>
+    )
 }
 
 export default AboutUsSection;

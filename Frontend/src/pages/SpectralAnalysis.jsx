@@ -7,6 +7,7 @@ import Container from '@mui/material/Container';
 import Grid from '@mui/material/Grid';
 import Paper from '@mui/material/Paper';
 import LinearProgress from '@mui/material/LinearProgress';
+import { Button } from "@mui/material";
 
 import Sidebar from '../components/shared/Sidebar';
 import theme from "../components/shared/Theme"
@@ -16,6 +17,7 @@ import SpectrogramControls from "../components/SoundAnalysisTools/SpectrogramCon
 import { handleLoad } from "../components/SoundAnalysisTools/SpectrogramDataReader"
 import Navbar from "../components/shared/Navbar";
 import Footer from "../components/shared/Footer";
+import coquiSample from "../components/assets/audio/ZOOM0010_LR_03.WAV"
 
 
 const SpectralAnalysis = () => {
@@ -55,6 +57,7 @@ const SpectralAnalysis = () => {
         setYrange(newYrange)
     }
 
+    const [demo, setDemo] = useState(false)
 
     useEffect(() => {
 
@@ -79,7 +82,12 @@ const SpectralAnalysis = () => {
         getData()
     }, [rawAudioFile, type])
 
+    const handleDemo = () => {
 
+        setDemo(true)
+        setRawAudioFile(coquiSample)
+
+    }
     return (
         <ThemeProvider theme={theme}>
             <Sidebar isOpen={isOpen} toggle={toggle} />
@@ -153,7 +161,16 @@ const SpectralAnalysis = () => {
                                         yrange={yrange}
                                         xrange={xrange}
                                         currentTime={currentTime}
+                                        demo={demo}
                                     />
+                                    {!demo &&
+                                        <Button
+                                            variant="condensed"
+
+                                            onClick={handleDemo}
+                                        >
+                                            DEMO
+                                        </Button>}
                                 </Paper>
                             </Grid>
                         </Grid>
@@ -161,7 +178,7 @@ const SpectralAnalysis = () => {
                     </Container>
                 </Box>
             </Box>
-            <Footer/>
+            <Footer />
         </ThemeProvider >
     )
 }
