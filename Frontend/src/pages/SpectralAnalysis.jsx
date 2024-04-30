@@ -116,9 +116,9 @@ const SpectralAnalysis = () => {
                         overflow: 'auto',
                     }}
                 >
-                    <Container maxWidth="lg" sx={{ mt: 10, mb: 10 }}>
+                    <Container sx={{ mt: 10, mb: 10 }}>
                         <Grid container spacing={3}>
-                            <Grid item xs={12}>
+                            <Grid item xs={12} >
                                 <Paper elevation={4} sx={{ p: 2 }}>
                                     <Typography variant="h3" color="primary" align="center">
                                         Spectral Analysis
@@ -147,9 +147,7 @@ const SpectralAnalysis = () => {
                                         )
                                     }
                                 </Paper>
-                            </Grid>
-                            <Grid item xs={12} md={6} lg={6}>
-                                <Paper elevation={4} sx={{ p: 2, height: 'auto' }}>
+                                <Paper elevation={4} sx={{ p: 2, height: 'auto', mt: 2 }}>
                                     <SpectrogramControls
                                         setAudioFile={updateRawAudioFile}
                                         type={type}
@@ -163,8 +161,8 @@ const SpectralAnalysis = () => {
                                     />
                                 </Paper>
                             </Grid>
-                            <Grid item xs={12} md={6} lg={6}>
-                                <Paper elevation={4} sx={{ p: 2, height: 'auto' }}>
+                            <Grid item>
+                                <Paper elevation={4} sx={{ p: 2 }}>
                                     <SoundPlayer
                                         file={rawAudioFile}
                                         setCurrentTime={updateTime}
@@ -175,15 +173,15 @@ const SpectralAnalysis = () => {
                                     />
                                     {(!demo && !rawAudioFile) &&
                                         <Button
-                                            variant="condensed"
+                                            variant="contained"
                                             onClick={handleDemo}
+                                            sx={{ mt: 2 }}
                                         >
                                             DEMO
                                         </Button>}
                                 </Paper>
                             </Grid>
                         </Grid>
-
                     </Container>
                 </Box>
             </Box>
