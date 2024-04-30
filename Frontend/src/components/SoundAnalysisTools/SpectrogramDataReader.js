@@ -15,7 +15,6 @@ export const handleLoad = async (file, type) => {
         let promise = new Promise((resolve, reject) => {
             workerInstance.onmessage = (event) => {
                 parsed = event.data
-                console.log("Parsed", parsed)
                 resolve(event.data)
             }
         })

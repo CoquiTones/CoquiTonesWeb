@@ -18,12 +18,9 @@ export default function () {// Listen for messages from the main script
 
 
     function processData(file, type) {
-        console.log("File", file);
         const formData = new FormData();
         formData.append('file', file);
-        console.log(process.env)
         const web_url = process.env.REACT_APP_WEB_URL || 'http://localhost:8080';
-        console.log("fetching from ", web_url)
 
         let endpoint;
 
@@ -45,11 +42,9 @@ export default function () {// Listen for messages from the main script
                     throw new Error('Network response was not ok');
                 }
 
-                console.log(response)
                 return response.json()
             })
             .then(data => {
-                console.log("Data", data); // Logging the response before parsing
                 return data;
             })
             .catch(error => {
