@@ -47,7 +47,10 @@ CREATE TABLE weatherdata (
 
 INSERT INTO node (ntype, nlatitude, nlongitude, ndescription)
 VALUES 
-    ('primary', 18.0814, 66.9038, 'database_duck!'),
-    ('secondary', 17.08, 66.9038, 'database_duck!'),
-    ('primary', 18.0814, 66.9038, 'database_duck!'),
-    ('primary', 18.0814, 66.9038, 'database_duck!');
+    ("primary",18.0814,-66.9038,"Bosque Susua"),
+    ("primary",18.1504,-66.9869,"Bosque Estatal Maricao"),
+    ("secondary",18.4103,-66.0944,"Bosque San Patricio"),
+    ("primary",18.2201,-66.5283,"Bosque Los Tres Picachos");
+
+
+

@@ -10,7 +10,7 @@ export const homeObjOne = {
     buttonRoute: '/Dashboard',
     /*imgStart sets the location of the image in the column. If it is false, the image is to the right. If it is true, the image is to the left*/
     imgStart: false,
-    img: require('../../components/images/homedashboard.svg').default,
+    img: require('../../components/assets/images/homedashboard.svg').default,
     alt: 'Dash',
     dark: true,
     primary: true,
@@ -29,7 +29,7 @@ export const homeObjTwo = {
     buttonRoute: '/NetworkMonitor',
     /*imgStart sets the location of the image in the column. If it is false, the image is to the right. If it is true, the image is to the left*/
     imgStart: true,
-    img: require('../../components/images/homecdn.svg').default,
+    img: require('../../components/assets/images/homecdn.svg').default,
     alt: 'Dash',
     dark: false,
     primary: false,
@@ -48,7 +48,7 @@ export const homeObjThree = {
     buttonRoute: '/Classifier',
     /*imgStart sets the location of the image in the column. If it is false, the image is to the right. If it is true, the image is to the left*/
     imgStart: false,
-    img: require('../../components/images/homeclassifier.svg').default,
+    img: require('../../components/assets/images/homeclassifier.svg').default,
     alt: 'Dash',
     dark: true,
     primary: true,
@@ -67,7 +67,7 @@ export const homeObjFour = {
     buttonRoute: '/SpectralAnalysis',
     /*imgStart sets the location of the image in the column. If it is false, the image is to the right. If it is true, the image is to the left*/
     imgStart: true,
-    img: require('../../components/images/homeanalysis.svg').default,
+    img: require('../../components/assets/images/homeanalysis.svg').default,
     alt: 'Dash',
     dark: false,
     primary: false,

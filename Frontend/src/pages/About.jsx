@@ -4,23 +4,20 @@ import { CarouselContainer, CarouselContent, CarouselH1, CarouselP, } from '../c
 import { ThemeProvider } from '@emotion/react';
 import Sidebar from '../components/shared/Sidebar';
 import Navbar from '../components/shared/Navbar';
-import { CssBaseline } from '@mui/material';
 import theme from '../components/shared/Theme';
-import {Paper, Button} from '@mui/material';
 import AboutUsSection from '../components/shared/AboutUsSection';
 import Footer from '../components/shared/Footer';
-import background from '../components/images/AboutBGImage.svg'
+import background from '../components/assets/images/AboutBGImage.svg'
 
-function Item(props)
-{
+function Item(props) {
     return (
         <CarouselContainer>
-            <CarouselContent style={{background:'#191716'}}>
+            <CarouselContent style={{ background: '#191716' }}>
                 <CarouselH1>{props.item.name}</CarouselH1>
                 <CarouselP>{props.item.description}</CarouselP>
             </CarouselContent>
         </CarouselContainer>
-        
+
     )
 }
 
@@ -28,7 +25,7 @@ function Item(props)
 const About = () => {
 
     const Background = {
-        backgroundImage:`url(${background})`,
+        backgroundImage: `url(${background})`,
         backgroundPosition: 'center',
         backgroundRepeat: 'no-repeat',
         backgroundSize: 'cover',
@@ -65,11 +62,11 @@ const About = () => {
         setIsOpen(!isOpen)
     }
 
-     return (
-        <ThemeProvider theme={theme} style={{background:'#191716'}}>
-            <Sidebar isOpen={isOpen} toggle={toggle}/>
-            <Navbar toggle={toggle}/>
-                <Carousel
+    return (
+        <ThemeProvider theme={theme} style={{ background: '#191716' }}>
+            <Sidebar isOpen={isOpen} toggle={toggle} />
+            <Navbar toggle={toggle} />
+            <Carousel
                 navButtonsAlwaysVisible={true}
                 autoPlay={false}
                 animation="fade"
@@ -85,15 +82,15 @@ const About = () => {
                         position: "relative"
                     }
                 }}
-                >
-                    {
-                        items.map( (item, i) => <Item key={i} item={item}/>)
-                    }
-                </Carousel>
-            <AboutUsSection/>
-            <Footer/>
+            >
+                {
+                    items.map((item, i) => <Item key={i} item={item} />)
+                }
+            </Carousel>
+            <AboutUsSection />
+            <Footer />
         </ThemeProvider>
-  )
+    )
 }
 
 export default About

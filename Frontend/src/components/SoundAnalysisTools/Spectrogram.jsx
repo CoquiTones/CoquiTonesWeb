@@ -61,8 +61,6 @@ export default function Spectrogram({ xData, yData, zData, colorscale, xrange, y
             ]}
 
             layout={{
-                height: 400,
-                width: 1100,
                 title: fileName + " Spectrogram",
                 xaxis: {
                     title: "Time (s)",
@@ -80,6 +78,8 @@ export default function Spectrogram({ xData, yData, zData, colorscale, xrange, y
                 },
                 annotations: [label]
             }}
+            useResizeHandler={true}
+            style={{ width: "100%", height: "100%" }}
 
 
         />

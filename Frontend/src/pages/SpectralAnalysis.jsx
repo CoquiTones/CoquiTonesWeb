@@ -7,6 +7,7 @@ import Container from '@mui/material/Container';
 import Grid from '@mui/material/Grid';
 import Paper from '@mui/material/Paper';
 import LinearProgress from '@mui/material/LinearProgress';
+import { Button } from "@mui/material";
 
 import Sidebar from '../components/shared/Sidebar';
 import theme from "../components/shared/Theme"
@@ -17,7 +18,7 @@ import { handleLoad } from "../components/SoundAnalysisTools/SpectrogramDataRead
 import Navbar from "../components/shared/Navbar";
 import Footer from "../components/shared/Footer";
 
-
+import coqui from "../components/assets/audio/ZOOM0010_LR_03.WAV"
 const SpectralAnalysis = () => {
 
     const [isOpen, setIsOpen] = useState(false)
@@ -55,6 +56,7 @@ const SpectralAnalysis = () => {
         setYrange(newYrange)
     }
 
+    const [demo, setDemo] = useState(false)
 
     useEffect(() => {
 
@@ -79,7 +81,23 @@ const SpectralAnalysis = () => {
         getData()
     }, [rawAudioFile, type])
 
+    const handleDemo = () => {
 
+        setDemo(true)
+        // const filepath = "https://github.com/CoquiTones/CoquiTonesWeb/blob/SampleSpectrogram/Frontend/src/components/assets/audio/ZOOM0010_LR_03.WAV";
+        fetch(coqui)
+            .then(response => response.blob())
+            .then(blob => {
+                const file = new File([blob], "ZOOM0010_LR_03.WAV", { type: "audio/wav" });
+                console.log('File object:', file);
+                setXrange([0, 12])
+                setRawAudioFile(file)
+            })
+            .catch(error => {
+                console.error('Error fetching file:', error);
+            });
+
+    }
     return (
         <ThemeProvider theme={theme}>
             <Sidebar isOpen={isOpen} toggle={toggle} />
@@ -153,7 +171,15 @@ const SpectralAnalysis = () => {
                                         yrange={yrange}
                                         xrange={xrange}
                                         currentTime={currentTime}
+                                        demo={demo}
                                     />
+                                    {(!demo && !rawAudioFile) &&
+                                        <Button
+                                            variant="condensed"
+                                            onClick={handleDemo}
+                                        >
+                                            DEMO
+                                        </Button>}
                                 </Paper>
                             </Grid>
                         </Grid>
@@ -161,7 +187,7 @@ const SpectralAnalysis = () => {
                     </Container>
                 </Box>
             </Box>
-            <Footer/>
+            <Footer />
         </ThemeProvider >
     )
 }
