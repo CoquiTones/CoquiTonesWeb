@@ -49,6 +49,7 @@ class DAO:
             # Unpack the tuple into constructor
             return cls(*curs.fetchone())
 
+    @classmethod
     def delete(cls, id: int, db: connection):
         """
         deletes element by id
@@ -61,9 +62,26 @@ class DAO:
             HTTPException
 
         Returns:
-            instance
+            id of deleted node
         """
-        pass
+        with db.cursor() as curs:
+            try:
+                curs.execute(
+                    sql.SQL(
+                        """
+                    DELETE * FROM {}
+                    WHERE {} = %s
+                    """
+                    ).format(sql.Identifier(cls.table), sql.Identifier(cls.id_column)),
+                    (id,),
+                )
+            except psycopg2.Error as e:
+                print("Error executing SQL query:", e)
+                raise HTTPException(status_code=500, detail="Database error")
+
+            # Unpack the tuple into constructor
+
+            return "success"
 
 
 @dataclass
