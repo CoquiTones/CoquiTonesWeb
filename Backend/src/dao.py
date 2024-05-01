@@ -15,9 +15,11 @@ class DAO:
         with db.cursor() as curs:
             try:
                 curs.execute(
-                    sql.SQL("""
+                    sql.SQL(
+                        """
                     SELECT * FROM {}
-                    """).format(sql.Identifier(cls.table))
+                    """
+                    ).format(sql.Identifier(cls.table))
                 )
             except psycopg2.Error as e:
                 print("Error executing SQL query:", e)
@@ -32,10 +34,13 @@ class DAO:
         with db.cursor() as curs:
             try:
                 curs.execute(
-                    sql.SQL("""
+                    sql.SQL(
+                        """
                     SELECT * FROM {}
                     WHERE {} = %s
-                    """).format(sql.Identifier(cls.table), sql.Identifier(cls.id_column)), (id,)
+                    """
+                    ).format(sql.Identifier(cls.table), sql.Identifier(cls.id_column)),
+                    (id,),
                 )
             except psycopg2.Error as e:
                 print("Error executing SQL query:", e)
@@ -44,10 +49,45 @@ class DAO:
             # Unpack the tuple into constructor
             return cls(*curs.fetchone())
 
+    @classmethod
+    def delete(cls, id: int, db: connection):
+        """
+        deletes element by id
+
+        Args:
+            id (int):
+            db (connection)
+
+        Raises:
+            HTTPException
+
+        Returns:
+            id of deleted node
+        """
+        with db.cursor() as curs:
+            try:
+                curs.execute(
+                    sql.SQL(
+                        """
+                    DELETE FROM {}
+                    WHERE {} = %s
+                    """
+                    ).format(sql.Identifier(cls.table), sql.Identifier(cls.id_column)),
+                    (id,),
+                )
+            except psycopg2.Error as e:
+                print("Error executing SQL query:", e)
+                raise HTTPException(status_code=500, detail="Database error")
+
+            # Unpack the tuple into constructor
+
+            return "success"
+
 
 @dataclass
 class Node(DAO):
     """Node DAO"""
+
     nid: int
     ntype: node_type
     nlatitude: float
@@ -57,10 +97,40 @@ class Node(DAO):
     table = "node"
     id_column = "nid"
 
+    @classmethod
+    def insert(
+        cls,
+        db: connection,
+        ntype: str,
+        nlatitude: str,
+        nlongitude: str,
+        ndescription: str,
+    ):
+        with db.cursor() as curs:
+            try:
+                curs.execute(
+                    sql.SQL(
+                        """
+                            INSERT INTO {} (ntype, nlatitude, nlongitude, ndescription)
+                            VALUES (%s, %s, %s, %s)
+                            RETURNING nid
+                            """
+                    ).format(sql.Identifier(cls.table)),
+                    (ntype, nlatitude, nlongitude, ndescription),
+                )
+
+                db.commit()
+                nid = curs.fetchone()[0]
+                return cls(nid, ntype, nlatitude, nlongitude, ndescription)
+            except psycopg2.Error as e:
+                print("Error executing SQL query:", e)
+                raise HTTPException(status_code=500, detail="Database error")
+
 
 @dataclass
 class TimestampIndex(DAO):
     """Timestamp index DAO"""
+
     tid: int
     nid: int
     ttime: datetime
@@ -72,6 +142,7 @@ class TimestampIndex(DAO):
 @dataclass
 class ClassifierReport(DAO):
     """Classifier report DAO"""
+
     crid: int
     tid: int
     crsamples: int
@@ -94,6 +165,7 @@ class ClassifierReport(DAO):
 @dataclass
 class WeatherData(DAO):
     """Weather Data DAO"""
+
     wdid: int
     tid: int
     wdtemperature: float
@@ -108,6 +180,7 @@ class WeatherData(DAO):
 @dataclass
 class AudioFile(DAO):
     """Audio File DAO"""
+
     afid: int
     tid: int
     data: bytes

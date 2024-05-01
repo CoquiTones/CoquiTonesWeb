@@ -1,4 +1,5 @@
-from fastapi import FastAPI, File, UploadFile, staticfiles, Depends, HTTPException
+from typing import Annotated
+from fastapi import FastAPI, File, UploadFile, staticfiles, Depends, HTTPException, Form
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, Response
 from dbutil import get_db_connection
@@ -95,6 +96,24 @@ async def mel_spectrogram_get(file: UploadFile = File(...)):
 async def basic_spectrogram_get(file: UploadFile = File(...)):
     specData = sendBasicSpectrogram(file.file)
     return specData
+
+
+@app.post(path="/api/node/insert")
+async def node_insert(
+    ntype: Annotated[str, Form()],
+    nlatitude: Annotated[str, Form()],
+    nlongitude: Annotated[str, Form()],
+    ndescription: Annotated[str, Form()],
+    db=Depends(get_db_connection),
+):
+    newNode = dao.Node.insert(db, ntype, nlatitude, nlongitude, ndescription)
+    print(newNode)
+    return newNode
+
+
+@app.delete(path="/api/node/delete")
+async def node_delete(nid: int, db=Depends(get_db_connection)):
+    return dao.Node.delete(nid, db)
 
 
 @app.get("/", response_class=HTMLResponse)

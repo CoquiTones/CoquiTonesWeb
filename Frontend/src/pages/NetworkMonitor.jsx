@@ -70,52 +70,53 @@ const NetworkMonitor = () => {
         // Perform delete operation here using the nodeId
         // Then close the dialog and update state accordingly
         setIsDeleteDialogOpen(false);
+
         // Example: call a delete function from DataHandler
         // dataHandler.deleteNode(deleteNodeId);
     }
 
     return (
         <ThemeProvider theme={theme}>
-            <Sidebar isOpen={isOpen} toggle={toggle}/>
-            <Navbar toggle={toggle}/>
-            <HeroSectionCDN/>
+            <Sidebar isOpen={isOpen} toggle={toggle} />
+            <Navbar toggle={toggle} />
+            <HeroSectionCDN />
             <NodeContainer>
-                <NewNodeDialog style={{display: 'flex', justifyContent: 'flex-end'}}/>
+                <NewNodeDialog style={{ display: 'flex', justifyContent: 'flex-end' }} />
                 <NodeWrapper>
                     {ducks.map((duck) =>
-                <NodeCard item key={duck.nid}>
-                    <DeleteOutlineIcon style={{ color: '#ffc857', cursor: 'pointer', position: 'relative', alignSelf:'flex-end', top: '0px', right: '0px', zIndex: 1}} onClick={()=> handleDelete(duck.nid)}/>
-                    <NodeTitle>
-                        Duck ID: {duck.nid}
-                    </NodeTitle>
-                    <NodeInfo>
-                        Type: {duck.ntype}
-                    </NodeInfo>
-                    <NodeInfo>
-                        Description: {duck.ndescription}
-                    </NodeInfo>
-                    <NodeInfo>
-                        Latitude: {duck.nlatitude}
-                    </NodeInfo>
-                    <NodeInfo>
-                        Longitude: {duck.nlongitude}
-                    </NodeInfo>
-                    <Link href='#' variant='button' style={{marginTop:'16px'}}>
-                        View Details
-                    </Link>
-                        <Dialog open={isDeleteDialogOpen} onClose={() => setIsDeleteDialogOpen(false)}>
-                            <DialogContent>
-                                <DialogContentText>
-                                    Are you sure you want to delete the following node?
-                                </DialogContentText>
-                            </DialogContent>
-                            <DialogActions>
-                                <Button onClick={() => setIsDeleteDialogOpen(false)}>No</Button>
-                                <Button onClick={handleDeleteConfirm}>Yes</Button>
-                            </DialogActions>
-                        </Dialog>
+                        <NodeCard item key={duck.nid}>
+                            <DeleteOutlineIcon style={{ color: '#ffc857', cursor: 'pointer', position: 'relative', alignSelf: 'flex-end', top: '0px', right: '0px', zIndex: 1 }} onClick={() => handleDelete(duck.nid)} />
+                            <NodeTitle>
+                                Duck ID: {duck.nid}
+                            </NodeTitle>
+                            <NodeInfo>
+                                Type: {duck.ntype}
+                            </NodeInfo>
+                            <NodeInfo>
+                                Description: {duck.ndescription}
+                            </NodeInfo>
+                            <NodeInfo>
+                                Latitude: {duck.nlatitude}
+                            </NodeInfo>
+                            <NodeInfo>
+                                Longitude: {duck.nlongitude}
+                            </NodeInfo>
+                            <Link href='#' variant='button' style={{ marginTop: '16px' }}>
+                                View Details
+                            </Link>
+                            <Dialog open={isDeleteDialogOpen} onClose={() => setIsDeleteDialogOpen(false)}>
+                                <DialogContent>
+                                    <DialogContentText>
+                                        Are you sure you want to delete the following node?
+                                    </DialogContentText>
+                                </DialogContent>
+                                <DialogActions>
+                                    <Button onClick={() => setIsDeleteDialogOpen(false)}>No</Button>
+                                    <Button onClick={handleDeleteConfirm}>Yes</Button>
+                                </DialogActions>
+                            </Dialog>
 
-                </NodeCard>)}
+                        </NodeCard>)}
                 </NodeWrapper>
             </NodeContainer>
             {/* <Box sx={{ display: 'flex' }} >
@@ -186,25 +187,25 @@ const NetworkMonitor = () => {
                                 </Grid>
                             ))}
                         </Grid> */}
-                        <Grid item xs={12} md={12} lg={12}>
-                            <Paper elevation={4}
-                                sx={{
-                                    p: 2,
-                                    display: 'flex',
-                                    flexDirection: 'column',
-                                    height: '75vh',
-                                }}
-                            >
-                                <div style={{ height: '100%' }}> {/* Ensure map container fills parent's height */}
-                                    <MapEmbed ducks={ducks} />
-                                </div>
-                            </Paper>
-                        </Grid>
+            <Grid item xs={12} md={12} lg={12}>
+                <Paper elevation={4}
+                    sx={{
+                        p: 2,
+                        display: 'flex',
+                        flexDirection: 'column',
+                        height: '75vh',
+                    }}
+                >
+                    <div style={{ height: '100%' }}> {/* Ensure map container fills parent's height */}
+                        <MapEmbed ducks={ducks} />
+                    </div>
+                </Paper>
+            </Grid>
 
-                    {/* </Container>
+            {/* </Container>
                 </Box>
                             </Box> */}
-            <Footer/>
+            <Footer />
         </ThemeProvider>
     )
 }
