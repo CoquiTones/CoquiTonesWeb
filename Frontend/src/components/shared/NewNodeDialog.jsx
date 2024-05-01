@@ -12,7 +12,7 @@ import DialogContentText from '@mui/material/DialogContentText';
 import DialogTitle from '@mui/material/DialogTitle';
 import { ListSubheader } from '@mui/material';
 
-export default function NewNodeDialog() {
+export default function NewNodeDialog({ setDucks }) {
   const [open, setOpen] = React.useState(false);
   const [nodeType, setNodeType] = React.useState('primary');
   const [latitude, setLatitude] = React.useState('');
@@ -29,6 +29,36 @@ export default function NewNodeDialog() {
 
   const handleSubmit = (event) => {
     event.preventDefault();
+    const formData = new FormData();
+    formData.append("ntype", nodeType);
+    formData.append("nlongitude", longitude);
+    formData.append("nlatitude", latitude);
+    formData.append("ndescription", description);
+    const web_url = process.env.REACT_APP_WEB_URL || 'http://localhost:8080';
+    const endpoint = "/api/node/insert";
+
+    fetch(web_url + endpoint, {
+      method: "POST",
+      body: formData,
+
+    })
+      .then(response => {
+        if (!response.ok) {
+          throw new Error('Network response was not ok');
+        }
+
+        return response.json()
+      })
+      .then(data => {
+        console.log(data);
+        setDucks(prev => [...prev, data])
+      })
+      .catch(error => {
+        console.error('Error:', error);
+        throw error; // Re-throw the error for further handling
+      });
+
+
     console.log('Node Type:', nodeType);
     console.log('Latitude:', latitude);
     console.log('Longitude:', longitude);
@@ -37,9 +67,9 @@ export default function NewNodeDialog() {
   };
 
   return (
-    <div style={{display:'flex', height:'40px'}}>
-      <IconButton aria-label="add" onClick={handleClickOpen} style={{fontSize:'24px'}}>
-        <AddIcon color='primary' style={{height:'40px', width:'36px'}} />
+    <div style={{ display: 'flex', height: '40px' }}>
+      <IconButton aria-label="add" onClick={handleClickOpen} style={{ fontSize: '24px' }}>
+        <AddIcon color='primary' style={{ height: '40px', width: '36px' }} />
       </IconButton>
       <Dialog open={open} onClose={handleClose} PaperProps={{ component: 'form', onSubmit: handleSubmit }}>
         <DialogTitle>New Node</DialogTitle>
@@ -47,7 +77,7 @@ export default function NewNodeDialog() {
           <DialogContentText>
             To include a new node in the database, please provide the following information:
           </DialogContentText>
-          <br/>
+          <br />
           <DialogContentText>Node Type:</DialogContentText>
           <Select
             value={nodeType}

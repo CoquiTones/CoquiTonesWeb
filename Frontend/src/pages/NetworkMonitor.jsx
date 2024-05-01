@@ -36,12 +36,14 @@ const NetworkMonitor = () => {
 
             const dataHandler = new DataHandler("node")
             const nodes = await dataHandler.get_all()
+            console.log(nodes)
             setDucks(nodes)
         }
 
         fetchDucks()
 
     }, [])
+
     const calcultaCols = () => {
         return Math.ceil(Math.sqrt(ducks.length));
     }
@@ -54,34 +56,34 @@ const NetworkMonitor = () => {
 
     return (
         <ThemeProvider theme={theme}>
-            <Sidebar isOpen={isOpen} toggle={toggle}/>
-            <Navbar toggle={toggle}/>
-            <HeroSectionCDN/>
+            <Sidebar isOpen={isOpen} toggle={toggle} />
+            <Navbar toggle={toggle} />
+            <HeroSectionCDN />
             <NodeContainer>
-                <NewNodeDialog style={{display: 'flex', justifyContent: 'flex-end'}}/>
+                <NewNodeDialog setDucks={setDucks} style={{ display: 'flex', justifyContent: 'flex-end' }} />
                 <NodeWrapper>
                     {ducks.map((duck) =>
-                <NodeCard item key={duck.nid}>
-                    <NodeTitle>
-                        Duck ID: {duck.nid}
-                    </NodeTitle>
-                    <NodeInfo>
-                        Type: {duck.ntype}
-                    </NodeInfo>
-                    <NodeInfo>
-                       Description: {duck.ndescription}
-                    </NodeInfo>
-                    <NodeInfo>
-                        Latitude: {duck.nlatitude}
-                    </NodeInfo>
-                    <NodeInfo>
-                        Longitude: {duck.nlongitude}
-                    </NodeInfo>
-                    <Link href='#' variant='button' style={{marginTop:'16px'}}>
-                        View Details
-                    </Link>
+                        <NodeCard item key={duck.nid}>
+                            <NodeTitle>
+                                Duck ID: {duck.nid}
+                            </NodeTitle>
+                            <NodeInfo>
+                                Type: {duck.ntype}
+                            </NodeInfo>
+                            <NodeInfo>
+                                Description: {duck.ndescription}
+                            </NodeInfo>
+                            <NodeInfo>
+                                Latitude: {duck.nlatitude}
+                            </NodeInfo>
+                            <NodeInfo>
+                                Longitude: {duck.nlongitude}
+                            </NodeInfo>
+                            <Link href='#' variant='button' style={{ marginTop: '16px' }}>
+                                View Details
+                            </Link>
 
-                </NodeCard>)}
+                        </NodeCard>)}
                 </NodeWrapper>
             </NodeContainer>
             {/* <Box sx={{ display: 'flex' }} >
@@ -152,22 +154,22 @@ const NetworkMonitor = () => {
                                 </Grid>
                             ))}
                         </Grid> */}
-                        <Grid item xs={12} md={12} lg={12}>
-                            <Paper elevation={4}
-                                sx={{
-                                    p: 2,
-                                    display: 'flex',
-                                    flexDirection: 'column',
-                                    height: '75vh',
-                                }}
-                            >
-                                <div style={{ height: '100%' }}> {/* Ensure map container fills parent's height */}
-                                    <MapEmbed ducks={ducks} />
-                                </div>
-                            </Paper>
-                        </Grid>
+            <Grid item xs={12} md={12} lg={12}>
+                <Paper elevation={4}
+                    sx={{
+                        p: 2,
+                        display: 'flex',
+                        flexDirection: 'column',
+                        height: '75vh',
+                    }}
+                >
+                    <div style={{ height: '100%' }}> {/* Ensure map container fills parent's height */}
+                        <MapEmbed ducks={ducks} />
+                    </div>
+                </Paper>
+            </Grid>
 
-                    {/* </Container>
+            {/* </Container>
                 </Box>
             </Box>
             <Footer/> */}
