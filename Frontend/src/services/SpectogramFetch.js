@@ -41,7 +41,6 @@ export default function () {// Listen for messages from the main script
                 if (!response.ok) {
                     throw new Error('Network response was not ok');
                 }
-
                 return response.json()
             })
             .then(data => {

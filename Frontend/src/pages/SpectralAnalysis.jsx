@@ -38,7 +38,7 @@ const SpectralAnalysis = () => {
     const updateTime = (newTime) => {
         setCurrentTime(newTime)
     }
-    const [type, setType] = useState("basic-spectrogram")
+    const [type, setType] = useState("mel-spectrogram")
     const updateType = (newType) => {
         setType(newType)
     }
@@ -57,6 +57,8 @@ const SpectralAnalysis = () => {
     }
 
     const [demo, setDemo] = useState(false)
+    const [defaultX, setDefaultX] = useState([0, 60])
+    const [defaultY, setDefaultY] = useState([0, 10000])
 
     useEffect(() => {
 
@@ -75,6 +77,10 @@ const SpectralAnalysis = () => {
                 setXData(data['x'])
                 setYData(data['y'])
                 setZData(data['z'])
+
+                setDefaultX([data['x'][0], data['x'][data['x'].length - 1]])
+                setDefaultY([data['y'][0], data['y'][data['y'].length - 1]])
+
             }
         }
 
@@ -89,7 +95,6 @@ const SpectralAnalysis = () => {
             .then(response => response.blob())
             .then(blob => {
                 const file = new File([blob], "coqui_sample.wav", { type: "audio/wav" });
-                setXrange([0, 12])
                 setRawAudioFile(file)
             })
             .catch(error => {
@@ -157,6 +162,8 @@ const SpectralAnalysis = () => {
                                         setXrange={updateXrange}
                                         yrange={yrange}
                                         setYrange={updateYrange}
+                                        defaultX={defaultX}
+                                        defaultY={defaultY}
                                     />
                                 </Paper>
                             </Grid>

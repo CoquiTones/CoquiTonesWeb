@@ -31,7 +31,7 @@ ValueLabelComponent.propTypes = {
     value: PropTypes.number.isRequired,
 };
 
-export default function SpectrogramControls({ setAudioFile, type, setType, colorscale, setColorscale, xrange, setXrange, yrange, setYrange }) {
+export default function SpectrogramControls({ setAudioFile, type, setType, colorscale, setColorscale, xrange, setXrange, yrange, setYrange, defaultX, defaultY }) {
 
     const handleXRangeChange = (newValue) => {
         setXrange(newValue);
@@ -83,39 +83,23 @@ export default function SpectrogramControls({ setAudioFile, type, setType, color
                 Time (s) Range
             </Typography>
             <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                <IconButton onClick={() => handleXRangeChange([xrange[0] - 1, xrange[1]])}>
-                    <RemoveIcon />
-                </IconButton>
-                <IconButton onClick={() => handleXRangeChange([xrange[0] + 1, xrange[1]])}>
-                    <AddIcon />
-                </IconButton>
                 <StyledSlider
                     sx={{ marginTop: 4, flexGrow: 1 }}
-                    defaultValue={[0, 300]}
+                    defaultValue={xrange}
                     value={xrange}
                     onChange={(event, newValue) => handleXRangeChange(newValue)}
                     valueLabelDisplay="on"
-                    min={0}
-                    max={300}
+                    min={defaultX[0]}
+                    max={defaultX[1]}
                 />
-                <IconButton onClick={() => handleXRangeChange([xrange[0], xrange[1] - 1])}>
-                    <RemoveIcon />
-                </IconButton>
-                <IconButton onClick={() => handleXRangeChange([xrange[0], xrange[1] + 1])}>
-                    <AddIcon />
-                </IconButton>
+
             </Box>
 
             <Typography gutterBottom>
                 Frequency (Hz) Range
             </Typography>
             <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                <IconButton onClick={() => handleYRangeChange([yrange[0] - 25, yrange[1]])}>
-                    <RemoveIcon />
-                </IconButton>
-                <IconButton onClick={() => handleYRangeChange([yrange[0] + 25, yrange[1]])}>
-                    <AddIcon />
-                </IconButton>
+
                 <StyledSlider
                     sx={{ marginTop: 4, flexGrow: 1 }}
                     defaultValue={[0, 10000]}
@@ -125,12 +109,7 @@ export default function SpectrogramControls({ setAudioFile, type, setType, color
                     min={0}
                     max={10000}
                 />
-                <IconButton onClick={() => handleYRangeChange([yrange[0], yrange[1] - 25])}>
-                    <RemoveIcon />
-                </IconButton>
-                <IconButton onClick={() => handleYRangeChange([yrange[0], yrange[1] + 25])}>
-                    <AddIcon />
-                </IconButton>
+
             </Box>
         </Box>
     );
