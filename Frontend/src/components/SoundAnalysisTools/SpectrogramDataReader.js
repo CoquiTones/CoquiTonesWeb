@@ -1,5 +1,5 @@
 import WorkerFactory from "../../services/WorkerFactory";
-import generateBasicSpecData from "../../services/BasicSpectrogramFetch"
+import generateBasicSpecData from "../../services/SpectogramFetch"
 
 
 

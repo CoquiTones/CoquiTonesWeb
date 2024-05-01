@@ -111,6 +111,11 @@ async def node_insert(
     return newNode
 
 
+@app.delete(path="/api/node/delete")
+async def node_delete(nid: int, db=Depends(get_db_connection)):
+    return dao.Node.delete(nid, db)
+
+
 @app.get("/", response_class=HTMLResponse)
 @app.get("/{path}", response_class=HTMLResponse)
 async def root():
