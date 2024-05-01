@@ -39,14 +39,14 @@ const NetworkMonitor = () => {
     const [ducks, setDucks] = useState([])
     const [DeleteNodeId, setDeleteNodeId] = useState(null);
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+    const fetchDucks = async () => {
 
+        const dataHandler = new DataHandler("node")
+        const nodes = await dataHandler.get_all()
+        setDucks(nodes)
+    }
     useEffect(() => {
-        const fetchDucks = async () => {
 
-            const dataHandler = new DataHandler("node")
-            const nodes = await dataHandler.get_all()
-            setDucks(nodes)
-        }
 
         fetchDucks()
 
@@ -70,6 +70,27 @@ const NetworkMonitor = () => {
         // Perform delete operation here using the nodeId
         // Then close the dialog and update state accordingly
         setIsDeleteDialogOpen(false);
+        const web_url = process.env.REACT_APP_WEB_URL || 'http://localhost:8080';
+        const endpoint = `/api/node/delete/${DeleteNodeId}`;
+
+        fetch(web_url + endpoint, {
+            method: "DELETE"
+        })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+                return response.json()
+            })
+            .then(data => {
+                console.log(data);
+                fetchDucks()
+
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                throw error; // Re-throw the error for further handling
+            });
 
         // Example: call a delete function from DataHandler
         // dataHandler.deleteNode(deleteNodeId);
@@ -81,7 +102,7 @@ const NetworkMonitor = () => {
             <Navbar toggle={toggle} />
             <HeroSectionCDN />
             <NodeContainer>
-                <NewNodeDialog style={{ display: 'flex', justifyContent: 'flex-end' }} />
+                <NewNodeDialog setDucks={setDucks} style={{ display: 'flex', justifyContent: 'flex-end' }} />
                 <NodeWrapper>
                     {ducks.map((duck) =>
                         <NodeCard item key={duck.nid}>

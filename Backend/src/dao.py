@@ -75,6 +75,8 @@ class DAO:
                     ).format(sql.Identifier(cls.table), sql.Identifier(cls.id_column)),
                     (id,),
                 )
+
+                db.commit()
             except psycopg2.Error as e:
                 print("Error executing SQL query:", e)
                 raise HTTPException(status_code=500, detail="Database error")
