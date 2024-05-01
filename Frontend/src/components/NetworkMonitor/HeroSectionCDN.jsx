@@ -1,10 +1,10 @@
 import React from 'react';
-import { HeroContainer, HeroBg, ImageBg, HeroContent, HeroH1, HeroP } from './HeroStyle';
+import { HeroContainer, HeroBg, ImageBg, HeroContent, HeroH1, HeroP } from '../shared/HeroStyle';
 import logo from '../assets/images/logo512.png';
 import CDNBg from '../assets/images/CDNBackground.png'
 const HeroSectionCDN = () => {
   return (
-    <HeroContainer>
+    <HeroContainer style={{height: '600px'}}>
       <HeroBg>
         <ImageBg src={CDNBg} alt='CDN Background' />
       </HeroBg>

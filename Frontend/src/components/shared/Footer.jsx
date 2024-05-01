@@ -127,7 +127,7 @@ const Footer = () => {
                     </SocialLogo>
                     <WebsiteRights>CoquiTones © {new Date().getFullYear()} All rights reserved</WebsiteRights>
                     <SocialIcons>
-                        <SocialIconLink href='https://github.com/AlonsoUriarte14/CoquiTones'><FaGithub/></SocialIconLink>
+                        <SocialIconLink href='https://github.com/CoquiTones'><FaGithub/></SocialIconLink>
                     </SocialIcons>
                 </SocialMediaWrap>
             </SocialMedia>

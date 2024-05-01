@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect } from "react";
 import { ThemeProvider } from '@mui/material/styles';
-import { NodeContainer, NodeWrapper, NodeCard, NodeTitle, NodeInfo } from "../components/shared/NodeStyle";
+import { NodeContainer, NodeWrapper, NodeCard, NodeTitle, NodeInfo } from "../components/NetworkMonitor/NodeStyle";
 import CssBaseline from '@mui/material/CssBaseline';
 import Box from '@mui/material/Box';
 import Toolbar from '@mui/material/Toolbar';
@@ -13,10 +13,17 @@ import Navbar from "../components/shared/Navbar";
 import Sidebar from "../components/shared/Sidebar";
 import theme from "../components/shared/Theme"
 import DataHandler from "../services/DataHandler";
-import NewNodeDialog from "../components/shared/NewNodeDialog";
+import NewNodeDialog from "../components/NetworkMonitor/NewNodeDialog";
 import Footer from "../components/shared/Footer";
-import HeroSectionCDN from "../components/shared/HeroSectionCDN";
+import HeroSectionCDN from "../components/NetworkMonitor/HeroSectionCDN";
 import MapEmbed from "../components/NetworkMonitor/Map";
+import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
+import Dialog from '@mui/material/Dialog';
+import DialogActions from '@mui/material/DialogActions';
+import DialogContent from '@mui/material/DialogContent';
+import DialogContentText from '@mui/material/DialogContentText';
+import Button from '@mui/material/Button';
+
 const NetworkMonitor = () => {
 
     const getDate = () => {
@@ -30,6 +37,8 @@ const NetworkMonitor = () => {
 
 
     const [ducks, setDucks] = useState([])
+    const [DeleteNodeId, setDeleteNodeId] = useState(null);
+    const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
 
     useEffect(() => {
         const fetchDucks = async () => {
@@ -52,6 +61,19 @@ const NetworkMonitor = () => {
         setIsOpen(!isOpen)
     }
 
+    const handleDelete = (nodeId) => {
+        setDeleteNodeId(nodeId);
+        setIsDeleteDialogOpen(true);
+    }
+
+    const handleDeleteConfirm = () => {
+        // Perform delete operation here using the nodeId
+        // Then close the dialog and update state accordingly
+        setIsDeleteDialogOpen(false);
+        // Example: call a delete function from DataHandler
+        // dataHandler.deleteNode(deleteNodeId);
+    }
+
     return (
         <ThemeProvider theme={theme}>
             <Sidebar isOpen={isOpen} toggle={toggle}/>
@@ -62,6 +84,7 @@ const NetworkMonitor = () => {
                 <NodeWrapper>
                     {ducks.map((duck) =>
                 <NodeCard item key={duck.nid}>
+                    <DeleteOutlineIcon style={{ color: '#ffc857', cursor: 'pointer', position: 'relative', alignSelf:'flex-end', top: '0px', right: '0px', zIndex: 1}} onClick={()=> handleDelete(duck.nid)}/>
                     <NodeTitle>
                         Duck ID: {duck.nid}
                     </NodeTitle>
@@ -69,7 +92,7 @@ const NetworkMonitor = () => {
                         Type: {duck.ntype}
                     </NodeInfo>
                     <NodeInfo>
-                       Description: {duck.ndescription}
+                        Description: {duck.ndescription}
                     </NodeInfo>
                     <NodeInfo>
                         Latitude: {duck.nlatitude}
@@ -80,6 +103,17 @@ const NetworkMonitor = () => {
                     <Link href='#' variant='button' style={{marginTop:'16px'}}>
                         View Details
                     </Link>
+                        <Dialog open={isDeleteDialogOpen} onClose={() => setIsDeleteDialogOpen(false)}>
+                            <DialogContent>
+                                <DialogContentText>
+                                    Are you sure you want to delete the following node?
+                                </DialogContentText>
+                            </DialogContent>
+                            <DialogActions>
+                                <Button onClick={() => setIsDeleteDialogOpen(false)}>No</Button>
+                                <Button onClick={handleDeleteConfirm}>Yes</Button>
+                            </DialogActions>
+                        </Dialog>
 
                 </NodeCard>)}
                 </NodeWrapper>
@@ -169,8 +203,8 @@ const NetworkMonitor = () => {
 
                     {/* </Container>
                 </Box>
-            </Box>
-            <Footer/> */}
+                            </Box> */}
+            <Footer/>
         </ThemeProvider>
     )
 }

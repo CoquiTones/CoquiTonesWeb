@@ -21,7 +21,7 @@ import FileUpload from "../components/shared/FileUpload";
 import Sidebar from "../components/shared/Sidebar";
 import Navbar from "../components/shared/Navbar";
 import Footer from "../components/shared/Footer";
-import HeroSectionClassifier from "../components/shared/HeroSectionClassifier";
+import HeroSectionClassifier from "../components/MachineLearningModel/HeroSectionClassifier";
 const Classifier = () => {
 
     const initDummyReport = () => {

@@ -17,6 +17,7 @@ import SpectrogramControls from "../components/SoundAnalysisTools/SpectrogramCon
 import { handleLoad } from "../components/SoundAnalysisTools/SpectrogramDataReader"
 import Navbar from "../components/shared/Navbar";
 import Footer from "../components/shared/Footer";
+import HeroSectionSpectral from "../components/SoundAnalysisTools/HeroSectionSpectral";
 
 import coqui from "../components/assets/audio/coqui_sample.WAV"
 const SpectralAnalysis = () => {
@@ -101,6 +102,7 @@ const SpectralAnalysis = () => {
         <ThemeProvider theme={theme}>
             <Sidebar isOpen={isOpen} toggle={toggle} />
             <Navbar toggle={toggle} />
+            <HeroSectionSpectral/>
             <Box sx={{ display: 'flex' }}>
                 <CssBaseline />
                 <Box
@@ -115,7 +117,63 @@ const SpectralAnalysis = () => {
                         overflow: 'auto',
                     }}
                 >
-                    <Container sx={{ mt: 10, mb: 10 }}>
+                <Grid item xs={12} md={12} lg={12}>
+                    <Paper elevation={4} sx={{ p: 2, height: 'auto', }}>
+                        {zData ?
+                            (<Spectrogram
+                                xData={xData}
+                                yData={yData}
+                                zData={zData}
+                                colorscale={colorscale}
+                                xrange={xrange}
+                                yrange={yrange}
+                                currentTime={currentTime}
+                                fileName={rawAudioFile.name}
+                            />) :
+                            (
+                                rawAudioFile ?
+                                    <LinearProgress color="secondary" /> :
+                                    <Typography variant="h4" color="primary" align="center">
+                                        No file Added
+                                    </Typography>
+                            )
+                        }
+                    </Paper>
+                    <Paper elevation={4} sx={{ p: 2, height: 'auto', mt: 2 }}>
+                        <SpectrogramControls
+                            setAudioFile={updateRawAudioFile}
+                            type={type}
+                            setType={updateType}
+                            colorscale={colorscale}
+                            setColorscale={updateColorscale}
+                            xrange={xrange}
+                            setXrange={updateXrange}
+                            yrange={yrange}
+                            setYrange={updateYrange}
+                        />
+                    </Paper>
+                </Grid>
+                <Grid item>
+                    <Paper elevation={4} sx={{ p: 2, height: 'auto' }}>
+                        <SoundPlayer
+                            file={rawAudioFile}
+                            setCurrentTime={updateTime}
+                            yrange={yrange}
+                            xrange={xrange}
+                            currentTime={currentTime}
+                            demo={demo}
+                        />
+                        {(!demo && !rawAudioFile) &&
+                            <Button
+                                variant="contained"
+                                onClick={handleDemo}
+                                sx={{ mt: 2 }}
+                            >
+                                DEMO
+                            </Button>}
+                    </Paper>
+                </Grid>
+                    {/* <Container sx={{ mt: 10, mb: 10 }}>
                         <Grid container spacing={3}>
                             <Grid item xs={12} >
                                 <Paper elevation={4} sx={{ p: 2 }}>
@@ -123,8 +181,8 @@ const SpectralAnalysis = () => {
                                         Spectral Analysis
                                     </Typography>
                                 </Paper>
-                            </Grid>
-                            <Grid item xs={12} md={12} lg={12}>
+                            </Grid> */}
+                            {/* <Grid item xs={12} md={12} lg={12}>
                                 <Paper elevation={4} sx={{ p: 2, height: 'auto', }}>
                                     {zData ?
                                         (<Spectrogram
@@ -181,7 +239,7 @@ const SpectralAnalysis = () => {
                                 </Paper>
                             </Grid>
                         </Grid>
-                    </Container>
+                                    </Container> */}
                 </Box>
             </Box>
             <Footer />

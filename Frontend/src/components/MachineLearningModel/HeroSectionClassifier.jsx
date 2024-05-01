@@ -1,9 +1,9 @@
 import React from 'react';
-import { HeroContainer, HeroBg, ImageBg, HeroContent, HeroH1, HeroP } from './HeroStyle';
+import { HeroContainer, HeroBg, ImageBg, HeroContent, HeroH1, HeroP } from '../shared/HeroStyle';
 import ClassifierBg from '../assets/images/ClassifierBackground.png'
 const HeroSectionClassifier = () => {
   return (
-    <HeroContainer>
+    <HeroContainer  style={{height: '600px'}}>
       <HeroBg>
         <ImageBg src={ClassifierBg} alt='Machine Learning Analysis Background' />
       </HeroBg>

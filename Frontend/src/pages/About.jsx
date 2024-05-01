@@ -5,7 +5,7 @@ import { ThemeProvider } from '@emotion/react';
 import Sidebar from '../components/shared/Sidebar';
 import Navbar from '../components/shared/Navbar';
 import theme from '../components/shared/Theme';
-import AboutUsSection from '../components/shared/AboutUsSection';
+import AboutUsSection from '../components/AboutPage/AboutUsSection';
 import Footer from '../components/shared/Footer';
 import background from '../components/assets/images/AboutBGImage.svg'
 
@@ -24,6 +24,7 @@ function Item(props) {
 
 const About = () => {
 
+    // Backgrouund not being used at this moment.
     const Background = {
         backgroundImage: `url(${background})`,
         backgroundPosition: 'center',
@@ -53,7 +54,7 @@ const About = () => {
         },
         {
             name: "Future of CoquiTones",
-            description: "Given the educational nature of this endeavor and its non-commercial focus, we have decided to make our project Open-Source. This decision enables anyone to create their own adaptations based on their requirements.[MORE NEEDED]"
+            description: "Given the educational nature of this endeavor and its non-commercial focus, we have decided to make our project Open-Source. This decision enables anyone to create their own adaptations based on their requirements. We believe in the power of open collaboration to drive progress and make education more accessible and impactful for all."
         }
     ]
 
@@ -67,7 +68,6 @@ const About = () => {
             <Sidebar isOpen={isOpen} toggle={toggle} />
             <Navbar toggle={toggle} />
             <Carousel
-                navButtonsAlwaysVisible={true}
                 autoPlay={false}
                 animation="fade"
                 duration={800}

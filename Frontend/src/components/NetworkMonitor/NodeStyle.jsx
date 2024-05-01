@@ -74,11 +74,11 @@ export const NodeInfo = styled('p')({
 
 
 const NodeStyle = () => {
-  return (
-    <>
-      
-    </>
-  )
+    return (
+        <>
+
+        </>
+    )
 }
 
 export default NodeStyle

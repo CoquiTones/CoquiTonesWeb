@@ -1,7 +1,7 @@
 import React from "react";
 import { styled } from "@mui/material/styles";
 import DiegoPFP from "../assets/images/DiegoProfessionalPFP.jpg";
-import EdwinPFP from "../assets/images/EdwinCamuyPFP.png";
+import EdwinPFP from "../assets/images/EdwinProfessionalPFP.png";
 import RolandoPFP from "../assets/images/RolandoProfessionalPFP.jpg";
 
 export const AboutUsContainer = styled('div')(({ theme }) => ({

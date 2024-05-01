@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { styled } from '@mui/material/styles';
-import { FaBars } from 'react-icons/fa';
+import { FaBars, FaGithub } from 'react-icons/fa';
 import { Link as LinkRouter } from 'react-router-dom';
 import { Link as LinkScroll } from 'react-scroll';
 import { animateScroll as scroll } from 'react-scroll';
 import { scroller as NavScroll } from 'react-scroll';
+import Box from '@mui/material/Box';
 
 const Nav = styled('nav')(({ theme }) => ({
   background: '#191716',
@@ -130,6 +131,18 @@ const NavBtnLink = styled(LinkRouter)({
   },
 });
 
+const NavSocialIcon = styled(Box)({
+  display: 'flex',
+  justifyContent: 'center',
+  alignItems: 'center',
+  width: '120px'
+});
+
+const NavSocialIconLink = styled('a')({
+  color: '#ffc857',
+  fontSize: '42px',
+})
+
 const Navbar = ({ toggle, isHome }) => {
 
   const toggleHome = () => {
@@ -193,9 +206,12 @@ const Navbar = ({ toggle, isHome }) => {
 
 
         }
-        <NavBtn>
+        <NavSocialIcon>
+          <NavSocialIconLink href='https://github.com/CoquiTones'><FaGithub/></NavSocialIconLink>
+        </NavSocialIcon>
+        {/* <NavBtn>
           <NavBtnLink to="/signin" >Sign In</NavBtnLink>
-        </NavBtn>
+        </NavBtn> */}
       </NavbarContainer>
     </Nav >
   );
