@@ -69,7 +69,7 @@ class DAO:
                 curs.execute(
                     sql.SQL(
                         """
-                    DELETE * FROM {}
+                    DELETE FROM {}
                     WHERE {} = %s
                     """
                     ).format(sql.Identifier(cls.table), sql.Identifier(cls.id_column)),
