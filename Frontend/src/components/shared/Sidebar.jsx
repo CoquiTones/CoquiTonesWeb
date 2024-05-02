@@ -121,6 +121,7 @@ const Sidebar = ({ isOpen, toggle, isHome }) => {
             <SidebarLinkS to="classifier" onClick={toggle}>Classifier</SidebarLinkS>
             <SidebarLinkS to="spectralanalysis" onClick={toggle}>Spectral Analysis</SidebarLinkS>
             <SidebarLinkR to="/About" onClick={toggle}>About</SidebarLinkR>
+            <SidebarLinkR to="https://github.com/CoquiTones" onClick={toggle}>GitHub</SidebarLinkR>
           </SidebarMenu>
         </SidebarWrapper>
 
@@ -133,6 +134,7 @@ const Sidebar = ({ isOpen, toggle, isHome }) => {
             <SidebarLinkR to="/Classifier" onClick={toggle}>Classifier</SidebarLinkR>
             <SidebarLinkR to="/SpectralAnalysis" onClick={toggle}>Spectral Analysis</SidebarLinkR>
             <SidebarLinkR to="/About" onClick={toggle}>About</SidebarLinkR>
+            <SidebarLinkR to="https://github.com/CoquiTones" onClick={toggle}>GitHub</SidebarLinkR>
           </SidebarMenu>
         </SidebarWrapper>
 

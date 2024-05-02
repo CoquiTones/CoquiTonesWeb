@@ -18,7 +18,7 @@ const Nav = styled('nav')(({ theme }) => ({
   position: 'sticky',
   top: 0,
   zIndex: 10,
-  [theme.breakpoints.down('sm')]: {
+  [theme.breakpoints.down('md')]: {
     transition: '0.8s all ease',
   },
 }));
@@ -47,7 +47,7 @@ const NavLogo = styled(LinkRouter)({
 
 const MobileIcon = styled('div')(({ theme }) => ({
   display: 'none',
-  [theme.breakpoints.down('sm')]: {
+  [theme.breakpoints.down('md')]: {
     display: 'block',
     position: 'absolute',
     top: 0,
@@ -67,7 +67,7 @@ const NavMenu = styled('ul')(({ theme }) => ({
   textAlign: 'center',
   padding: '0',
   marginRight: 0,
-  [theme.breakpoints.down('sm')]: {
+  [theme.breakpoints.down('md')]: {
     display: 'none',
   },
 }));
@@ -107,7 +107,7 @@ const NavLinkR = styled(LinkRouter)({
 const NavBtn = styled('nav')(({ theme }) => ({
   display: 'flex',
   alignItems: 'center',
-  [theme.breakpoints.down('sm')]: {
+  [theme.breakpoints.down('md')]: {
     display: 'none',
   },
 }));
@@ -131,12 +131,15 @@ const NavBtnLink = styled(LinkRouter)({
   },
 });
 
-const NavSocialIcon = styled(Box)({
+const NavSocialIcon = styled(Box)(({ theme }) => ({
   display: 'flex',
   justifyContent: 'center',
   alignItems: 'center',
-  width: '120px'
-});
+  width: '120px',
+  [theme.breakpoints.down('md')]: {
+  display: 'none',
+  },
+}));
 
 const NavSocialIconLink = styled('a')({
   color: '#ffc857',
