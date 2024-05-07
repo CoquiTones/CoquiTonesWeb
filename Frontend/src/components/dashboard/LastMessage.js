@@ -19,7 +19,7 @@ export default function Heartbeats() {
 	const [date, setDate] = React.useState(getDate())
 	return (
 		<React.Fragment>
-			<Title>Latest Heartbeats</Title>
+			<Title>Latest Message</Title>
 			<Typography component="p" variant="h4">
 				From Node 1
 			</Typography>
@@ -28,7 +28,7 @@ export default function Heartbeats() {
 			</Typography>
 			<div>
 				<Link color="primary" href="#" onClick={preventDefault}>
-					View Heartbeat
+					View Message
 				</Link>
 			</div>
 		</React.Fragment>

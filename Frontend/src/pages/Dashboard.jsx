@@ -4,15 +4,13 @@ import { ThemeProvider } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
 import Box from '@mui/material/Box';
 import Toolbar from '@mui/material/Toolbar';
-import Typography from '@mui/material/Typography';
 import Container from '@mui/material/Container';
 import Grid from '@mui/material/Grid';
 import Paper from '@mui/material/Paper';
-import Link from '@mui/material/Link';
 
-import Chart from '../components/dashboard/Chart';
-import Heartbeats from '../components/dashboard/Deposits';
-import RecentEntries from '../components/dashboard/Orders';
+import Chart from '../components/dashboard/Graph';
+import Heartbeats from '../components/dashboard/LastMessage';
+import RecentEntries from '../components/dashboard/Entries';
 import Navbar from '../components/shared/Navbar';
 import Footer from '../components/shared/Footer';
 import theme from '../components/shared/Theme'
@@ -30,13 +28,13 @@ export default function Dashboard() {
 
 	const [isOpen, setIsOpen] = useState(false)
 	const toggle = () => {
-    	setIsOpen(!isOpen)
-  }
+		setIsOpen(!isOpen)
+	}
 
 	return (
 		<ThemeProvider theme={theme}>
-			<Sidebar isOpen={isOpen} toggle={toggle}/>
-			<Navbar toggle={toggle}/>
+			<Sidebar isOpen={isOpen} toggle={toggle} />
+			<Navbar toggle={toggle} />
 			<Box sx={{ display: 'flex' }}>
 				<CssBaseline />
 				<Box
@@ -90,7 +88,7 @@ export default function Dashboard() {
 					</Container>
 				</Box>
 			</Box>
-			<Footer/>
+			<Footer />
 		</ThemeProvider>
 	);
 }
