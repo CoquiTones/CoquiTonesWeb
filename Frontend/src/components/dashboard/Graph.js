@@ -10,15 +10,15 @@ function createData(time, amount) {
 }
 
 const data = [
-	createData('00:00', 0),
-	createData('03:00', 300),
-	createData('06:00', 600),
-	createData('09:00', 800),
-	createData('12:00', 1500),
-	createData('15:00', 2000),
-	createData('18:00', 2400),
-	createData('21:00', 2400),
-	createData('24:00'),
+	createData('January 5th', 0),
+	createData('January 10th', 25),
+	createData('January 20th', 35),
+	createData('January 25th', 40),
+	createData('February 5th', 40),
+	createData('February 15th', 60),
+	createData('February 20th', 78),
+	createData('Febrary 25th', 55),
+	createData('March 1st', 1),
 ];
 
 export default function Chart() {
@@ -53,7 +53,7 @@ export default function Chart() {
 								fill: theme.palette.text.primary,
 							},
 							tickLabelStyle: theme.typography.body2,
-							max: 2500,
+							max: 80,
 							tickNumber: 3,
 						},
 					]}
