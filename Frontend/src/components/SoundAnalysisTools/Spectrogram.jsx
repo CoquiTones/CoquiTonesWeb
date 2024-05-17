@@ -1,5 +1,6 @@
 import Plot from "react-plotly.js";
 import React, { useEffect, useState, useRef } from "react";
+import PropTypes from "prop-types";
 
 export default function Spectrogram({
   xData,
@@ -13,19 +14,30 @@ export default function Spectrogram({
   currentTime,
   fileName,
 }) {
-  // todo calculate zmin and zmax from data
-  //
-  // Define label for the vertical line
+  // Calculate zmin and zmax from data
+  const zMin = Math.min(...zData.flat());
+  const zMax = Math.max(...zData.flat());
+
   const [lineX, setLineX] = useState(null);
   const [lineY, setLineY] = useState(null);
   const [label, setLabel] = useState(null);
   const plotRef = useRef(null);
-  const handleOnAfterPlot = () => {
-    let newXrange = plotRef.current.props.layout.xaxis.range;
-    let newYrange = plotRef.current.props.layout.yaxis.range;
+
+  const handleOnRelayout = (event) => {
+    const newXrange = [
+      event["xaxis.range[0]"] ?? xrange[0],
+      event["xaxis.range[1]"] ?? xrange[1],
+    ];
+    const newYrange = [
+      event["yaxis.range[0]"] ?? yrange[0],
+      event["yaxis.range[1]"] ?? yrange[1],
+    ];
+
     setXrange(newXrange);
     setYrange(newYrange);
+    console.log("Updated ranges!", newXrange, newYrange);
   };
+
   useEffect(() => {
     const label = {
       text: `Current Time: ${currentTime.toFixed(2)} s`, // Customize label text as needed
@@ -36,14 +48,14 @@ export default function Spectrogram({
       ax: 0,
       ay: -30,
     };
-    // Create x and y coordinates for the vertical line
     const verticalLineX = [currentTime, currentTime];
     const verticalLineY = [Math.min(...yrange), Math.max(...yrange)];
 
     setLineX(verticalLineX);
     setLineY(verticalLineY);
     setLabel(label);
-  }, [currentTime]);
+  }, [currentTime, yrange]);
+
   return (
     <Plot
       data={[
@@ -54,7 +66,8 @@ export default function Spectrogram({
           z: zData,
           colorscale: colorscale,
           connectgaps: true,
-          ncontours: 300,
+          zmin: zMin,
+          zmax: zMax,
           hovertemplate:
             "<b>Time</b>: %{x} s<br><b>Frequency</b>: %{y} Hz<br><b>Amplitude</b>: %{z} dB",
         },
@@ -64,14 +77,14 @@ export default function Spectrogram({
           x: lineX,
           y: lineY,
           line: {
-            color: "red", // Change color as needed
+            color: "red",
             width: 1,
-            opacity: 0.7, // Set opacity to 70%
+            opacity: 0.7,
           },
         },
       ]}
       layout={{
-        title: fileName + " Spectrogram",
+        title: `${fileName} Spectrogram`,
         xaxis: {
           title: "Time (s)",
           range: xrange,
@@ -80,16 +93,17 @@ export default function Spectrogram({
           title: "Frequency (Hz)",
           range: yrange,
         },
-        plot_bgcolor: "rgba(0, 0, 0, 0)", // Set plot background color to transparent for dark mode
-        paper_bgcolor: "rgba(0, 0, 0, 0)", // Set paper background color to transparent for dark mode
+        plot_bgcolor: "rgba(0, 0, 0, 0)",
+        paper_bgcolor: "rgba(0, 0, 0, 0)",
         font: {
-          color: "white", // Set font color to white for dark mode
+          color: "white",
         },
+        dragmode: "zoom", // Enable zoom tool
         annotations: [label],
       }}
       useResizeHandler={true}
       style={{ width: "100%", height: "100%" }}
-      onAfterPlot={handleOnAfterPlot}
+      onRelayout={handleOnRelayout}
       ref={plotRef}
     />
   );
