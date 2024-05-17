@@ -62,6 +62,7 @@ export default function Spectrogram({
           z: zData,
           colorscale: colorscale,
           connectgaps: true,
+          ncontours: 30,
           hovertemplate:
             "<b>Time</b>: %{x} s<br><b>Frequency</b>: %{y} Hz<br><b>Amplitude</b>: %{z} dB",
         },

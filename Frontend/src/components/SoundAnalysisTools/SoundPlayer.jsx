@@ -30,8 +30,6 @@ export default function SoundPlayer({
     bandpassFilter.type = "bandpass"; // Set filter type to bandpass
     bandpassFilter.frequency.value = centerFrequency;
     bandpassFilter.Q.value = qualityFactor; // Set quality factor
-
-    console.log("filtered audio!");
   }
 
   useEffect(() => {
