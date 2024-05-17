@@ -14,10 +14,6 @@ export default function Spectrogram({
   currentTime,
   fileName,
 }) {
-  // Calculate zmin and zmax from data
-  const zMin = Math.min(...zData.flat());
-  const zMax = Math.max(...zData.flat());
-
   const [lineX, setLineX] = useState(null);
   const [lineY, setLineY] = useState(null);
   const [label, setLabel] = useState(null);
@@ -66,8 +62,6 @@ export default function Spectrogram({
           z: zData,
           colorscale: colorscale,
           connectgaps: true,
-          zmin: zMin,
-          zmax: zMax,
           hovertemplate:
             "<b>Time</b>: %{x} s<br><b>Frequency</b>: %{y} Hz<br><b>Amplitude</b>: %{z} dB",
         },
