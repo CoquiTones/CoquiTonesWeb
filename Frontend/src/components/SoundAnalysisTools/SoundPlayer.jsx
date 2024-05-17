@@ -87,6 +87,7 @@ export default function SoundPlayer({
             ref={audioElementRef}
             onTimeUpdate={handleTimeUpdate}
             controls
+            loop
           />
         )}
       </div>
