@@ -7,7 +7,7 @@ export const HeroContainer = styled('div')({
     justifyContent: 'center',
     alignItems: 'center',
     padding: '0 30px',
-    height: '800px',
+    height: '100vh',
     position: 'relative',
     zIndex: '1',
     '&:before': {
@@ -42,9 +42,9 @@ export const VideoBg = styled('video')({
 
 export const ImageBg = styled('img')({
     width: '100%',
-    height:'100%',
-    objectFit:'cover',
-    background:'transparent'
+    height: '100%',
+    objectFit: 'cover',
+    background: 'transparent'
 })
 
 export const HeroContent = styled('div')({

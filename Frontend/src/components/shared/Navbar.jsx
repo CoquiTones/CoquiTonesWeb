@@ -8,7 +8,7 @@ import { scroller as NavScroll } from 'react-scroll';
 
 const Nav = styled('nav')(({ theme }) => ({
   background: '#191716',
-  height: 80,
+  height: "7vh",
   marginTop: -80,
   display: 'flex',
   justifyContent: 'center',

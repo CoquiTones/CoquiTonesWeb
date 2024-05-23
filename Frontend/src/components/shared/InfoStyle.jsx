@@ -12,7 +12,7 @@ export const InfoContainer = styled('div')(({ lightBg, theme }) => ({
 export const InfoWrapper = styled('div')({
     display: 'grid',
     zIndex: '1',
-    height: '860px',
+    height: '90vh',
     width: '100%',
     maxWidth: '1100px',
     margin: '0 auto',
