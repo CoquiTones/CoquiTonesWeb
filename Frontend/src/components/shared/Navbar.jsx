@@ -8,7 +8,7 @@ import { scroller as NavScroll } from 'react-scroll';
 
 const Nav = styled('nav')(({ theme }) => ({
   background: '#191716',
-  height: 80,
+  height: "7vh",
   marginTop: -80,
   display: 'flex',
   justifyContent: 'center',
@@ -54,7 +54,7 @@ const MobileIcon = styled('div')(({ theme }) => ({
     transform: 'translate(-100%, 60%)',
     fontSize: '1.8rem',
     cursor: 'pointer',
-    color: '#657153',
+    color: '#ffc857',
   },
 }));
 
@@ -75,7 +75,21 @@ const NavItem = styled('li')({
   height: 80,
 });
 
-const NavLinks = styled(LinkScroll)({
+const NavLinkS = styled(LinkScroll)({
+  color: '#fff',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  textDecoration: 'none',
+  padding: '0 1rem',
+  height: '100%',
+  cursor: 'pointer',
+  '&.active': {
+    borderBottom: '3px solid #ffc857',
+  },
+});
+
+const NavLinkR = styled(LinkRouter)({
   color: '#fff',
   display: 'flex',
   alignItems: 'center',
@@ -140,19 +154,19 @@ const Navbar = ({ toggle, isHome }) => {
             // if home
             <NavMenu>
               <NavItem>
-                <NavLinks to='dashboard' smooth={true} duration={500} spy={true} exact='true' offset={-80}>Dashboard</NavLinks>
+                <NavLinkS to='dashboard' smooth={true} duration={500} spy={true} exact='true' offset={-80}>Dashboard</NavLinkS>
               </NavItem>
               <NavItem>
-                <NavLinks to='cdn' smooth={true} duration={500} spy={true} exact='true' offset={-80}>CDN</NavLinks>
+                <NavLinkS to='NetworkMonitor' smooth={true} duration={500} spy={true} exact='true' offset={-80}>IoT Network</NavLinkS>
               </NavItem>
               <NavItem>
-                <NavLinks to='classifier' smooth={true} duration={500} spy={true} exact='true' offset={-80}>Classifier</NavLinks>
+                <NavLinkS to='classifier' smooth={true} duration={500} spy={true} exact='true' offset={-80}>Classifier</NavLinkS>
               </NavItem>
               <NavItem>
-                <NavLinks to='spectralanalysis' smooth={true} duration={500} spy={true} exact='true' offset={-80}>Spectral Analysis</NavLinks>
+                <NavLinkS to='spectralanalysis' smooth={true} duration={500} spy={true} exact='true' offset={-80}>Spectral Analysis</NavLinkS>
               </NavItem>
               <NavItem>
-                <NavLinks href='/about'>About</NavLinks>
+                <NavLinkR to='/About'>About</NavLinkR>
               </NavItem>
             </NavMenu>
 
@@ -160,21 +174,21 @@ const Navbar = ({ toggle, isHome }) => {
             // if not home page
             // TODO: Change these buttons to new ones with proper styling 
             <NavMenu>
-              <NavBtn>
-                <NavBtnLink to="/Dashboard" >Dashboard</NavBtnLink>
-              </NavBtn>
-              <NavBtn>
-                <NavBtnLink to="/CDN" >CDN</NavBtnLink>
-              </NavBtn>
-              <NavBtn>
-                <NavBtnLink to="/Classifier" >Classifier</NavBtnLink>
-              </NavBtn>
-              <NavBtn>
-                <NavBtnLink to="/SpectralAnalysis" >Spectral Analysis</NavBtnLink>
-              </NavBtn>
-              <NavBtn>
-                <NavBtnLink to="/About" >About</NavBtnLink>
-              </NavBtn>
+              <NavItem>
+                <NavLinkR to='/Dashboard'>Dashboard</NavLinkR>
+              </NavItem>
+              <NavItem>
+                <NavLinkR to='/NetworkMonitor'>IoT Network</NavLinkR>
+              </NavItem>
+              <NavItem>
+                <NavLinkR to='/Classifier'>Classifier</NavLinkR>
+              </NavItem>
+              <NavItem>
+                <NavLinkR to='/SpectralAnalysis'>Spectral Analysis</NavLinkR>
+              </NavItem>
+              <NavItem>
+                <NavLinkR to='/About'>About</NavLinkR>
+              </NavItem>
             </NavMenu>
 
 

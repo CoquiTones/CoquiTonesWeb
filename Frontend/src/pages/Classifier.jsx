@@ -2,12 +2,11 @@ import React, { useState } from "react";
 import { ThemeProvider } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
 import Box from '@mui/material/Box';
-import Toolbar from '@mui/material/Toolbar';
 import Typography from '@mui/material/Typography';
 import Container from '@mui/material/Container';
 import Grid from '@mui/material/Grid';
 import Paper from '@mui/material/Paper';
-import Link from '@mui/material/Link';
+
 
 import Table from '@mui/material/Table';
 import TableBody from '@mui/material/TableBody';
@@ -17,9 +16,12 @@ import TableHead from '@mui/material/TableHead';
 import TableRow from '@mui/material/TableRow';
 
 
-import BarAndNav from "../components/shared/BarAndNav";
 import theme from "../components/shared/Theme"
 import FileUpload from "../components/shared/FileUpload";
+import Sidebar from "../components/shared/Sidebar";
+import Navbar from "../components/shared/Navbar";
+import Footer from "../components/shared/Footer";
+import HeroSectionClassifier from "../components/shared/HeroSectionClassifier";
 const Classifier = () => {
 
     const initDummyReport = () => {
@@ -32,6 +34,10 @@ const Classifier = () => {
 
     }
 
+    const [isOpen, setIsOpen] = useState(false)
+    const toggle = () => {
+        setIsOpen(!isOpen)
+    }
 
 
     const [report, setReport] = useState(initDummyReport())
@@ -90,9 +96,11 @@ const Classifier = () => {
     const [rawAudioFile, setRawAudioFile] = useState(null)
     return (
         <ThemeProvider theme={theme}>
+            <Sidebar isOpen={isOpen} toggle={toggle}/>
+            <Navbar toggle={toggle}/>
+            <HeroSectionClassifier/>
             <Box sx={{ display: 'flex' }} >
                 <CssBaseline />
-                <BarAndNav />
                 <Box
                     component="main"
                     sx={{
@@ -115,9 +123,9 @@ const Classifier = () => {
                                     height: 240,
                                 }}
                             >
-                                <Typography variant="h3" color="primary" align="center">
+                                {/* <Typography variant="h3" color="primary" align="center">
                                     Machine Learning Analysis
-                                </Typography>
+                                </Typography> */}
 
                                 <FileUpload setAudioFile={setRawAudioFile} />
                             </Paper >
@@ -143,6 +151,7 @@ const Classifier = () => {
                     </Container >
                 </Box>
             </Box>
+            <Footer/>
         </ThemeProvider>
     )
 }

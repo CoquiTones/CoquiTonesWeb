@@ -11,7 +11,6 @@ export default function FileUpload({ setAudioFile }) {
     }, [currentFile])
 
     const handleUpload = () => {
-        console.log("current file: ", currentFile)
         setAudioFile(currentFile);
 
     }

@@ -19,7 +19,7 @@ export const SidebarContainer = styled('aside')(({ isOpen }) => ({
 }));
 
 export const CloseIcon = styled(FaTimes)({
-  color: '#fff',
+  color: '#ffc857',
 });
 
 export const Icon = styled('div')({
@@ -38,6 +38,7 @@ export const SidebarWrapper = styled('div')({
 
 export const SidebarMenu = styled('ul')(({ theme }) => ({
   display: 'grid',
+  padding: 0,
   gridTemplateColumns: '1fr',
   gridTemplateRows: 'repeat(6, 80px)',
   textAlign: 'center',
@@ -46,7 +47,24 @@ export const SidebarMenu = styled('ul')(({ theme }) => ({
   },
 }));
 
-export const SidebarLink = styled(LinkScroll)({
+export const SidebarLinkS = styled(LinkScroll)({
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  fontSize: '1.5rem',
+  textDecoration: 'none',
+  listStyle: 'none',
+  transition: '0.2s ease-in-out',
+  color: '#fff',
+  cursor: 'pointer',
+  textDecoration: 'none',
+  '&:hover': {
+    color: '#ffc857',
+    transition: '0.2s ease-in-out',
+  },
+});
+
+export const SidebarLinkR = styled(LinkRouter)({
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'center',
@@ -89,24 +107,36 @@ export const SidebarRoute = styled(LinkRouter)({
 
 
 
-const Sidebar = ({ isOpen, toggle }) => {
+const Sidebar = ({ isOpen, toggle, isHome }) => {
   return (
     <SidebarContainer isOpen={isOpen} onClick={toggle}>
-        <Icon onClick={toggle}>
-            <CloseIcon />
-        </Icon>
+      <Icon onClick={toggle}>
+        <CloseIcon />
+      </Icon>
+      {isHome ?
         <SidebarWrapper>
-            <SidebarMenu>
-                <SidebarLink to="dashboard" onClick={toggle}>Dashboard</SidebarLink>
-                <SidebarLink to="cdn" onClick={toggle}>CDN</SidebarLink>
-                <SidebarLink to="classifier" onClick={toggle}>Classifier</SidebarLink>
-                <SidebarLink to="spectral" onClick={toggle}>Spectral Analysis</SidebarLink>
-                <SidebarLink to="signup" onClick={toggle}>Sign Up</SidebarLink>
-            </SidebarMenu>
-            <SideBtnWrap>
-                <SidebarRoute to='/signin'>Sign In</SidebarRoute>
-            </SideBtnWrap>
+          <SidebarMenu>
+            <SidebarLinkS to="dashboard" onClick={toggle}>Dashboard</SidebarLinkS>
+            <SidebarLinkS to="NetworkMonitor" onClick={toggle}>IoT Network</SidebarLinkS>
+            <SidebarLinkS to="classifier" onClick={toggle}>Classifier</SidebarLinkS>
+            <SidebarLinkS to="spectralanalysis" onClick={toggle}>Spectral Analysis</SidebarLinkS>
+            <SidebarLinkR to="/About" onClick={toggle}>About</SidebarLinkR>
+          </SidebarMenu>
         </SidebarWrapper>
+
+        :
+
+        <SidebarWrapper>
+          <SidebarMenu>
+            <SidebarLinkR to="/Dashboard" onClick={toggle}>Dashboard</SidebarLinkR>
+            <SidebarLinkR to="/NetworkMonitor" onClick={toggle}>IoT Network</SidebarLinkR>
+            <SidebarLinkR to="/Classifier" onClick={toggle}>Classifier</SidebarLinkR>
+            <SidebarLinkR to="/SpectralAnalysis" onClick={toggle}>Spectral Analysis</SidebarLinkR>
+            <SidebarLinkR to="/About" onClick={toggle}>About</SidebarLinkR>
+          </SidebarMenu>
+        </SidebarWrapper>
+
+      }
     </SidebarContainer>
   )
 }

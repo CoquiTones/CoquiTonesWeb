@@ -102,9 +102,9 @@ export const WebsiteRights = styled('small')(({ theme }) => ({
 
 export const SocialIcons = styled(Box)({
     display: 'flex',
-    justifyContent: 'space-between',
+    justifyContent: 'center',
     alignItems: 'center',
-    width: '240px',
+    width: '160px',
 });
 
 export const SocialIconLink = styled('a')({
@@ -120,28 +120,6 @@ const Footer = () => {
   return (
     <FooterContainer>
         <FooterWrap>
-            <FooterLinksContainer>
-                <FooterLinksWrapper>
-                    <FooterLinkItems>
-                        <FooterLinkTitle>About Us</FooterLinkTitle>
-                        <FooterLink to='/signin'>Mission Statement</FooterLink>
-                        <FooterLink to='/signin'>Who We Are</FooterLink>
-                        <FooterLink to='/signin'>How we Collaborated</FooterLink>
-                        <FooterLink to='/signin'>Hardware</FooterLink>
-                        <FooterLink to='/signin'>Software</FooterLink>
-                    </FooterLinkItems>
-                </FooterLinksWrapper>
-                <FooterLinksWrapper>
-                    <FooterLinkItems>
-                        <FooterLinkTitle>Other Stuff</FooterLinkTitle>
-                        <FooterLink to='/signin'>GitHub</FooterLink>
-                        <FooterLink to='/signin'>Thing 1</FooterLink>
-                        <FooterLink to='/signin'>Thing 2</FooterLink>
-                        <FooterLink to='/signin'>Thing 3</FooterLink>
-                        <FooterLink to='/signin'>Thing 4</FooterLink>
-                    </FooterLinkItems>
-                </FooterLinksWrapper>
-            </FooterLinksContainer>
             <SocialMedia>
                 <SocialMediaWrap>
                     <SocialLogo to='/' onClick= {toggleHome}>

@@ -1,17 +1,22 @@
-from fastapi import FastAPI, File, UploadFile, staticfiles, Depends, HTTPException
+from typing import Annotated
+from fastapi import FastAPI, File, UploadFile, staticfiles, Depends, HTTPException, Form
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, Response
 from dbutil import get_db_connection
 from Spectrogram import sendMelSpectrogram, sendBasicSpectrogram
 import psycopg2
-import dao
+import dao as dao
+import os
+
 
 app = FastAPI()
 origins = [
-    "http://localhost:8000",
-    "localhost:8000",
     "http://localhost:3000",
     "localhost:3000",
+    "http://localhost:8080",
+    "localhost:8080",
+    "http://0.0.0.0:8080",
+    os.getenv("WEB_URL"),
 ]
 app.add_middleware(
     CORSMiddleware,
@@ -23,7 +28,7 @@ app.add_middleware(
 
 app.mount(
     "/static",
-    staticfiles.StaticFiles(directory="../../Frontend/build/static"),
+    staticfiles.StaticFiles(directory="./Frontend/build/static"),
     name="static",
 )
 
@@ -93,8 +98,30 @@ async def basic_spectrogram_get(file: UploadFile = File(...)):
     return specData
 
 
+@app.post(path="/api/node/insert")
+async def node_insert(
+    ntype: Annotated[str, Form()],
+    nlatitude: Annotated[str, Form()],
+    nlongitude: Annotated[str, Form()],
+    ndescription: Annotated[str, Form()],
+    db=Depends(get_db_connection),
+):
+    newNode = dao.Node.insert(db, ntype, nlatitude, nlongitude, ndescription)
+    print(newNode)
+    return newNode
+
+
+@app.delete(path="/api/node/delete")
+async def node_delete(nid: int, db=Depends(get_db_connection)):
+    return dao.Node.delete(nid, db)
+
+
 @app.get("/", response_class=HTMLResponse)
 @app.get("/{path}", response_class=HTMLResponse)
 async def root():
-    with open("../../Frontend/build/index.html", "r") as f:
-        return f.read()
+
+    try:
+        with open("./Frontend/build/index.html", "r") as f:
+            return f.read()
+    except Exception as e:
+        print(e)

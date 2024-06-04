@@ -6,11 +6,11 @@ export const homeObjOne = {
     topLine: 'Dashboard',
     headline: 'All Historical Data Presented in a Structured Manner',
     description: 'Using DBMS, the data has been structured in a way that can be presented easily to any user that wants to see historical data.',
-    buttonLabel: 'Learn More',
+    buttonLabel: 'Go To Page',
     buttonRoute: '/Dashboard',
-    /*imgStart sets the location of the image in the column. If it is false, the image is to the right. If it is true, the image is to the left*/ 
+    /*imgStart sets the location of the image in the column. If it is false, the image is to the right. If it is true, the image is to the left*/
     imgStart: false,
-    img: require('../../components/images/homedashboard.svg').default,
+    img: require('../../components/assets/images/homedashboard.svg').default,
     alt: 'Dash',
     dark: true,
     primary: true,
@@ -18,18 +18,18 @@ export const homeObjOne = {
 };
 
 export const homeObjTwo = {
-    id: 'cdn',
+    id: 'NetworkMonitor',
     lightBg: true,
     lightText: false,
     lightTextDesc: false,
-    topLine: 'Cluster Duck Network',
-    headline: 'Maintain mobile communication without the reliance of cellular data',
-    description: 'Cluster Duck Protocol facilitates the establishment of an Internet of Things network, enabling the capability of inter-device communication using a modified LoRa Protocol.',
-    buttonLabel: 'Learn More',
-    buttonRoute: '/CDN',
-    /*imgStart sets the location of the image in the column. If it is false, the image is to the right. If it is true, the image is to the left*/ 
+    topLine: 'Bio-Acoustic Monitoring',
+    headline: 'Deploy and Manage IoT Network to collect data',
+    description: 'Deploy these monitors using our Open Souce Hardware Design. Collect Acoustic and meteorological data. Cluster Duck Protocol facilitates the establishment of an Internet of Things network, enabling the capability of inter-device communication using a modified LoRa Protocol. ',
+    buttonLabel: 'Go To Page',
+    buttonRoute: '/NetworkMonitor',
+    /*imgStart sets the location of the image in the column. If it is false, the image is to the right. If it is true, the image is to the left*/
     imgStart: true,
-    img: require('../../components/images/homecdn.svg').default,
+    img: require('../../components/assets/images/homecdn.svg').default,
     alt: 'Dash',
     dark: false,
     primary: false,
@@ -44,11 +44,11 @@ export const homeObjThree = {
     topLine: 'Machine Learning Model',
     headline: 'Identify coqui species using Artificial Intelligence',
     description: 'Using Dataiku as the foundation, a machine language model has been built to optimize the coqui species identification process',
-    buttonLabel: 'Learn More',
+    buttonLabel: 'Go To Page',
     buttonRoute: '/Classifier',
-    /*imgStart sets the location of the image in the column. If it is false, the image is to the right. If it is true, the image is to the left*/ 
+    /*imgStart sets the location of the image in the column. If it is false, the image is to the right. If it is true, the image is to the left*/
     imgStart: false,
-    img: require('../../components/images/homeclassifier.svg').default,
+    img: require('../../components/assets/images/homeclassifier.svg').default,
     alt: 'Dash',
     dark: true,
     primary: true,
@@ -63,11 +63,11 @@ export const homeObjFour = {
     topLine: 'Spectral Analysis',
     headline: 'Facilitate Coqui identification with precision',
     description: 'With the website built-in Sound Analysis Tool, upload your audio file and identify at a precise level the coqui species using Spectrogram Generation.',
-    buttonLabel: 'Learn More',
+    buttonLabel: 'Go To Page',
     buttonRoute: '/SpectralAnalysis',
-    /*imgStart sets the location of the image in the column. If it is false, the image is to the right. If it is true, the image is to the left*/ 
+    /*imgStart sets the location of the image in the column. If it is false, the image is to the right. If it is true, the image is to the left*/
     imgStart: true,
-    img: require('../../components/images/homeanalysis.svg').default,
+    img: require('../../components/assets/images/homeanalysis.svg').default,
     alt: 'Dash',
     dark: false,
     primary: false,

@@ -8,11 +8,14 @@
             "name": "Python Debugger: FastAPI",
             "type": "debugpy",
             "request": "launch",
-            "cwd": "${workspaceFolder}/Backend/src/",
             "module": "uvicorn",
             "args": [
-                "app:app",
-                "--reload"
+                "--app-dir",
+                "Backend/src",
+                "Backend.src.app:app",
+                "--reload",
+                "--port",
+                "8080"
             ],
             "jinja": true
         },
