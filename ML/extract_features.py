@@ -1,17 +1,26 @@
 # -*- coding: utf-8 -*-
-import dataiku
+
+import sys
 import pandas as pd
 import numpy as np
-from dataiku import pandasutils as pdu
 import librosa
-import threading
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import (
+    roc_auc_score,
+    confusion_matrix,
+    precision_score,
+    recall_score,
+    ConfusionMatrixDisplay,
+)
 
-# Read recipe inputs
-samples = dataiku.Dataset("Train")
-samples_df = samples.get_dataframe()
+import numpy as np
+import pandas as pd
+from ast import literal_eval
+
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 
-# Define the extract_features function
 def extract_features(file_path):
     """
     Extract features from audio file using librosa.
@@ -41,48 +50,74 @@ def extract_features(file_path):
     return result
 
 
-def apply_extract_features(file_paths, results, index):
+def process_data():
+    """Read Csv with fileanme and generate spectrogram for each sample
+
+    Returns:
+        DataFrame: dataframe with all data
     """
-    Apply the extract_features function to each audio file in a subset of file paths.
+    data_csv_path = sys.argv[1]
 
-    Args:
-        file_paths (list): List of file paths.
-        results (list): List to store the results.
-        index (int): Index of the worker thread.
-    """
-    print(f"Worker {index + 1} started.")
-    for file_path in file_paths:
-        results.append("[" + ",".join(map(str, extract_features(file_path))) + "]")
-    print(f"Worker {index + 1} finished.")
+    df = pd.read_csv(data_csv_path)
+
+    # Initialize a list to store the results
+    spectrograms = []
+
+    with ThreadPoolExecutor() as executor:
+        futures = [
+            executor.submit(extract_features, row["filename"])
+            for _, row in df.iterrows()
+        ]
+
+        for future in as_completed(futures):
+            try:
+                spectrogram = future.result()
+                print("Processed Row")
+                spectrograms.append(spectrogram)
+            except Exception as exc:
+                print(f"Generated an exception: {exc}")
+
+    # Convert the list of spectrograms into a DataFrame
+    spectrogram_df = pd.DataFrame(spectrograms)
+
+    # Concatenate the original DataFrame with the new DataFrame containing spectrograms
+    df = pd.concat([df, spectrogram_df], axis=1)
+
+    return df
 
 
-# Split the file paths into subsets
-num_threads = 6
-file_paths = samples_df["filename"].tolist()
-chunk_size = (len(file_paths) + num_threads - 1) // num_threads
-file_path_chunks = [
-    file_paths[i : i + chunk_size] for i in range(0, len(file_paths), chunk_size)
-]
+def createModel(df):
 
-# Initialize a list to store the results
-results = []
+    x = df.drop(
+        columns=["filename", "species"]
+    )  # Adjust this to include only feature columns
+    # Convert all column names to strings
+    x.columns = x.columns.astype(str)
+    y = df["species"]
 
-# Create and start worker threads
-threads = []
-for i, file_path_chunk in enumerate(file_path_chunks):
-    thread = threading.Thread(
-        target=apply_extract_features, args=(file_path_chunk, results, i)
+    x_train, x_test, y_train, y_test = train_test_split(x, y, test_size=0.2)
+
+    classifier = RandomForestClassifier(
+        n_estimators=600, max_depth=18, min_samples_leaf=3
     )
-    threads.append(thread)
-    thread.start()
 
-# Wait for all threads to complete
-for thread in threads:
-    thread.join()
+    classifier.fit(x_train, y_train)
 
-# Add the results to the DataFrame
-samples_df["spectrogram"] = pd.Series(results)
+    y_pred = classifier.predict(
+        x_test,
+    )
 
-# Write recipe outputs
-SpecData = dataiku.Dataset("Train_prepared")
-SpecData.write_with_schema(samples_df)
+    accuracy = roc_auc_score(y_test, y_pred)
+    print("Accuracy (ROC AUC):", accuracy)
+
+    print(np.count_nonzero(y_test == y_pred))
+
+
+def main():
+
+    df = process_data()
+    createModel(df)
+
+
+if __name__ == "__main__":
+    main()

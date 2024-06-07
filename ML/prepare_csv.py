@@ -62,26 +62,32 @@ def main() -> None:
 
     # Iterate through each subfolder
     for siteDataSet in os.listdir(data_dir):
-        folder_path = os.path.join(data_dir, siteDataSet, siteDataSet)
-        if os.path.isdir(folder_path):
+        site_folder = os.path.join(data_dir, siteDataSet)
+        if os.path.isdir(site_folder):
+            # example siteId  "Site01-1" such that the 4-6 index represents the site id; in this case 01
             siteId = int(siteDataSet[4:6])
-            SiteData = [item for item in averagesData if int(item["SiteID"]) == siteId]
+            SiteData = [
+                averageClassification
+                for averageClassification in averagesData
+                if int(averageClassification["SiteID"]) == siteId
+            ]
 
-            for file_name in os.listdir(folder_path):
-                if file_name.endswith(".wav"):
-                    file_path = os.path.abspath(os.path.join(folder_path, file_name))
-                    for classification in SiteData:
-                        data.append(
-                            [
-                                file_path,
-                                classification["Species"],
-                            ]
-                        )
+            classifications = ", ".join(
+                [classification["Species"] for classification in SiteData]
+            )
+            for audio_recording in os.listdir(site_folder):
+                if audio_recording.endswith(".wav"):
+                    audio_recording_abs_path = os.path.abspath(
+                        os.path.join(site_folder, audio_recording)
+                    )
+
+                    data.append([siteId, audio_recording_abs_path, classifications])
 
     # Create DataFrame
     df = pd.DataFrame(
         data,
         columns=[
+            "siteId",
             "filename",
             "species",
         ],
