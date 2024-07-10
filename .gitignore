@@ -5,3 +5,4 @@ node_modules
 *Hardware/.vscode
 .vscode
 ML/RAW.csv
+*.pkl

@@ -3,6 +3,7 @@ from fastapi import FastAPI, File, UploadFile, staticfiles, Depends, HTTPExcepti
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, Response
 from dbutil import get_db_connection
+from mlutil import get_model, classify_audio_file
 from Spectrogram import sendMelSpectrogram, sendBasicSpectrogram
 import psycopg2
 import dao as dao
@@ -114,6 +115,11 @@ async def node_insert(
 @app.delete(path="/api/node/delete")
 async def node_delete(nid: int, db=Depends(get_db_connection)):
     return dao.Node.delete(nid, db)
+
+
+@app.post(path="/api/ml/classify")
+async def classify(file: UploadFile = File(...), model=Depends(get_model)):
+    return classify_audio_file(file.file, model)
 
 
 @app.get("/", response_class=HTMLResponse)
