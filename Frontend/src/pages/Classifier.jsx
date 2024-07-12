@@ -76,12 +76,13 @@ const Classifier = () => {
             throw error; // Re-throw the error for further handling
           });
 
-        console.log(response);
       } catch (exception) {
         console.error("Error in Classification : ", error);
         throw error;
       }
     };
+    const classification = fetchClassification();
+    console.log(classification);
   }, rawAudioFile);
   const [report, setReport] = useState(initDummyReport());
 
