@@ -83,7 +83,7 @@ const Classifier = () => {
     };
     const classification = fetchClassification();
     console.log(classification);
-  }, rawAudioFile);
+  }, [rawAudioFile]);
   const [report, setReport] = useState(initDummyReport());
 
   const table = (
