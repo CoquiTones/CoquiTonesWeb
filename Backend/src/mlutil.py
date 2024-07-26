@@ -3,6 +3,9 @@ import numpy as np
 import librosa
 from fastapi import HTTPException
 
+species_schema = ('Coqui', 'Antillensis', 'Cochranae', 'Monensis', 'Gryllus',
+                  'Hedricki', 'Locustus', 'Portoricensis', 'Richmondi', 'Wightmanae')
+
 # TODO standardize and import this version in train_model notebook
 
 
@@ -42,7 +45,15 @@ def initialize_predictor():
 
 def classify_audio_file(f, model):
     spectrogram = extract_features(f)
-    return model.predict_proba(spectrogram)
+    if spectrogram.shape[0] < 161:
+        spectrogram = np.pad(
+            spectrogram, (0, 161 - spectrogram.shape[0]), 'edge')
+    else:
+        spectrogram = spectrogram[0:161]
+
+    results = model.predict_proba(spectrogram.reshape(-1, 161))
+    return {name: prob for name, prob in zip(species_schema, results)}
+
 
 # Injectable dependency
 

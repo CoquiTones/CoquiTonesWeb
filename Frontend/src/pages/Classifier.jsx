@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { ThemeProvider } from "@mui/material/styles";
 import CssBaseline from "@mui/material/CssBaseline";
 import Box from "@mui/material/Box";
@@ -53,12 +53,12 @@ const Classifier = () => {
 
   useEffect(() => {
     const fetchClassification = async () => {
-      web_url = process.env.REACT_APP_WEB_URL || "http://localhost:8080";
+      const web_url = process.env.REACT_APP_WEB_URL || "http://localhost:8080";
       const formData = new FormData();
       formData.append("file", rawAudioFile);
 
       try {
-        const response = await fetch(web_url + "/api/ml/classify", {
+        return await fetch(web_url + "/api/ml/classify", {
           method: "POST",
           body: formData,
         })
@@ -76,13 +76,15 @@ const Classifier = () => {
             throw error; // Re-throw the error for further handling
           });
 
-      } catch (exception) {
+      } catch (error) {
         console.error("Error in Classification : ", error);
         throw error;
       }
     };
-    const classification = fetchClassification();
-    console.log(classification);
+    if (rawAudioFile) {
+      const classification = fetchClassification();
+      console.log(classification);
+    }
   }, [rawAudioFile]);
   const [report, setReport] = useState(initDummyReport());
 
