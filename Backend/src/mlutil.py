@@ -3,8 +3,17 @@ import numpy as np
 import librosa
 from fastapi import HTTPException
 
-species_schema = ('Coqui', 'Antillensis', 'Cochranae', 'Monensis', 'Gryllus',
-                  'Hedricki', 'Locustus', 'Portoricensis', 'Richmondi', 'Wightmanae')
+species_schema = ('E. coqui - co, E. coqui - qui',
+                  'E. coqui - co, E. coqui - qui, E. gryllus, E. locustus',
+                  'E. coqui - co, E. coqui - qui, E. gryllus, E. portoricensis - co, E. portoricensis - qui, E. unicolor',
+                  'E. coqui - co, E. coqui - qui, E. hedricki',
+                  'E. coqui - co, E. coqui - qui, E. hedricki, E. portoricensis - co, E. portoricensis - qui',
+                  'E. coqui - co, E. coqui - qui, E. hedricki, E. portoricensis - co, E. portoricensis - qui, E. unicolor',
+                  'E. coqui - co, E. coqui - qui, E. portoricensis - co, E. portoricensis - qui, E. richmondi',
+                  'E. coqui - co, E. coqui - qui, E. portoricensis - co, E. portoricensis - qui, E. unicolor',
+                  'E. coqui - co, E. coqui - qui, E. richmondi',
+                  'E. coqui - co, E. coqui - qui, E. richmondi, E. wightmanae',
+                  'E. coqui - co, E. coqui - qui, E. wightmanae')
 
 # TODO standardize and import this version in train_model notebook
 
@@ -44,6 +53,7 @@ def initialize_predictor():
 
 
 def classify_audio_file(f, model):
+    global species_schema
     spectrogram = extract_features(f)
     if spectrogram.shape[0] < 161:
         spectrogram = np.pad(
@@ -52,7 +62,8 @@ def classify_audio_file(f, model):
         spectrogram = spectrogram[0:161]
 
     results = model.predict_proba(spectrogram.reshape(-1, 161))
-    return {name: prob for name, prob in zip(species_schema, results)}
+    results = results.T
+    return {name: prob[0] for name, prob in zip(species_schema, results)}
 
 
 # Injectable dependency
