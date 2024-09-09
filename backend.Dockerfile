@@ -20,4 +20,4 @@ COPY Backend/src ./src
 COPY --from=builder /app/Frontend/build /app/Frontend/build
 
 # Command to start the backend server
-# CMD ["uvicorn", "--reload", "src.app:app", "--host", "0.0.0.0"]
+CMD ["uvicorn", "--reload", "src.app:app", "--host", "0.0.0.0"]

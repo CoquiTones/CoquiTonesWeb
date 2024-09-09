@@ -1,13 +1,20 @@
 version: '3.4'
 
 services:
-  backend:
-    image: proyectocoqui
-    build:
-      context: .
-      dockerfile: ./Dockerfile
-    ports:
-      - 8080:8080
+  # backend:
+  #   image: backend
+  #   build:
+  #     context: .
+  #     dockerfile: ./backend.Dockerfile
+  #   ports:
+  #     - 8080:8080
+  # frontend:
+  #   image: frontend
+  #   build:
+  #     context: .
+  #     dockerfile: ./frontend.Dockerfile
+  #   ports:
+  #     - 3000:3000
   database:
     image: postgres:latest
     environment:
