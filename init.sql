@@ -22,12 +22,13 @@ CREATE TABLE timestampindex (
 );
 
 CREATE TABLE classifierreport (
-    crid            SERIAL PRIMARY KEY,
-    tid             INTEGER REFERENCES timestampindex,
-    crsamples       INTEGER NOT NULL,
-    crcoqui_common  INTEGER NOT NULL,
-    crcoqui_eleutherodactylus INTEGER NOT NULL,
-    crno_hit        INTEGER NOT NULL
+    crid                SERIAL PRIMARY KEY,
+    tid                 INTEGER REFERENCES timestampindex,
+    crsamples           INTEGER NOT NULL,
+    crcoqui_common      INTEGER NOT NULL,
+    crcoqui_e_monensis  INTEGER NOT NULL,
+    crcoqui_antillensis INTEGER NOT NULL,
+    crno_hit            INTEGER NOT NULL
 );
 
 CREATE TABLE audiofile (
