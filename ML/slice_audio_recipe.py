@@ -1,7 +1,8 @@
 # -*- coding: utf-8 -*-
-import dataiku
-import pandas as pd, numpy as np
-from dataiku import pandasutils as pdu
+import pandas as pd
+import numpy as np
+
+import io
 
 import librosa
 import soundfile as sf
@@ -35,7 +36,7 @@ def split_audio(file_path, species, outputDir, segmentLengthInSeconds=5):
         if buffer > (samples_total - samples_wrote):
             buffer = samples_total - samples_wrote
 
-        block = audio[samples_wrote : (samples_wrote + buffer)]
+        block = audio[samples_wrote: (samples_wrote + buffer)]
 
         if not os.path.exists(outputDir):
             os.makedirs(outputDir)
@@ -52,21 +53,50 @@ def split_audio(file_path, species, outputDir, segmentLengthInSeconds=5):
         samples_wrote += buffer
 
 
+def split_audio_buffer(file_path, segmentLengthInSeconds=5, keep_last_segment=True):
+    audio, sr = librosa.load(file_path)
+    samples_per_segment = sr * segmentLengthInSeconds
+    n_segments = int(np.ceil(audio.shape[0] / samples_per_segment))
+    desired_samples = samples_per_segment * n_segments
+    if audio.shape[0] != desired_samples and keep_last_segment:
+        samples_to_pad = desired_samples - audio.shape[0]
+        audio = np.pad(audio, (0, samples_to_pad), 'wrap')
+    elif not keep_last_segment:
+        n_segments = int(np.floor(audio.shape[0] / samples_per_segment))
+        desired_samples = samples_per_segment * n_segments
+        audio = audio[:desired_samples]
+
+    segments = audio.reshape((samples_per_segment, n_segments))
+    output_buffers = [
+        io.BytesIO() for _ in range(n_segments)
+    ]
+    for virtual_file, segment in zip(output_buffers, segments):
+        sf.write(virtual_file, segment, sr)
+    return output_buffers
+
+
 def main():
 
-    # Read recipe inputs
-    samples = dataiku.Dataset("samples")
-    samples_df = samples.get_dataframe()
+    split_audio_buffer(
+        "/home/edwin/Music/TENET_Official_Soundtrack___FREEPORT_-_Ludwig_Goransson___WaterTower-yywzQbZcDL0.mp3")
 
-    sliced_audio = dataiku.Dataset("sliced_audio")
-    # Apply split_audio function to each row of samples_df
-    for index, row in samples_df.iterrows():
-        file_path = row["filename"]
-        species = row["species"]
-        outputDir = "/home/alo/Downloads/datos/Sliced"
+    # # Read recipe inputs
+    # samples = dataiku.Dataset("samples")
+    # samples_df = samples.get_dataframe()
 
-        row = split_audio(file_path, species, outputDir, sliced_audio_df)
+    # sliced_audio = dataiku.Dataset("sliced_audio")
+    # # Apply split_audio function to each row of samples_df
+    # for index, row in samples_df.iterrows():
+    #     file_path = row["filename"]
+    #     species = row["species"]
+    #     outputDir = "/home/alo/Downloads/datos/Sliced"
 
-        sliced_audio_df.loc[len(sliced_audio_df)] = row
-        sliced_audio_df.append(row, igonre_index=True)
-    sliced_audio.write_with_schema(sliced_audio_df)
+    #     row = split_audio(file_path, species, outputDir, sliced_audio_df)
+
+    #     sliced_audio_df.loc[len(sliced_audio_df)] = row
+    #     sliced_audio_df.append(row, igonre_index=True)
+    # sliced_audio.write_with_schema(sliced_audio_df)
+
+
+if __name__ == '__main__':
+    main()
