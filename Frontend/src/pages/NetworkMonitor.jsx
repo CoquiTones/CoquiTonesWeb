@@ -33,7 +33,6 @@ const NetworkMonitor = () => {
 
     useEffect(() => {
         const fetchDucks = async () => {
-
             const dataHandler = new DataHandler("node")
             const nodes = await dataHandler.get_all()
             console.log(nodes)

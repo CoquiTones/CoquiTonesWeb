@@ -6,7 +6,7 @@ class ValidationError extends Error {
     }
 }
 
-export default class DataHandler {
+class DataHandler {
     allowedEndpointTypes = ["node", "timestamp", "report", "weather", "audio"];
     web_url = process.env.REACT_APP_WEB_URL || 'http://localhost:8080';
 
@@ -59,4 +59,41 @@ export default class DataHandler {
             throw error;
         }
     }
+
+    /**
+     * Fetch Classification 
+     * @returns 
+     */
+    async fetchClassification(rawAudioFile) {
+        const web_url = process.env.REACT_APP_WEB_URL || "http://localhost:8080";
+        const formData = new FormData();
+        formData.append("file", rawAudioFile);
+        try {
+            return await fetch(web_url + "/api/ml/classify", {
+                method: "POST",
+                body: formData,
+            })
+                .then((response) => {
+                    if (!response.ok) {
+                        throw new Error("Network response was not ok");
+                    }
+                    return response.json();
+                })
+                .then((data) => {
+                    return data;
+                })
+                .catch((error) => {
+                    console.error("Error:", error);
+                    throw error; // Re-throw the error for further handling
+                });
+
+        } catch (error) {
+            console.error("Error in Classification : ", error);
+            throw error;
+        }
+    }
 }
+
+
+
+export default DataHandler;

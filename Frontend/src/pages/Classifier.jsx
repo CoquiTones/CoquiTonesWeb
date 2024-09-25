@@ -20,6 +20,8 @@ import Sidebar from "../components/shared/Sidebar";
 import Navbar from "../components/shared/Navbar";
 import Footer from "../components/shared/Footer";
 import HeroSectionClassifier from "../components/shared/HeroSectionClassifier";
+import DataHandler from "../services/DataHandler";
+
 const Classifier = () => {
   const initDummyReport = () => {
     const rows = [
@@ -52,37 +54,10 @@ const Classifier = () => {
   const [rawAudioFile, setRawAudioFile] = useState(null);
 
   useEffect(() => {
-    const fetchClassification = async () => {
-      const web_url = process.env.REACT_APP_WEB_URL || "http://localhost:8080";
-      const formData = new FormData();
-      formData.append("file", rawAudioFile);
 
-      try {
-        return await fetch(web_url + "/api/ml/classify", {
-          method: "POST",
-          body: formData,
-        })
-          .then((response) => {
-            if (!response.ok) {
-              throw new Error("Network response was not ok");
-            }
-            return response.json();
-          })
-          .then((data) => {
-            return data;
-          })
-          .catch((error) => {
-            console.error("Error:", error);
-            throw error; // Re-throw the error for further handling
-          });
-
-      } catch (error) {
-        console.error("Error in Classification : ", error);
-        throw error;
-      }
-    };
+    const dataHandler = new DataHandler("report");
     if (rawAudioFile) {
-      const classification = fetchClassification();
+      const classification = dataHandler.fetchClassification(rawAudioFile);
       console.log(classification);
     }
   }, [rawAudioFile]);
@@ -204,6 +179,5 @@ const Classifier = () => {
       <Footer />
     </ThemeProvider>
   );
-};
-
+}
 export default Classifier;
