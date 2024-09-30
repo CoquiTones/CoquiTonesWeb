@@ -59,7 +59,7 @@ function preventDefault(event) {
     event.preventDefault();
 }
 
-export default function RecentEntries() {
+export default function RecentEntries({ data, }) {
     return (
         <React.Fragment>
             <Title>Recent Database Entries </Title>

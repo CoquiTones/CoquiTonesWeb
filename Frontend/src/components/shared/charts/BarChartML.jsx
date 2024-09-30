@@ -8,7 +8,6 @@ import Title from '../Title';
 
 
 export default function BarChartML({ data, title }) {
-  const theme = useTheme();
 
   return (
     <React.Fragment>
@@ -16,6 +15,7 @@ export default function BarChartML({ data, title }) {
 
       <div style={{ width: '100%', flexGrow: 1, }}>
         <BarChart
+          yAxis={[{ label: "Proabability (%)", }]}
           xAxis={[{ scaleType: 'band', data: Object.keys(data) }]}
           series={[{ data: Object.values(data) }]}
           colors={["#ffc857"]}
@@ -23,6 +23,6 @@ export default function BarChartML({ data, title }) {
         </BarChart>
       </div>
 
-    </React.Fragment>
+    </React.Fragment >
   );
 }

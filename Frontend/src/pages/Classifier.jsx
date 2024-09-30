@@ -6,8 +6,9 @@ import Typography from "@mui/material/Typography";
 import Container from "@mui/material/Container";
 import Grid from "@mui/material/Grid";
 import Paper from "@mui/material/Paper";
-
+import Link from '@mui/material/Link';
 import Toolbar from '@mui/material/Toolbar';
+
 import theme from "../components/shared/Theme";
 import FileUpload from "../components/shared/FileUpload";
 import Sidebar from "../components/shared/Sidebar";
@@ -22,9 +23,23 @@ import Title from "../components/shared/Title";
 
 const Classifier = () => {
 
-
+  function preventDefault(event) {
+    event.preventDefault();
+  }
   const [report, setReport] = useState({})
-  const hasReported = useMemo(() => Object.keys(report).length !== 0)
+  const hasReported = useMemo(() => Object.keys(report).length !== 0, [report])
+  const contender = useMemo(() => {
+    if (hasReported) {
+
+      // Find the key with the highest value
+      const maxKey = Object.entries(report).reduce((acc, curr) => {
+        return curr[1] > acc[1] ? curr : acc;  // Compare the values
+      }, [null, -Infinity])[0];  // Start with [null, -Infinity] to handle any negative values
+
+      return maxKey
+    }
+
+  }, [report])
   const [isOpen, setIsOpen] = useState(false);
   const toggle = () => {
     setIsOpen(!isOpen);
@@ -67,7 +82,7 @@ const Classifier = () => {
         >
           <Toolbar />
           <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
-            <Grid container spacing={3}>
+            <Grid container spacing={3} >
               {/* Chart */}
               <Grid item lg={12}>
                 <Paper
@@ -99,9 +114,17 @@ const Classifier = () => {
                       <BarChartML data={report} title={"Detected Species Probability"} />
                     </Paper>
                   </Grid>
-                  <Grid item xs={12}>
+                  <Grid item xs={12} lg={4}>
                     <Paper sx={{ p: 2, display: 'flex', flexDirection: 'column' }}>
-                      <RecentEntries />
+                      <Title>Current Contender </Title>
+                      <Typography component="p" variant="h7">
+                        The Co and or qui belongs to {contender}
+                      </Typography>
+                      <div>
+                        <Link color="primary" href="#" onClick={preventDefault}>
+                          View Info
+                        </Link>
+                      </div>
                     </Paper>
                   </Grid>
                 </Grid>
