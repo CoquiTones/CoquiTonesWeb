@@ -19,73 +19,73 @@ import HeroSectionCDN from "../components/shared/HeroSectionCDN";
 import MapEmbed from "../components/NetworkMonitor/Map";
 const NetworkMonitor = () => {
 
-    const getDate = () => {
-        const today = new Date();
-        const month = today.getMonth() + 1;
-        const year = today.getFullYear();
-        const date = today.getDate();
-        return `${month}/${date}/${year}`;
+  const getDate = () => {
+    const today = new Date();
+    const month = today.getMonth() + 1;
+    const year = today.getFullYear();
+    const date = today.getDate();
+    return `${month}/${date}/${year}`;
+  }
+
+
+
+  const [ducks, setDucks] = useState([])
+
+  useEffect(() => {
+    const fetchDucks = async () => {
+      const dataHandler = new DataHandler("node")
+      const nodes = await dataHandler.get_all()
+      console.log(nodes)
+      setDucks(nodes)
     }
 
+    fetchDucks()
 
+  }, [])
 
-    const [ducks, setDucks] = useState([])
+  const calcultaCols = () => {
+    return Math.ceil(Math.sqrt(ducks.length));
+  }
+  const numCols = useMemo(() => calcultaCols(), [ducks])
 
-    useEffect(() => {
-        const fetchDucks = async () => {
-            const dataHandler = new DataHandler("node")
-            const nodes = await dataHandler.get_all()
-            console.log(nodes)
-            setDucks(nodes)
-        }
+  const [isOpen, setIsOpen] = useState(false)
+  const toggle = () => {
+    setIsOpen(!isOpen)
+  }
 
-        fetchDucks()
+  return (
+    <ThemeProvider theme={theme}>
+      <Sidebar isOpen={isOpen} toggle={toggle} />
+      <Navbar toggle={toggle} />
+      <HeroSectionCDN />
+      <NodeContainer>
+        <NewNodeDialog setDucks={setDucks} style={{ display: 'flex', justifyContent: 'flex-end' }} />
+        <NodeWrapper>
+          {ducks.map((duck) =>
+            <NodeCard item key={duck.nid}>
+              <NodeTitle>
+                Duck ID: {duck.nid}
+              </NodeTitle>
+              <NodeInfo>
+                Type: {duck.ntype}
+              </NodeInfo>
+              <NodeInfo>
+                Description: {duck.ndescription}
+              </NodeInfo>
+              <NodeInfo>
+                Latitude: {duck.nlatitude}
+              </NodeInfo>
+              <NodeInfo>
+                Longitude: {duck.nlongitude}
+              </NodeInfo>
+              <Link href='#' variant='button' style={{ marginTop: '16px' }}>
+                View Details
+              </Link>
 
-    }, [])
-
-    const calcultaCols = () => {
-        return Math.ceil(Math.sqrt(ducks.length));
-    }
-    const numCols = useMemo(() => calcultaCols(), [ducks])
-
-    const [isOpen, setIsOpen] = useState(false)
-    const toggle = () => {
-        setIsOpen(!isOpen)
-    }
-
-    return (
-        <ThemeProvider theme={theme}>
-            <Sidebar isOpen={isOpen} toggle={toggle} />
-            <Navbar toggle={toggle} />
-            <HeroSectionCDN />
-            <NodeContainer>
-                <NewNodeDialog setDucks={setDucks} style={{ display: 'flex', justifyContent: 'flex-end' }} />
-                <NodeWrapper>
-                    {ducks.map((duck) =>
-                        <NodeCard item key={duck.nid}>
-                            <NodeTitle>
-                                Duck ID: {duck.nid}
-                            </NodeTitle>
-                            <NodeInfo>
-                                Type: {duck.ntype}
-                            </NodeInfo>
-                            <NodeInfo>
-                                Description: {duck.ndescription}
-                            </NodeInfo>
-                            <NodeInfo>
-                                Latitude: {duck.nlatitude}
-                            </NodeInfo>
-                            <NodeInfo>
-                                Longitude: {duck.nlongitude}
-                            </NodeInfo>
-                            <Link href='#' variant='button' style={{ marginTop: '16px' }}>
-                                View Details
-                            </Link>
-
-                        </NodeCard>)}
-                </NodeWrapper>
-            </NodeContainer>
-            {/* <Box sx={{ display: 'flex' }} >
+            </NodeCard>)}
+        </NodeWrapper>
+      </NodeContainer>
+      {/* <Box sx={{ display: 'flex' }} >
                 <CssBaseline />
                 <Box
                     component="main"
@@ -153,27 +153,27 @@ const NetworkMonitor = () => {
                                 </Grid>
                             ))}
                         </Grid> */}
-            <Grid item xs={12} md={12} lg={12}>
-                <Paper elevation={4}
-                    sx={{
-                        p: 2,
-                        display: 'flex',
-                        flexDirection: 'column',
-                        height: '75vh',
-                    }}
-                >
-                    <div style={{ height: '100%' }}> {/* Ensure map container fills parent's height */}
-                        <MapEmbed ducks={ducks} />
-                    </div>
-                </Paper>
-            </Grid>
+      <Grid item xs={12} md={12} lg={12}>
+        <Paper elevation={4}
+          sx={{
+            p: 2,
+            display: 'flex',
+            flexDirection: 'column',
+            height: '75vh',
+          }}
+        >
+          <div style={{ height: '100%' }}> {/* Ensure map container fills parent's height */}
+            <MapEmbed ducks={ducks} />
+          </div>
+        </Paper>
+      </Grid>
 
-            {/* </Container>
+      {/* </Container>
                 </Box>
             </Box>
             <Footer/> */}
-        </ThemeProvider>
-    )
+    </ThemeProvider>
+  )
 }
 
 export default NetworkMonitor;

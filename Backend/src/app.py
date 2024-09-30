@@ -121,6 +121,7 @@ async def node_delete(nid: int, db=Depends(get_db_connection)):
 @app.post(path="/api/ml/classify")
 async def classify(file: UploadFile = File(...), model=Depends(get_model)):
     r = classify_audio_file(file.file, model)
+    print(r)
     return r
 
 

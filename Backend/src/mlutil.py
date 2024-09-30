@@ -3,17 +3,19 @@ import numpy as np
 import librosa
 from fastapi import HTTPException
 
-species_schema = ('E. coqui - co, E. coqui - qui',
-                  'E. coqui - co, E. coqui - qui, E. gryllus, E. locustus',
-                  'E. coqui - co, E. coqui - qui, E. gryllus, E. portoricensis - co, E. portoricensis - qui, E. unicolor',
-                  'E. coqui - co, E. coqui - qui, E. hedricki',
-                  'E. coqui - co, E. coqui - qui, E. hedricki, E. portoricensis - co, E. portoricensis - qui',
-                  'E. coqui - co, E. coqui - qui, E. hedricki, E. portoricensis - co, E. portoricensis - qui, E. unicolor',
-                  'E. coqui - co, E. coqui - qui, E. portoricensis - co, E. portoricensis - qui, E. richmondi',
-                  'E. coqui - co, E. coqui - qui, E. portoricensis - co, E. portoricensis - qui, E. unicolor',
-                  'E. coqui - co, E. coqui - qui, E. richmondi',
-                  'E. coqui - co, E. coqui - qui, E. richmondi, E. wightmanae',
-                  'E. coqui - co, E. coqui - qui, E. wightmanae')
+species_schema = (
+    "E. coqui - co --- E. coqui - qui",
+    "E. coqui - co--- E. coqui - qui--- E. gryllus--- E. locustus",
+    "E. coqui - co--- E. coqui - qui--- E. gryllus--- E. portoricensis - co--- E. portoricensis - qui--- E. unicolor",
+    "E. coqui - co--- E. coqui - qui--- E. hedricki",
+    "E. coqui - co--- E. coqui - qui--- E. hedricki--- E. portoricensis - co--- E. portoricensis - qui",
+    "E. coqui - co--- E. coqui - qui--- E. hedricki--- E. portoricensis - co--- E. portoricensis - qui--- E. unicolor",
+    "E. coqui - co--- E. coqui - qui--- E. portoricensis - co--- E. portoricensis - qui--- E. richmondi",
+    "E. coqui - co--- E. coqui - qui--- E. portoricensis - co--- E. portoricensis - qui--- E. unicolor",
+    "E. coqui - co--- E. coqui - qui--- E. richmondi",
+    "E. coqui - co--- E. coqui - qui--- E. richmondi--- E. wightmanae",
+    "E. coqui - co--- E. coqui - qui--- E. wightmanae",
+)
 
 # TODO standardize and import this version in train_model notebook
 
@@ -48,7 +50,7 @@ def extract_features(file):
 
 
 def initialize_predictor():
-    with open("Backend/trainedRF.pkl", 'rb') as f:
+    with open("Backend/trainedRF.pkl", "rb") as f:
         return pickle.load(f)
 
 
@@ -56,8 +58,7 @@ def classify_audio_file(f, model):
     global species_schema
     spectrogram = extract_features(f)
     if spectrogram.shape[0] < 161:
-        spectrogram = np.pad(
-            spectrogram, (0, 161 - spectrogram.shape[0]), 'edge')
+        spectrogram = np.pad(spectrogram, (0, 161 - spectrogram.shape[0]), "edge")
     else:
         spectrogram = spectrogram[0:161]
 
@@ -72,6 +73,5 @@ def classify_audio_file(f, model):
 def get_model():
     predictor = initialize_predictor()
     if predictor is None:
-        raise HTTPException(
-            status_code=500, detail="ML model error")
+        raise HTTPException(status_code=500, detail="ML model error")
     yield predictor
