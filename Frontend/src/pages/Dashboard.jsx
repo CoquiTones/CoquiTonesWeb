@@ -8,9 +8,9 @@ import Container from '@mui/material/Container';
 import Grid from '@mui/material/Grid';
 import Paper from '@mui/material/Paper';
 
-import Chart from '../components/dashboard/Graph';
-import Heartbeats from '../components/dashboard/LastMessage';
-import RecentEntries from '../components/dashboard/Entries';
+import Chart from '../components/shared/charts/LineChartDashboard';
+import Heartbeats from '../components/shared/dashboardDump/LastMessage';
+import RecentEntries from '../components/shared/dashboardDump/Entries';
 import Navbar from '../components/shared/Navbar';
 import Footer from '../components/shared/Footer';
 import theme from '../components/shared/Theme'

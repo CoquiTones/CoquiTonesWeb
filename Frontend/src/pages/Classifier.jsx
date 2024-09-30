@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { ThemeProvider } from "@mui/material/styles";
 import CssBaseline from "@mui/material/CssBaseline";
 import Box from "@mui/material/Box";
@@ -16,14 +16,15 @@ import Footer from "../components/shared/Footer";
 import HeroSectionClassifier from "../components/shared/HeroSectionClassifier";
 import DataHandler from "../services/DataHandler";
 
-import Chart from '../components/dashboard/Graph';
-import Heartbeats from '../components/dashboard/LastMessage';
-import RecentEntries from '../components/dashboard/Entries';
+import BarChartML from '../components/shared/charts/BarChartML'
+import RecentEntries from '../components/shared/dashboardDump/Entries';
+import Title from "../components/shared/Title";
 
 const Classifier = () => {
 
 
   const [report, setReport] = useState({})
+  const hasReported = useMemo(() => Object.keys(report).length !== 0)
   const [isOpen, setIsOpen] = useState(false);
   const toggle = () => {
     setIsOpen(!isOpen);
@@ -36,6 +37,7 @@ const Classifier = () => {
       const dataHandler = new DataHandler("report");
       if (rawAudioFile) {
         const classification = await dataHandler.fetchClassification(rawAudioFile);
+        console.log(classification)
         setReport(classification)
       }
     }
@@ -48,6 +50,7 @@ const Classifier = () => {
     <ThemeProvider theme={theme}>
       <Sidebar isOpen={isOpen} toggle={toggle} />
       <Navbar toggle={toggle} />
+      <HeroSectionClassifier />
       <Box sx={{ display: 'flex' }}>
         <CssBaseline />
         <Box
@@ -66,43 +69,49 @@ const Classifier = () => {
           <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
             <Grid container spacing={3}>
               {/* Chart */}
-              <Grid item xs={12} md={8} lg={9}>
+              <Grid item lg={12}>
                 <Paper
                   sx={{
                     p: 2,
                     display: 'flex',
                     flexDirection: 'column',
-                    height: 240,
+
                   }}
                 >
-                  <Chart />
+                  <Title > File Upload</Title>
+                  <FileUpload setAudioFile={setRawAudioFile} />
                 </Paper>
               </Grid>
-              {/* Recent Deposits */}
-              <Grid item xs={12} md={4} lg={3}>
-                <Paper
-                  sx={{
-                    p: 2,
-                    display: 'flex',
-                    flexDirection: 'column',
-                    height: 240,
-                  }}
-                >
-                  <Heartbeats />
-                </Paper>
-              </Grid>
-              {/* Recent Orders */}
-              <Grid item xs={12}>
-                <Paper sx={{ p: 2, display: 'flex', flexDirection: 'column' }}>
-                  <RecentEntries />
-                </Paper>
-              </Grid>
+              {
+                hasReported &&
+
+                <Grid maxWidth="lg" lg={12}>
+
+                  <Grid item xs={12} md={8} lg={12}>
+                    <Paper
+                      sx={{
+                        p: 2,
+                        display: 'flex',
+                        flexDirection: 'column',
+                        height: '40vh'
+                      }}
+                    >
+                      <BarChartML data={report} title={"Detected Species Probability"} />
+                    </Paper>
+                  </Grid>
+                  <Grid item xs={12}>
+                    <Paper sx={{ p: 2, display: 'flex', flexDirection: 'column' }}>
+                      <RecentEntries />
+                    </Paper>
+                  </Grid>
+                </Grid>
+              }
             </Grid>
           </Container>
         </Box>
       </Box>
       <Footer />
-    </ThemeProvider>
+    </ThemeProvider >
   );
 }
 export default Classifier;

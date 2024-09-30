@@ -4,17 +4,17 @@ import librosa
 from fastapi import HTTPException
 
 species_schema = (
-    "E. coqui - co --- E. coqui - qui",
-    "E. coqui - co--- E. coqui - qui--- E. gryllus--- E. locustus",
-    "E. coqui - co--- E. coqui - qui--- E. gryllus--- E. portoricensis - co--- E. portoricensis - qui--- E. unicolor",
-    "E. coqui - co--- E. coqui - qui--- E. hedricki",
-    "E. coqui - co--- E. coqui - qui--- E. hedricki--- E. portoricensis - co--- E. portoricensis - qui",
-    "E. coqui - co--- E. coqui - qui--- E. hedricki--- E. portoricensis - co--- E. portoricensis - qui--- E. unicolor",
-    "E. coqui - co--- E. coqui - qui--- E. portoricensis - co--- E. portoricensis - qui--- E. richmondi",
-    "E. coqui - co--- E. coqui - qui--- E. portoricensis - co--- E. portoricensis - qui--- E. unicolor",
-    "E. coqui - co--- E. coqui - qui--- E. richmondi",
-    "E. coqui - co--- E. coqui - qui--- E. richmondi--- E. wightmanae",
-    "E. coqui - co--- E. coqui - qui--- E. wightmanae",
+    "E. coqui - 'co', E. coqui - qui",
+    "E. coqui - co, E. coqui - qui, E. gryllus, E. locustus",
+    "E. coqui - co, E. coqui - qui, E. gryllus, E. portoricensis - co, E. portoricensis - qui, E. unicolor",
+    "E. coqui - co, E. coqui - qui, E. hedricki",
+    "E. coqui - co, E. coqui - qui, E. hedricki, E. portoricensis - co, E. portoricensis - qui",
+    "E. coqui - co, E. coqui - qui, E. hedricki, E. portoricensis - co, E. portoricensis - qui, E. unicolor",
+    "E. coqui - co, E. coqui - qui, E. portoricensis - co, E. portoricensis - qui, E. richmondi",
+    "E. coqui - co, E. coqui - qui, E. portoricensis - co, E. portoricensis - qui, E. unicolor",
+    "E. coqui - co, E. coqui - qui, E. richmondi",
+    "E. coqui - co, E. coqui - qui, E. richmondi, E. wightmanae",
+    "E. coqui - co, E. coqui - qui, E. wightmanae",
 )
 
 # TODO standardize and import this version in train_model notebook

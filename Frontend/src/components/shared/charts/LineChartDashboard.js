@@ -2,7 +2,7 @@ import * as React from 'react';
 import { useTheme } from '@mui/material/styles';
 import { LineChart, axisClasses } from '@mui/x-charts';
 
-import Title from './Title';
+import Title from '../Title';
 
 // Generate Sales Data
 function createData(time, amount) {
@@ -21,7 +21,10 @@ const data = [
   createData('March 1st', 1),
 ];
 
-export default function Chart() {
+/**
+ * Line chart for dashboard page. Currently all hardcoded example code. Need to refactor to be more re-usable throught pages
+ */
+export default function LineChartDash() {
   const theme = useTheme();
 
   return (
