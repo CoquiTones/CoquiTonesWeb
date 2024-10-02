@@ -37,7 +37,7 @@ export default function HeatMapML({ data, filename }) {
     return percentages;
   }
   const xData = useMemo(getXData, [data]);
-  const yData = useMemo(() => data["speciesSchema"], [data]);
+  const yData = useMemo(() => data["species_schema"], [data]);
   const zData = useMemo(getZData, [data]);
   return (
     <Plot
