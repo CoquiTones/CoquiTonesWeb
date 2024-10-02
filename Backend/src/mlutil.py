@@ -97,8 +97,7 @@ def classify_slice(slice: np.array, model):
         spectrogram = spectrogram[0:161]
 
     results = model.predict_proba(spectrogram.reshape(-1, 161))
-    results = results.T
-    return results
+    return results.tolist()[0]
 
 
 def classify_audio_file(f, model):
@@ -112,7 +111,7 @@ def classify_audio_file(f, model):
         prob_matrix = executor.map(
             classify_slice, slices, itertools.repeat(model))
 
-    return {"data": list(map(list, prob_matrix)), "species_schema": species_schema}
+    return {"data": list(prob_matrix), "species_schema": species_schema}
 
 
 # Injectable dependency
