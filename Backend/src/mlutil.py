@@ -112,7 +112,7 @@ def classify_audio_file(f, model):
         prob_matrix = executor.map(
             classify_slice, slices, itertools.repeat(model))
 
-    return {"data": list(prob_matrix), "species_schema": species_schema}
+    return {"data": list(map(list, prob_matrix)), "species_schema": species_schema}
 
 
 # Injectable dependency
