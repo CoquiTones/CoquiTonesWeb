@@ -1,8 +1,7 @@
-import React from 'react';
 import Plot from "react-plotly.js";
 import React, { useMemo } from "react";
 
-import Title from '../Title';
+
 
 
 
@@ -18,7 +17,6 @@ export default function HeatMapML({ data, filename }) {
       seconds += 5;
       xData.push(seconds);
     }
-    console.log(xData)
     return xData;
   }
 
@@ -30,7 +28,6 @@ export default function HeatMapML({ data, filename }) {
     let percentages = [];
     for (let i = 0; i < data["data"].length; i++) {
       const probabilitiesOfSegment = data["data"][i];
-      console.log(probabilitiesOfSegment)
       percentages.push(probabilitiesOfSegment);
     }
 

@@ -19,7 +19,6 @@ import DataHandler from "../services/DataHandler";
 
 import HeatMapML from '../components/shared/charts/HeatmapML'
 import Title from "../components/shared/Title";
-import { raw } from "file-loader";
 
 const Classifier = () => {
 
@@ -108,7 +107,8 @@ const Classifier = () => {
                         p: 2,
                         display: 'flex',
                         flexDirection: 'column',
-                        height: '40vh'
+                        height: '60vh'
+
                       }}
                     >
                       <HeatMapML data={report} filename={rawAudioFile.name} />

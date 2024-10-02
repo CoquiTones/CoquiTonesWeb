@@ -102,16 +102,19 @@ def classify_slice(slice: np.array, model):
 
 def classify_audio_file(f, model):
     all_samples, sr = librosa.load(f)
-    assert (sr == 22050)
+    assert sr == 22050
     n_slices = all_samples.shape[0] // SAMPLES_PER_SLICE
     slices = np.reshape(
-        all_samples[0:SAMPLES_PER_SLICE * n_slices], (n_slices, SAMPLES_PER_SLICE))
+        all_samples[0 : SAMPLES_PER_SLICE * n_slices], (n_slices, SAMPLES_PER_SLICE)
+    )
 
     with concurrent.futures.ThreadPoolExecutor() as executor:
-        prob_matrix = executor.map(
-            classify_slice, slices, itertools.repeat(model))
+        prob_matrix = executor.map(classify_slice, slices, itertools.repeat(model))
 
-    return {"data": list(prob_matrix), "species_schema": species_schema}
+    return {
+        "data": list(map(list, zip(*list(prob_matrix)))),
+        "species_schema": species_schema,
+    }
 
 
 # Injectable dependency
