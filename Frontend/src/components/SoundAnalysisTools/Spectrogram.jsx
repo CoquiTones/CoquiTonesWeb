@@ -1,6 +1,5 @@
 import Plot from "react-plotly.js";
 import React, { useEffect, useState, useRef } from "react";
-import PropTypes from "prop-types";
 
 export default function Spectrogram({
   xData,

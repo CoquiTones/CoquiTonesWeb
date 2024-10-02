@@ -17,9 +17,9 @@ import Footer from "../components/shared/Footer";
 import HeroSectionClassifier from "../components/shared/HeroSectionClassifier";
 import DataHandler from "../services/DataHandler";
 
-import BarChartML from '../components/shared/charts/BarChartML'
-import RecentEntries from '../components/shared/dashboardDump/Entries';
+import HeatMapML from '../components/shared/charts/HeatmapML'
 import Title from "../components/shared/Title";
+import { raw } from "file-loader";
 
 const Classifier = () => {
 
@@ -111,7 +111,7 @@ const Classifier = () => {
                         height: '40vh'
                       }}
                     >
-                      <BarChartML data={report} title={"Detected Species Probability"} />
+                      <HeatMapML data={report} filename={rawAudioFile.name} />
                     </Paper>
                   </Grid>
                   <Grid item xs={12} lg={4}>
