@@ -53,7 +53,7 @@ def split_audio(file_path, species, outputDir, segmentLengthInSeconds=5):
         samples_wrote += buffer
 
 
-def split_audio_buffer(file_path, segmentLengthInSeconds=5, keep_last_segment=True):
+def split_audio_buffer(file_path, segmentLengthInSeconds=5, keep_last_segment=False):
     audio, sr = librosa.load(file_path)
     samples_per_segment = sr * segmentLengthInSeconds
     n_segments = int(np.ceil(audio.shape[0] / samples_per_segment))
