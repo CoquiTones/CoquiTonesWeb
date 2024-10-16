@@ -115,17 +115,7 @@ const Classifier = () => {
                     </Paper>
                   </Grid>
                   <Grid item xs={12} lg={4}>
-                    <Paper sx={{ p: 2, display: 'flex', flexDirection: 'column' }}>
-                      <Title>Current Contender </Title>
-                      <Typography component="p" variant="h7">
-                        The Co and or qui belongs to {contender}
-                      </Typography>
-                      <div>
-                        <Link color="primary" href="#" onClick={preventDefault}>
-                          View Info
-                        </Link>
-                      </div>
-                    </Paper>
+
                   </Grid>
                 </Grid>
               }
