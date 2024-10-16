@@ -205,3 +205,34 @@ class AudioFile(DAO):
 
             # Not pulling the audio data.
             return [cls(row[0], row[1], None) for row in curs.fetchall()]
+
+
+@dataclass
+class JointReportDAO:
+    ttime: datetime
+    nid: int
+    ndescription: str
+    wdhumidity: float
+    wdtemperature: float
+    wdpressure: float
+    wddid_rain: bool
+
+    @classmethod
+    def get_recent_entries(cls, db: connection, limit=5) -> list:
+        """Get date, node id, node description, climate data"""
+        with db.cursor() as curs:
+            try:
+                curs.execute(
+                    """
+SELECT ttime, nid, ndescription, wdtemperature, wdhumidity, wdpressure, wddid_rain
+    FROM timestampindex NATURAL INNER JOIN node NATURAL INNER JOIN weatherdata 
+    ORDER BY ttime
+    LIMIT %s
+""", (limit, )
+                )
+            except psycopg2.Error as e:
+                print("Error executing SQL query:", e)
+                raise HTTPException(status_code=500, detail="Database error")
+
+            # Unpack the tuples into constructor
+            return [cls(*row) for row in curs.fetchall()]
