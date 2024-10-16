@@ -84,6 +84,27 @@ class DataHandler {
       throw error;
     }
   }
+
+  /**
+ * Fetch Classification 
+ * @returns 
+ */
+  async fetchRecentEntries(from, to) {
+    try {
+      const response = await fetch(this.web_url + "/api/dashboard/dated_entries" + from + "-" + to, {
+        method: "GET",
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch Recent Entries');
+      }
+      const data = await response.json();
+      return data;
+    } catch (error) {
+      console.error('Error:', error);
+      throw error;
+    }
+  }
 }
 
 
