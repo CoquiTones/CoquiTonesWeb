@@ -22,23 +22,8 @@ import Title from "../components/shared/Title";
 
 const Classifier = () => {
 
-  function preventDefault(event) {
-    event.preventDefault();
-  }
   const [report, setReport] = useState({})
   const hasReported = useMemo(() => Object.keys(report).length !== 0, [report])
-  const contender = useMemo(() => {
-    if (hasReported) {
-
-      // Find the key with the highest value
-      const maxKey = Object.entries(report).reduce((acc, curr) => {
-        return curr[1] > acc[1] ? curr : acc;  // Compare the values
-      }, [null, -Infinity])[0];  // Start with [null, -Infinity] to handle any negative values
-
-      return maxKey
-    }
-
-  }, [report])
   const [isOpen, setIsOpen] = useState(false);
   const toggle = () => {
     setIsOpen(!isOpen);
