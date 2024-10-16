@@ -48,7 +48,7 @@ export default function HeatMapML({ data, filename }) {
           connectgaps: true,
           ncontours: 30,
           hovertemplate:
-            "<b>Time</b>: %{x} s<br><b>Species</b>: %{y} Hz<br><b>Probability </b>: %{z} dB",
+            "<b>Time</b>: %{x} s<br><b>Species</b>: %{y}<br><b>Probability </b>: %{z}%",
         },
       ]}
       layout={{
