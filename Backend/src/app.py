@@ -124,6 +124,11 @@ async def classify(file: UploadFile = File(...), model=Depends(get_model)):
     return r
 
 
+@app.get(path="/api/dashboard/dated_entries{start_date}-{end_date}")
+async def dashboard_limited(start_date: float, end_date: float, db=Depends(get_db_connection)):
+    return dao.JointReportDAO.get_date_limited_entries(db, start_date, end_date)
+
+
 @app.get(path="/api/dashboard/recent_entries")
 async def dashboard_recent(db=Depends(get_db_connection)):
     return dao.JointReportDAO.get_recent_entries(db)
