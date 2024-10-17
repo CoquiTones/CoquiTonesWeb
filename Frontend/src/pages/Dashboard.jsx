@@ -15,6 +15,7 @@ import Navbar from '../components/shared/Navbar';
 import Footer from '../components/shared/Footer';
 import theme from '../components/shared/Theme'
 import Sidebar from '../components/shared/Sidebar';
+import DataTable from '../components/dashboard/DataTable';
 
 
 export default function Dashboard() {
@@ -60,7 +61,7 @@ export default function Dashboard() {
               </Grid>
               <Grid item xs={12}>
                 <Paper sx={{ p: 2, display: 'flex', flexDirection: 'column' }}>
-
+                  <DataTable />
                 </Paper>
               </Grid>
             </Grid>

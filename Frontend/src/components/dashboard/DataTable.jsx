@@ -1,4 +1,4 @@
-import React, { useMemo, useRef } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import MUIDataTable from "mui-datatables";
 import DataHandler from "../../services/DataHandler";
 export default function DataTable() {
@@ -12,13 +12,21 @@ export default function DataTable() {
    * 
    * helper func to fetch recent entries based on current filtered date range
    */
-  const fetchEntries = async () => {
-    const dh = new DataHandler('node');
-    const testNow = new Date().getTime() / 1000;
-    return dh.fetchRecentEntries(0, testNow);
-  }
-  const data = useMemo(fetchEntries, []);
-  const columns = useMemo(() => {
+  const [data, setData] = useState([{}]);
+  useEffect(() => {
+    const fetchEntries = async () => {
+      const dh = new DataHandler('node');
+      const testNow = new Date().getTime() / 1000;
+      const data = await dh.fetchRecentEntries(0, testNow);
+      console.log(data);
+      return data;
+    }
+    setData(fetchEntries());
+
+  }, []);
+
+  const [columns, setColumns] = useState(() => {
+
     const columns = [
       {
         name: "ttime",
@@ -77,23 +85,17 @@ export default function DataTable() {
         }
       },
     ];
+
     return columns;
   }, [])
-
   const options = {
     filterType: 'checkbox',
-    onFilterChange: (column, filterList, type) => {
-      console.log("FILTER CHANGE TRIGGERED");
-      console.log("Column val: ", column);
-      console.log("filterList val: ", filterList);
-      console.log("type val: ", type);
-    }
   };
 
   return (
 
     <MUIDataTable
-      title={"Employee List"}
+      title={"Recent Entries"}
       data={data}
       columns={columns}
       options={options}
