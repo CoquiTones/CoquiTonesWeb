@@ -53,7 +53,7 @@ const Classifier = () => {
 
   useEffect(() => {
     const fetchClassification = async () => {
-      const web_url = process.env.REACT_APP_WEB_URL || "http://localhost:8080";
+      const web_url = import.meta.env.BASE_URL;
       const formData = new FormData();
       formData.append("file", rawAudioFile);
 
@@ -75,7 +75,6 @@ const Classifier = () => {
             console.error("Error:", error);
             throw error; // Re-throw the error for further handling
           });
-
       } catch (error) {
         console.error("Error in Classification : ", error);
         throw error;

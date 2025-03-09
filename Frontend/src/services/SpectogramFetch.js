@@ -20,7 +20,7 @@ export default function () {// Listen for messages from the main script
     function processData(file, type) {
         const formData = new FormData();
         formData.append('file', file);
-        const web_url = process.env.REACT_APP_WEB_URL || 'http://localhost:8080';
+        const web_url = import.meta.env.BASE_URL;
 
         let endpoint;
 

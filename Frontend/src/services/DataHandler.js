@@ -8,7 +8,7 @@ class ValidationError extends Error {
 
 export default class DataHandler {
     allowedEndpointTypes = ["node", "timestamp", "report", "weather", "audio"];
-    web_url = process.env.REACT_APP_WEB_URL || 'http://localhost:8080';
+    web_url = import.meta.env.BASE_URL;
 
     constructor(endpointType) {
         if (this.allowedEndpointTypes.includes(endpointType)) {
