@@ -28,11 +28,26 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Get the absolute path to the frontend dist directory
+frontend_dist = os.path.abspath("./Frontend/dist")
+
+# Mount the dist directory to serve static assets (CSS, JS, images)
 app.mount(
-    "/static",
-    staticfiles.StaticFiles(directory="./Frontend/build/static"),
-    name="static",
+    "/assets",
+    staticfiles.StaticFiles(directory=os.path.join(frontend_dist, "assets")),
+    name="assets",
 )
+
+
+# Catch-all route: Serve index.html for any other request (React Router support)
+@app.get("/{full_path:path}", response_class=HTMLResponse)
+async def serve_react_app():
+    index_path = os.path.join(frontend_dist, "index.html")
+    try:
+        with open(index_path, "r") as f:
+            return f.read()
+    except Exception as e:
+        return f"Error: {str(e)}"
 
 
 @app.get("/api/node/all")
@@ -122,14 +137,3 @@ async def node_delete(nid: int, db=Depends(get_db_connection)):
 async def classify(file: UploadFile = File(...), model=Depends(get_model)):
     r = classify_audio_file(file.file, model)
     return r
-
-
-@app.get("/", response_class=HTMLResponse)
-@app.get("/{path}", response_class=HTMLResponse)
-async def root():
-
-    try:
-        with open("./Frontend/build/index.html", "r") as f:
-            return f.read()
-    except Exception as e:
-        print(e)

@@ -79,7 +79,6 @@ export default function SoundPlayer({
           Play Sample
         </Button>
       )}
-
       <div>
         {playing && (
           <audio
