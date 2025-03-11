@@ -1,14 +1,15 @@
 import React, { useMemo, useState } from "react";
-import MapGL, {
+import {
   GeolocateControl,
   Marker,
   Popup,
   NavigationControl,
   ScaleControl,
   FullscreenControl,
-} from "react-map-gl";
+} from "react-map-gl/mapbox";
+
+import MapGL from "react-map-gl/mapbox";
 import "mapbox-gl/dist/mapbox-gl.css";
-import.meta.env;
 
 const MapEmbed = ({ ducks }) => {
   // Use useMemo to compute markers
