@@ -1,105 +1,173 @@
-import Plot from "react-plotly.js";
-import React, { useEffect, useState, useRef } from "react";
-import PropTypes from "prop-types";
+import React, { useRef, useEffect } from "react";
+import { Canvas, useFrame } from "@react-three/fiber";
+import { OrbitControls } from "@react-three/drei";
+import * as THREE from "three";
+import colormap from "colormap";
 
-export default function Spectrogram({
-  xData,
-  yData,
-  zData,
-  colorscale,
-  xrange,
-  setXrange,
-  yrange,
-  setYrange,
-  currentTime,
-  fileName,
-}) {
-  const [lineX, setLineX] = useState(null);
-  const [lineY, setLineY] = useState(null);
-  const [label, setLabel] = useState(null);
-  const plotRef = useRef(null);
+const frequencySamples = 256;
+const timeSamples = 400;
+const xSize = 40;
+const ySize = 20;
 
-  const handleOnRelayout = (event) => {
-    const newXrange = [
-      event["xaxis.range[0]"] ?? xrange[0],
-      event["xaxis.range[1]"] ?? xrange[1],
-    ];
-    const newYrange = [
-      event["yaxis.range[0]"] ?? yrange[0],
-      event["yaxis.range[1]"] ?? yrange[1],
-    ];
+const Spectrogram = ({ audioFile }) => {
+  const meshRef = useRef();
+  const analyserRef = useRef();
+  const data = new Uint8Array(frequencySamples);
+  const heights = new Uint8Array((frequencySamples + 1) * (timeSamples + 1));
 
-    setXrange(newXrange);
-    setYrange(newYrange);
-    console.log("Updated ranges!", newXrange, newYrange);
-  };
+  const geometryRef = useRef(new THREE.BufferGeometry());
+
+  // Generate colormap for LUT (color lookup table)
+  const colors = colormap({
+    colormap: "jet",
+    nshades: 256,
+    format: "rgba",
+    alpha: 1,
+  }).map(
+    (color) => new THREE.Vector3(color[0] / 255, color[1] / 255, color[2] / 255)
+  );
 
   useEffect(() => {
-    const label = {
-      text: `Current Time: ${currentTime.toFixed(2)} s`, // Customize label text as needed
-      x: currentTime,
-      y: Math.max(...yrange),
-      showarrow: true,
-      arrowhead: 0,
-      ax: 0,
-      ay: -30,
-    };
-    const verticalLineX = [currentTime, currentTime];
-    const verticalLineY = [Math.min(...yrange), Math.max(...yrange)];
+    if (audioFile) {
+      const objectUrl = URL.createObjectURL(audioFile);
+      const audio = new Audio(objectUrl);
+      const audioContext = new (window.AudioContext ||
+        window.webkitAudioContext)();
+      const analyser = audioContext.createAnalyser();
+      analyser.fftSize = 4 * frequencySamples;
+      analyser.smoothingTimeConstant = 0.5;
 
-    setLineX(verticalLineX);
-    setLineY(verticalLineY);
-    setLabel(label);
-  }, [currentTime, yrange]);
+      const source = audioContext.createMediaElementSource(audio);
+      source.connect(analyser);
+      analyser.connect(audioContext.destination);
+
+      analyserRef.current = analyser;
+      audio.play();
+
+      return () => {
+        URL.revokeObjectURL(objectUrl);
+        audioContext.close();
+      };
+    }
+  }, [audioFile]);
+
+  // Create grid geometry
+  useEffect(() => {
+    const xSegments = timeSamples;
+    const ySegments = frequencySamples;
+    const xHalfSize = xSize / 2;
+    const yHalfSize = ySize / 2;
+    const xSegmentSize = xSize / xSegments;
+    const ySegmentSize = ySize / ySegments;
+
+    let vertices = [];
+    let indices = [];
+
+    const yPowMax = Math.log(ySize);
+    const yBase = Math.E;
+
+    for (let i = 0; i <= xSegments; i++) {
+      let x = i * xSegmentSize - xHalfSize;
+      for (let j = 0; j <= ySegments; j++) {
+        let pow = ((ySegments - j) / ySegments) * yPowMax;
+        let y = -Math.pow(yBase, pow) + yHalfSize + 1;
+        vertices.push(x, y, 0);
+      }
+    }
+
+    for (let i = 0; i < xSegments; i++) {
+      for (let j = 0; j < ySegments; j++) {
+        let a = i * (ySegments + 1) + (j + 1);
+        let b = i * (ySegments + 1) + j;
+        let c = (i + 1) * (ySegments + 1) + j;
+        let d = (i + 1) * (ySegments + 1) + (j + 1);
+
+        indices.push(a, b, d);
+        indices.push(b, c, d);
+      }
+    }
+
+    geometryRef.current.setIndex(indices);
+    geometryRef.current.setAttribute(
+      "position",
+      new THREE.Float32BufferAttribute(vertices, 3)
+    );
+    geometryRef.current.setAttribute(
+      "displacement",
+      new THREE.Uint8BufferAttribute(heights, 1)
+    );
+    geometryRef.current.computeVertexNormals();
+  }, []);
+
+  // Update geometry based on frequency data
+  useFrame(() => {
+    if (analyserRef.current && meshRef.current) {
+      analyserRef.current.getByteFrequencyData(data);
+
+      // Shift existing height data (create scrolling effect)
+      const startVal = frequencySamples + 1;
+      const endVal = heights.length - startVal;
+      heights.copyWithin(0, startVal, heights.length);
+      heights.set(data, endVal - startVal);
+
+      // Update displacement
+      geometryRef.current.setAttribute(
+        "displacement",
+        new THREE.Uint8BufferAttribute(heights, 1)
+      );
+      geometryRef.current.attributes.displacement.needsUpdate = true;
+    }
+  });
+
+  // Create ShaderMaterial
+  const shaderMaterial = new THREE.ShaderMaterial({
+    uniforms: {
+      vLut: { value: colors },
+    },
+    vertexShader: `
+      uniform vec3 vLut[256];
+      attribute float displacement;
+      varying vec3 vColor;
+
+      void main() {
+        vColor = vLut[int(displacement)];
+        vec3 newPosition = position + normal * displacement * 0.05;
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(newPosition, 1.0);
+      }
+    `,
+    fragmentShader: `
+      varying vec3 vColor;
+      void main() {
+        gl_FragColor = vec4(vColor, 1.0);
+      }
+    `,
+  });
 
   return (
-    <Plot
-      data={[
-        {
-          type: "heatmap",
-          x: xData,
-          y: yData,
-          z: zData,
-          colorscale: colorscale,
-          connectgaps: true,
-          ncontours: 30,
-          hovertemplate:
-            "<b>Time</b>: %{x} s<br><b>Frequency</b>: %{y} Hz<br><b>Amplitude</b>: %{z} dB",
-        },
-        {
-          type: "scatter",
-          mode: "lines",
-          x: lineX,
-          y: lineY,
-          line: {
-            color: "red",
-            width: 1,
-            opacity: 0.7,
-          },
-        },
-      ]}
-      layout={{
-        title: `${fileName} Spectrogram`,
-        xaxis: {
-          title: "Time (s)",
-          range: xrange,
-        },
-        yaxis: {
-          title: "Frequency (Hz)",
-          range: yrange,
-        },
-        plot_bgcolor: "rgba(0, 0, 0, 0)",
-        paper_bgcolor: "rgba(0, 0, 0, 0)",
-        font: {
-          color: "white",
-        },
-        dragmode: "zoom", // Enable zoom tool
-        annotations: [label],
-      }}
-      useResizeHandler={true}
-      style={{ width: "100%", height: "100%" }}
-      onRelayout={handleOnRelayout}
-      ref={plotRef}
+    <mesh
+      ref={meshRef}
+      geometry={geometryRef.current}
+      material={shaderMaterial}
     />
   );
-}
+};
+
+const SpectrogramVisualizer = ({ audioFile }) => {
+  return (
+    <div style={{ width: "100%", height: "100%" }}>
+      <Canvas camera={{ position: [0, 0, 75], fov: 20 }}>
+        <ambientLight intensity={1} />
+        <directionalLight position={[0, 10, 10]} intensity={2} />
+        <Spectrogram audioFile={audioFile} />
+        <OrbitControls
+          maxPolarAngle={Math.PI / 2}
+          minPolarAngle={Math.PI / 2}
+          minAzimuthAngle={(5 * Math.PI) / 3}
+          maxAzimuthAngle={-(5 * Math.PI) / 3}
+        />
+      </Canvas>
+    </div>
+  );
+};
+
+export default SpectrogramVisualizer;
