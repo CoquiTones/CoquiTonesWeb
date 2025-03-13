@@ -1,11 +1,11 @@
-import React, { useRef, useEffect } from "react";
+import React, { useRef, useEffect, useMemo } from "react";
 import { Canvas, useFrame } from "@react-three/fiber";
 import { OrbitControls } from "@react-three/drei";
 import * as THREE from "three";
 import colormap from "colormap";
 
-const Spectrogram = ({ audioFile }) => {
-  const frequencySamples = 256;
+const Spectrogram = ({ audioFile, colorscale, xrange, yrange }) => {
+  const frequencySamples = 512;
   const timeSamples = 400;
   const xSize = 40;
   const ySize = 20;
@@ -17,21 +17,28 @@ const Spectrogram = ({ audioFile }) => {
   const geometryRef = useRef(new THREE.BufferGeometry());
 
   // Generate colormap for LUT (color lookup table)
-  const colors = colormap({
-    colormap: "jet",
-    nshades: 256,
-    format: "rgba",
-    alpha: 1,
-  }).map(
-    (color) => new THREE.Vector3(color[0] / 255, color[1] / 255, color[2] / 255)
-  );
+  const colors = useMemo(() => {
+    console.log("color: ", colorscale);
+    const colormapi = colormap({
+      colormap: colorscale,
+      nshades: 256,
+      format: "rgba",
+      alpha: 1,
+    }).map(
+      (color) =>
+        new THREE.Vector3(color[0] / 255, color[1] / 255, color[2] / 255)
+    );
+
+    return colormapi;
+  }, [colorscale]);
 
   // Create ShaderMaterial
-  const shaderMaterial = new THREE.ShaderMaterial({
-    uniforms: {
-      vLut: { value: colors },
-    },
-    vertexShader: `
+  const shaderMaterial = useMemo(() => {
+    const material = new THREE.ShaderMaterial({
+      uniforms: {
+        vLut: { value: colors },
+      },
+      vertexShader: `
       uniform vec3 vLut[256];
       attribute float displacement;
       varying vec3 vColor;
@@ -42,13 +49,16 @@ const Spectrogram = ({ audioFile }) => {
         gl_Position = projectionMatrix * modelViewMatrix * vec4(newPosition, 1.0);
       }
     `,
-    fragmentShader: `
+      fragmentShader: `
       varying vec3 vColor;
       void main() {
         gl_FragColor = vec4(vColor, 1.0);
       }
     `,
-  });
+    });
+
+    return material;
+  }, [colorscale]);
 
   const defineGridGeometry = () => {
     const xSegments = timeSamples;
@@ -104,7 +114,7 @@ const Spectrogram = ({ audioFile }) => {
       const audioContext = new (window.AudioContext ||
         window.webkitAudioContext)();
       const analyser = audioContext.createAnalyser();
-      analyser.fftSize = 4 * frequencySamples;
+      analyser.fftSize = frequencySamples * 4;
       analyser.smoothingTimeConstant = 0.5;
 
       const source = audioContext.createMediaElementSource(audio);
@@ -160,11 +170,11 @@ const Spectrogram = ({ audioFile }) => {
   );
 };
 
-const SpectrogramVisualizer = ({ audioFile }) => {
+const SpectrogramVisualizer = ({ audioFile, colorscale }) => {
   return (
     <div style={{ width: "100%", height: "100%" }}>
       <Canvas camera={{ position: [0, 0, 75], fov: 20 }}>
-        <Spectrogram audioFile={audioFile} />
+        <Spectrogram audioFile={audioFile} colorscale={colorscale} />
         <OrbitControls
           maxPolarAngle={Math.PI / 2}
           minPolarAngle={Math.PI / 2}

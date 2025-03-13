@@ -77,12 +77,11 @@ export default function SpectrogramControls({
           label="Color Scale"
           onChange={(event) => setColorscale(event.target.value)}
         >
-          <MenuItem value={"YlOrRd"}> YellowOrRed</MenuItem>
           <MenuItem value={"RdBu"}>RedBlue</MenuItem>
           <MenuItem value={"Portland"}> Portland</MenuItem>
           <MenuItem value={"Picnic"}>Picnic</MenuItem>
-          <MenuItem value={"Jet"}> Jet</MenuItem>
-          <MenuItem value={"Hot"}>Hot</MenuItem>
+          <MenuItem value={"jet"}> Jet</MenuItem>
+          <MenuItem value={"hot"}>Hot</MenuItem>
           <MenuItem value={"Greys"}> Greyscale</MenuItem>
           <MenuItem value={"Electric"}>Electric</MenuItem>
           <MenuItem value={"Bluered"}> BlueRed</MenuItem>
