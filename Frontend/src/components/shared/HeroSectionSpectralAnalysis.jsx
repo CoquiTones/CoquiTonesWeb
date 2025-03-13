@@ -8,20 +8,20 @@ import {
   HeroP,
 } from "./HeroStyle";
 import CDNBg from "../assets/images/CDNBackground.png";
-const HeroSectionCDN = () => {
+const HeroSectionSpectralAnalysis = () => {
   return (
     <HeroContainer>
       <HeroBg>
         <ImageBg src={CDNBg} alt="CDN Background" />
       </HeroBg>
       <HeroContent>
-        <HeroH1 style={{ color: "#ffc857" }}>Cluster Duck Network</HeroH1>
+        <HeroH1 style={{ color: "#ffc857" }}>Spectral Analysis</HeroH1>
         <HeroP style={{ color: "#ffc857" }}>
-          For node information, scroll below!
+          Scroll below to start Visualizing Audio!
         </HeroP>
       </HeroContent>
     </HeroContainer>
   );
 };
 
-export default HeroSectionCDN;
+export default HeroSectionSpectralAnalysis;

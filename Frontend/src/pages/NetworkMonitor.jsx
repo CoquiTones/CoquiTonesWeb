@@ -7,7 +7,7 @@ import {
   NodeTitle,
   NodeInfo,
 } from "../components/shared/NodeStyle";
-import Grid from "@mui/material/Grid";
+import Grid from "@mui/material/Grid2";
 import Paper from "@mui/material/Paper";
 import Link from "@mui/material/Link";
 import Navbar from "../components/shared/Navbar";

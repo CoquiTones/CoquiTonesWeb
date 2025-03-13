@@ -16,6 +16,7 @@ import SpectrogramControls from "../components/SoundAnalysisTools/SpectrogramCon
 import { handleLoad } from "../components/SoundAnalysisTools/SpectrogramDataReader";
 import Navbar from "../components/shared/Navbar";
 import Footer from "../components/shared/Footer";
+import HeroSectionSpectralAnalysis from "../components/shared/HeroSectionSpectralAnalysis";
 
 const SpectralAnalysis = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -27,9 +28,6 @@ const SpectralAnalysis = () => {
   const updateRawAudioFile = (newAudioFile) => {
     setRawAudioFile(newAudioFile);
   };
-  const [xData, setXData] = useState(null);
-  const [yData, setYData] = useState(null);
-  const [zData, setZData] = useState(null);
 
   const [currentTime, setCurrentTime] = useState(0);
   const updateTime = (newTime) => {
@@ -81,6 +79,7 @@ const SpectralAnalysis = () => {
     <ThemeProvider theme={theme}>
       <Sidebar isOpen={isOpen} toggle={toggle} />
       <Navbar toggle={toggle} />
+      <HeroSectionSpectralAnalysis />
       <Box sx={{ display: "flex" }}>
         <CssBaseline />
         <Box
@@ -97,17 +96,10 @@ const SpectralAnalysis = () => {
         >
           <Container sx={{ mt: 10, mb: 10 }}>
             <Grid container spacing={3}>
-              <Grid size={{ xs: 12 }}>
-                <Paper elevation={4} sx={{ p: 2 }}>
-                  <Typography variant="h3" color="primary" align="center">
-                    Spectral Analysis
-                  </Typography>
-                </Paper>
-              </Grid>
               <Grid size={{ xs: 12, md: 12, lg: 12 }}>
                 <Paper
                   elevation={4}
-                  sx={{ p: 2, height: "50vh", width: "60vw" }}
+                  sx={{ p: 2, height: "60vh", width: "60vw" }}
                 >
                   <SpectrogramVisualizer audioFile={rawAudioFile} />
                 </Paper>

@@ -4,12 +4,11 @@ import { OrbitControls } from "@react-three/drei";
 import * as THREE from "three";
 import colormap from "colormap";
 
-const frequencySamples = 256;
-const timeSamples = 400;
-const xSize = 40;
-const ySize = 20;
-
 const Spectrogram = ({ audioFile }) => {
+  const frequencySamples = 256;
+  const timeSamples = 400;
+  const xSize = 40;
+  const ySize = 20;
   const meshRef = useRef();
   const analyserRef = useRef();
   const data = new Uint8Array(frequencySamples);
@@ -27,32 +26,31 @@ const Spectrogram = ({ audioFile }) => {
     (color) => new THREE.Vector3(color[0] / 255, color[1] / 255, color[2] / 255)
   );
 
-  useEffect(() => {
-    if (audioFile) {
-      const objectUrl = URL.createObjectURL(audioFile);
-      const audio = new Audio(objectUrl);
-      const audioContext = new (window.AudioContext ||
-        window.webkitAudioContext)();
-      const analyser = audioContext.createAnalyser();
-      analyser.fftSize = 4 * frequencySamples;
-      analyser.smoothingTimeConstant = 0.5;
+  // Create ShaderMaterial
+  const shaderMaterial = new THREE.ShaderMaterial({
+    uniforms: {
+      vLut: { value: colors },
+    },
+    vertexShader: `
+      uniform vec3 vLut[256];
+      attribute float displacement;
+      varying vec3 vColor;
 
-      const source = audioContext.createMediaElementSource(audio);
-      source.connect(analyser);
-      analyser.connect(audioContext.destination);
+      void main() {
+        vColor = vLut[int(displacement)];
+        vec3 newPosition = position + normal * displacement * 0.05;
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(newPosition, 1.0);
+      }
+    `,
+    fragmentShader: `
+      varying vec3 vColor;
+      void main() {
+        gl_FragColor = vec4(vColor, 1.0);
+      }
+    `,
+  });
 
-      analyserRef.current = analyser;
-      audio.play();
-
-      return () => {
-        URL.revokeObjectURL(objectUrl);
-        audioContext.close();
-      };
-    }
-  }, [audioFile]);
-
-  // Create grid geometry
-  useEffect(() => {
+  const defineGridGeometry = () => {
     const xSegments = timeSamples;
     const ySegments = frequencySamples;
     const xHalfSize = xSize / 2;
@@ -97,7 +95,41 @@ const Spectrogram = ({ audioFile }) => {
       new THREE.Uint8BufferAttribute(heights, 1)
     );
     geometryRef.current.computeVertexNormals();
+  };
+
+  const setupAudio = () => {
+    if (audioFile) {
+      const objectUrl = URL.createObjectURL(audioFile);
+      const audio = new Audio(objectUrl);
+      const audioContext = new (window.AudioContext ||
+        window.webkitAudioContext)();
+      const analyser = audioContext.createAnalyser();
+      analyser.fftSize = 4 * frequencySamples;
+      analyser.smoothingTimeConstant = 0.5;
+
+      const source = audioContext.createMediaElementSource(audio);
+      source.connect(analyser);
+      analyser.connect(audioContext.destination);
+
+      analyserRef.current = analyser;
+      audio.play();
+
+      return () => {
+        URL.revokeObjectURL(objectUrl);
+        audioContext.close();
+      };
+    }
+  };
+
+  // Create grid geometry
+  useEffect(() => {
+    defineGridGeometry();
   }, []);
+
+  // setup audioContext + analyser and connect on filechange
+  useEffect(() => {
+    setupAudio();
+  }, [audioFile]);
 
   // Update geometry based on frequency data
   useFrame(() => {
@@ -119,30 +151,6 @@ const Spectrogram = ({ audioFile }) => {
     }
   });
 
-  // Create ShaderMaterial
-  const shaderMaterial = new THREE.ShaderMaterial({
-    uniforms: {
-      vLut: { value: colors },
-    },
-    vertexShader: `
-      uniform vec3 vLut[256];
-      attribute float displacement;
-      varying vec3 vColor;
-
-      void main() {
-        vColor = vLut[int(displacement)];
-        vec3 newPosition = position + normal * displacement * 0.05;
-        gl_Position = projectionMatrix * modelViewMatrix * vec4(newPosition, 1.0);
-      }
-    `,
-    fragmentShader: `
-      varying vec3 vColor;
-      void main() {
-        gl_FragColor = vec4(vColor, 1.0);
-      }
-    `,
-  });
-
   return (
     <mesh
       ref={meshRef}
@@ -156,8 +164,6 @@ const SpectrogramVisualizer = ({ audioFile }) => {
   return (
     <div style={{ width: "100%", height: "100%" }}>
       <Canvas camera={{ position: [0, 0, 75], fov: 20 }}>
-        <ambientLight intensity={1} />
-        <directionalLight position={[0, 10, 10]} intensity={2} />
         <Spectrogram audioFile={audioFile} />
         <OrbitControls
           maxPolarAngle={Math.PI / 2}
