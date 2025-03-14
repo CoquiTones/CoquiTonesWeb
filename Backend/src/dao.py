@@ -4,6 +4,7 @@ from psycopg2.extensions import connection
 from dataclasses import dataclass
 from datetime import datetime
 from fastapi import HTTPException
+from time import time
 
 node_type = str
 
@@ -73,7 +74,7 @@ class DAO:
                     WHERE {} = %s
                     """
                     ).format(sql.Identifier(cls.table), sql.Identifier(cls.id_column)),
-                    (id,),
+                    (id),
                 )
             except psycopg2.Error as e:
                 print("Error executing SQL query:", e)
@@ -137,6 +138,28 @@ class TimestampIndex(DAO):
 
     table = "timestampindex"
     id_column = "tid"
+
+    async def insert(cls, db: connection, nid: str, timestamp: str):
+
+        with db.cursor() as curs:
+            try:
+                curs.execute(
+                    sql.SQL(
+                        """
+                            INSERT INTO {} (nid, ttime)
+                            VALUES (%s, %s)
+                            RETURNING tid
+                            """
+                    ).format(sql.Identifier(cls.table)),
+                    (nid, timestamp),
+                )
+
+                db.commit()
+                tid = curs.fetchone()[0]
+                return tid
+            except psycopg2.Error as e:
+                print("Error executing SQL query:", e)
+                raise HTTPException(status_code=500, detail="Database error")
 
 
 @dataclass
@@ -205,3 +228,27 @@ class AudioFile(DAO):
 
             # Not pulling the audio data.
             return [cls(row[0], row[1], None) for row in curs.fetchall()]
+
+    @classmethod
+    async def insert(cls, db: connection, file, nid: str, timestamp: str):
+
+        with db.cursor() as curs:
+            try:
+                tid = await TimestampIndex.insert(TimestampIndex, db, nid, timestamp)
+                data = await file.read()
+                curs.execute(
+                    sql.SQL(
+                        """
+                            INSERT INTO {} (tid, data)
+                            VALUES (%s, %s)
+                            RETURNING afid
+                            """
+                    ).format(sql.Identifier(cls.table)),
+                    (tid, data),
+                )
+                db.commit()
+                afid = curs.fetchone()[0]
+                return str(afid)
+            except psycopg2.Error as e:
+                print("Error executing SQL query:", e)
+                raise HTTPException(status_code=500, detail="Database error")

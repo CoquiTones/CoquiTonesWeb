@@ -4,7 +4,7 @@ import { OrbitControls } from "@react-three/drei";
 import * as THREE from "three";
 import colormap from "colormap";
 
-const Spectrogram = ({ audioFile, colorscale, xrange, yrange }) => {
+const Spectrogram = ({ audioFile, colorscale, xstart }) => {
   const frequencySamples = 512;
   const timeSamples = 400;
   const xSize = 40;
@@ -19,7 +19,7 @@ const Spectrogram = ({ audioFile, colorscale, xrange, yrange }) => {
   // Generate colormap for LUT (color lookup table)
   const colors = useMemo(() => {
     console.log("color: ", colorscale);
-    const colormapi = colormap({
+    const colormapping = colormap({
       colormap: colorscale,
       nshades: 256,
       format: "rgba",
@@ -29,7 +29,7 @@ const Spectrogram = ({ audioFile, colorscale, xrange, yrange }) => {
         new THREE.Vector3(color[0] / 255, color[1] / 255, color[2] / 255)
     );
 
-    return colormapi;
+    return colormapping;
   }, [colorscale]);
 
   // Create ShaderMaterial
@@ -114,7 +114,7 @@ const Spectrogram = ({ audioFile, colorscale, xrange, yrange }) => {
       const audioContext = new (window.AudioContext ||
         window.webkitAudioContext)();
       const analyser = audioContext.createAnalyser();
-      analyser.fftSize = frequencySamples * 4;
+      analyser.fftSize = frequencySamples * 8;
       analyser.smoothingTimeConstant = 0.5;
 
       const source = audioContext.createMediaElementSource(audio);
@@ -131,15 +131,15 @@ const Spectrogram = ({ audioFile, colorscale, xrange, yrange }) => {
     }
   };
 
-  // Create grid geometry
-  useEffect(() => {
-    defineGridGeometry();
-  }, []);
-
   // setup audioContext + analyser and connect on filechange
   useEffect(() => {
     setupAudio();
   }, [audioFile]);
+
+  // Create grid geometry
+  useEffect(() => {
+    defineGridGeometry();
+  }, []);
 
   // Update geometry based on frequency data
   useFrame(() => {
@@ -170,17 +170,17 @@ const Spectrogram = ({ audioFile, colorscale, xrange, yrange }) => {
   );
 };
 
-const SpectrogramVisualizer = ({ audioFile, colorscale }) => {
+const SpectrogramVisualizer = ({ audioFile, colorscale, xstart }) => {
   return (
     <div style={{ width: "100%", height: "100%" }}>
       <Canvas camera={{ position: [0, 0, 75], fov: 20 }}>
         <Spectrogram audioFile={audioFile} colorscale={colorscale} />
-        <OrbitControls
+        {/* <OrbitControls
           maxPolarAngle={Math.PI / 2}
           minPolarAngle={Math.PI / 2}
           minAzimuthAngle={(5 * Math.PI) / 3}
           maxAzimuthAngle={-(5 * Math.PI) / 3}
-        />
+        /> */}
       </Canvas>
     </div>
   );

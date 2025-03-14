@@ -17,6 +17,7 @@ import DataHandler from "../services/DataHandler";
 import NewNodeDialog from "../components/shared/NewNodeDialog";
 import HeroSectionCDN from "../components/shared/HeroSectionCDN";
 import MapEmbed from "../components/NetworkMonitor/Map";
+import { Typography } from "@mui/material";
 const NetworkMonitor = () => {
   const getDate = () => {
     const today = new Date();
@@ -60,18 +61,29 @@ const NetworkMonitor = () => {
           style={{ display: "flex", justifyContent: "flex-end" }}
         />
         <NodeWrapper>
-          {ducks.map((duck) => (
-            <NodeCard item key={duck.nid}>
-              <NodeTitle>Duck ID: {duck.nid}</NodeTitle>
-              <NodeInfo>Type: {duck.ntype}</NodeInfo>
-              <NodeInfo>Description: {duck.ndescription}</NodeInfo>
-              <NodeInfo>Latitude: {duck.nlatitude}</NodeInfo>
-              <NodeInfo>Longitude: {duck.nlongitude}</NodeInfo>
-              <Link href="#" variant="button" style={{ marginTop: "16px" }}>
-                View Details
-              </Link>
-            </NodeCard>
-          ))}
+          {ducks.length === 0 ? (
+            <Typography
+              sx={{ display: "flex", justifyContent: "center" }}
+              color="primary"
+              variant={"h3"}
+            >
+              {" "}
+              No Ducks to display
+            </Typography>
+          ) : (
+            ducks.map((duck) => (
+              <NodeCard item key={duck.nid}>
+                <NodeTitle>Duck ID: {duck.nid}</NodeTitle>
+                <NodeInfo>Type: {duck.ntype}</NodeInfo>
+                <NodeInfo>Description: {duck.ndescription}</NodeInfo>
+                <NodeInfo>Latitude: {duck.nlatitude}</NodeInfo>
+                <NodeInfo>Longitude: {duck.nlongitude}</NodeInfo>
+                <Link href="#" variant="button" style={{ marginTop: "16px" }}>
+                  View Details
+                </Link>
+              </NodeCard>
+            ))
+          )}
         </NodeWrapper>
       </NodeContainer>
 

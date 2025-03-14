@@ -2,7 +2,6 @@ import React, { useEffect, useState } from "react";
 import { ThemeProvider } from "@mui/material/styles";
 import CssBaseline from "@mui/material/CssBaseline";
 import Box from "@mui/material/Box";
-import Typography from "@mui/material/Typography";
 import Container from "@mui/material/Container";
 import Grid from "@mui/material/Grid2";
 import Paper from "@mui/material/Paper";
@@ -10,10 +9,10 @@ import LinearProgress from "@mui/material/LinearProgress";
 
 import Sidebar from "../components/shared/Sidebar";
 import theme from "../components/shared/Theme";
+import DataManager from "../components/shared/DataManager";
 import SoundPlayer from "../components/SoundAnalysisTools/SoundPlayer";
 import SpectrogramVisualizer from "../components/SoundAnalysisTools/Spectrogram";
 import SpectrogramControls from "../components/SoundAnalysisTools/SpectrogramControls";
-import { handleLoad } from "../components/SoundAnalysisTools/SpectrogramDataReader";
 import Navbar from "../components/shared/Navbar";
 import Footer from "../components/shared/Footer";
 import HeroSectionSpectralAnalysis from "../components/shared/HeroSectionSpectralAnalysis";
@@ -37,7 +36,7 @@ const SpectralAnalysis = () => {
   const updateType = (newType) => {
     setType(newType);
   };
-  const [colorscale, setColorscale] = useState("Jet");
+  const [colorscale, setColorscale] = useState("jet");
   const updateColorscale = (newColor) => {
     setColorscale(newColor);
   };
@@ -53,27 +52,6 @@ const SpectralAnalysis = () => {
 
   const [defaultX, setDefaultX] = useState([0, 60]);
   const [defaultY, setDefaultY] = useState([0, 10000]);
-
-  // useEffect(() => {
-  //   const getData = async () => {
-  //     if (rawAudioFile && type) {
-  //       let data;
-  //       if (type === "mel-spectrogram") {
-  //         data = await handleLoad(rawAudioFile, "mel");
-  //       } else {
-  //         data = await handleLoad(rawAudioFile, "basic");
-  //       }
-  //       setXData(data["x"]);
-  //       setYData(data["y"]);
-  //       setZData(data["z"]);
-
-  //       setDefaultX([data["x"][0], data["x"][data["x"].length - 1]]);
-  //       setDefaultY([data["y"][0], data["y"][data["y"].length - 1]]);
-  //     }
-  //   };
-
-  //   getData();
-  // }, [rawAudioFile, type]);
 
   return (
     <ThemeProvider theme={theme}>
@@ -97,11 +75,21 @@ const SpectralAnalysis = () => {
           <Container sx={{ mt: 10, mb: 10 }}>
             <Grid container spacing={3}>
               <Grid size={{ xs: 12, md: 12, lg: 12 }}>
+                <Paper sx={{ width: "100vw" }}>
+                  <DataManager
+                    audioFile={rawAudioFile}
+                    setAudioFile={setRawAudioFile}
+                  />
+                </Paper>
                 <Paper
                   elevation={4}
                   sx={{ p: 2, height: "60vh", width: "60vw" }}
                 >
-                  <SpectrogramVisualizer audioFile={rawAudioFile} />
+                  <SpectrogramVisualizer
+                    audioFile={rawAudioFile}
+                    colorscale={colorscale}
+                    xstart={0}
+                  />
                 </Paper>
                 <Paper elevation={4} sx={{ p: 2, height: "auto", mt: 2 }}>
                   <SpectrogramControls

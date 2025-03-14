@@ -103,6 +103,21 @@ async def audio_get(afid: int, db=Depends(get_db_connection)):
     return Response(content=data, media_type="audio/mpeg")
 
 
+@app.post(path="/api/audio/insert", response_class=Response)
+async def audio_post(
+    nid: Annotated[str, Form()],
+    timestamp: Annotated[str, Form()],
+    file: UploadFile = File(...),
+    db=Depends(get_db_connection),
+):
+    print(nid)
+    print(timestamp)
+    print(file.filename)
+    audio_file_id = dao.AudioFile.insert(db, file, nid, timestamp)
+    print("audio file id: ", audio_file_id)
+    return await audio_file_id
+
+
 @app.post(path="/api/mel-spectrogram/", response_class=Response)
 async def mel_spectrogram_get(file: UploadFile = File(...)):
     specData = sendMelSpectrogram(file.file)

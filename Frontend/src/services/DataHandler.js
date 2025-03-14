@@ -22,12 +22,12 @@ export default class DataHandler {
         try {
             const response = await fetch(`${this.web_url}/api/${this.endpointType}/all`);
             if (!response.ok) {
-                throw new Error('Network response was not ok');
+                throw new Error(`Unable to fetch all ${this.endpointType}s `);
             }
             const data = await response.json();
             return data;
         } catch (error) {
-            console.error('Error:', error);
+            console.error(`Error fetch all ${this.endpointType}s: `, error);
             throw error;
         }
     }
@@ -36,12 +36,13 @@ export default class DataHandler {
         try {
             const response = await fetch(`${this.web_url}/api/${this.endpointType}/${id}`);
             if (!response.ok) {
-                throw new Error('Network response was not ok');
+                throw new Error(`Unable to fetch all ${this.endpointType}s `);
+
             }
             const data = await response.json();
             return data;
         } catch (error) {
-            console.error('Error:', error);
+            console.error(`Error fetch from ${this.endpointType}s: with id: ${id}`, error);
             throw error;
         }
     }
@@ -50,7 +51,7 @@ export default class DataHandler {
         try {
             const response = await fetch(`${this.web_url}/api/${this.endpointType}/timestamp?${timestamp}`);
             if (!response.ok) {
-                throw new Error('Network response was not ok');
+                throw new Error(`Unable to fetch all ${this.endpointType}s `);
             }
             const data = await response.json();
             return data;
@@ -59,4 +60,27 @@ export default class DataHandler {
             throw error;
         }
     }
+    async insertAudio(file, nid, timestamp) {
+        let formData = new FormData();
+        formData.append("nid", nid);
+        formData.append("file", file);
+        formData.append("timestamp", timestamp)
+        try {
+            const reponse = await fetch(`${this.web_url}/api/${this.endpointType}/insert`, {
+                method: "POST",
+                body: formData,
+            });
+
+            if (!response.ok) {
+                throw new Error(`Unable to fetch all ${this.endpointType}s `);
+            }
+
+            const audioId = await respose.json();
+        } catch (error) {
+            console.error('Error:', error);
+            throw error;
+        }
+    }
 }
+
+

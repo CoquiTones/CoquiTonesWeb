@@ -8,11 +8,7 @@ import MenuItem from "@mui/material/MenuItem";
 import FormControl from "@mui/material/FormControl";
 import Select from "@mui/material/Select";
 import FileUpload from "../shared/FileUpload";
-import Paper from "@mui/material/Paper";
 import Box from "@mui/material/Box"; // Import Box component
-import IconButton from "@mui/material/IconButton";
-import AddIcon from "@mui/icons-material/Add";
-import RemoveIcon from "@mui/icons-material/Remove";
 
 import StyledSlider from "../shared/StyledSlider";
 
@@ -32,7 +28,6 @@ ValueLabelComponent.propTypes = {
 };
 
 export default function SpectrogramControls({
-  setAudioFile,
   type,
   setType,
   colorscale,
@@ -54,8 +49,6 @@ export default function SpectrogramControls({
 
   return (
     <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
-      <FileUpload setAudioFile={setAudioFile} />
-
       <FormControl fullWidth>
         <InputLabel id="demo-simple-select-label">Chart Type</InputLabel>
         <Select
