@@ -20,8 +20,9 @@ monitor docker usage using `docker images`, `docker prune` etc.
 
 ## Frontend
 
-Change into the `Frontend` directory
-`cd Frontend/`
+Prepare environment variables. Modify the `Frontend/.env.template` file and remove the ".template"
+
+`cd Frontend/` -> root of frontend
 `npm install` -> first time only
 `npm run start` -> deploys local server running web app
 

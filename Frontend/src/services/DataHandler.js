@@ -8,7 +8,7 @@ class ValidationError extends Error {
 
 export default class DataHandler {
     allowedEndpointTypes = ["node", "timestamp", "report", "weather", "audio"];
-    web_url = import.meta.env.BASE_URL;
+    web_url = import.meta.env.VITE_BACKEND_API_URL;
 
     constructor(endpointType) {
         if (this.allowedEndpointTypes.includes(endpointType)) {
@@ -65,8 +65,9 @@ export default class DataHandler {
         formData.append("nid", nid);
         formData.append("file", file);
         formData.append("timestamp", timestamp)
+        console.log(`${this.web_url}/api/${this.endpointType}/insert`);
         try {
-            const reponse = await fetch(`${this.web_url}/api/${this.endpointType}/insert`, {
+            const response = await fetch(`${this.web_url}/api/${this.endpointType}/insert`, {
                 method: "POST",
                 body: formData,
             });
@@ -75,12 +76,14 @@ export default class DataHandler {
                 throw new Error(`Unable to fetch all ${this.endpointType}s `);
             }
 
-            const audioId = await respose.json();
+            const audioId = await response.json();
+            return audioId;
         } catch (error) {
             console.error('Error:', error);
             throw error;
         }
     }
+
 }
 
 

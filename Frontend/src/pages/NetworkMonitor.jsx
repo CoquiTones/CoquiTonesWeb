@@ -56,9 +56,20 @@ const NetworkMonitor = () => {
       <Navbar toggle={toggle} />
       <HeroSectionCDN />
       <NodeContainer>
+        <Typography
+          sx={{ display: "flex", justifyContent: "center" }}
+          color="primary"
+          variant="h3"
+        >
+          Duck Network
+        </Typography>
         <NewNodeDialog
           setDucks={setDucks}
-          style={{ display: "flex", justifyContent: "flex-end" }}
+          style={{
+            display: "flex",
+            justifyContent: "flex-end",
+            marginTop: "5vh",
+          }}
         />
         <NodeWrapper>
           {ducks.length === 0 ? (

@@ -37,9 +37,7 @@ const MapEmbed = ({ ducks }) => {
   return (
     <div style={{ width: "100%", height: "100%" }}>
       <MapGL
-        mapboxAccessToken={
-          "pk.eyJ1IjoiYWxvbnNvMTQiLCJhIjoiY2x2NnRhbml5MDJtczJrb2V6eWFpajl6NyJ9.p3o47cKv1FYbG-7WFhbM9g"
-        }
+        mapboxAccessToken={import.meta.env.VITE_MAPBOX_API_TOKEN}
         initialViewState={{
           longitude: -66.1057,
           latitude: 18.4655,
