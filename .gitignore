@@ -7,3 +7,4 @@ node_modules
 ML/RAW.csv
 *.pkl
 *.env
+Frontend/dist
