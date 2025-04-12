@@ -29,7 +29,7 @@ app.add_middleware(
 )
 
 # Get the absolute path to the frontend dist directory
-frontend_dist = os.path.abspath("./Frontend/dist")
+frontend_dist = os.path.abspath("./frontend/dist")
 
 # Mount the dist directory to serve static assets (CSS, JS, images)
 app.mount(

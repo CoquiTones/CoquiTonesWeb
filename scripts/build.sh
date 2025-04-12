@@ -11,7 +11,7 @@ setup_backend () {
 ## Frontend
 build_frontend () {
     echo "Building frontend..."
-    cd Frontend/
+    cd frontend/
     npm install
     npm run build
     cd ..

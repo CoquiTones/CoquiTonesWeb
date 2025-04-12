@@ -14,32 +14,31 @@ Important note: Currently, it is up to you to clean up images, containers that m
 
 monitor docker usage using `docker images`, `docker prune` etc.
 
-
 ## Backend
 
 #### Installation
 
-1. Use python3 virtual env 
-`python3 -m venv .venv`
+1. Use python3 virtual env
+   `python3 -m venv .venv`
 2. Activate venv in terminal
-Linux: `source .venv/bin/activate`
-Windows: `.venv\Scripts\activate.bat`
+   Linux: `source .venv/bin/activate`
+   Windows: `.venv\Scripts\activate.bat`
 3. Install dependencies
-`pip3 install -r Backend/requirements.txt`
+   `pip3 install -r Backend/requirements.txt`
 
 #### Launching Backend Server
 
 Simply launch a debug session in vscode using the [launch.json](../.vscode/launch.json) configuration in .vscode
 
 Another method would be to use the python and uvicorn cli commands similar to this
+
 ## Frontend
 
 Prepare environment variables. Modify the `Frontend/.env.template` file and remove the ".template"
 
-`cd Frontend/` -> root of frontend
+`cd frontend/` -> root of frontend
 `npm install` -> first time only
 `npm run start` -> deploys local server running web app
-
 
 ## [Scripts](../scripts/)
 
@@ -49,4 +48,4 @@ Prepare environment variables. Modify the `Frontend/.env.template` file and remo
 Example: `./scripts/build.sh`
 [build.sh](../scripts/build.sh): setup backend installation, and frontend installation
 [launch.sh](../scripts/launch.sh): deploy database, start backend server, start frontend server
-[clean.sh](../scripts/clean.sh): removed all build files 
+[clean.sh](../scripts/clean.sh): removed all build files

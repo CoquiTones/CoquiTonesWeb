@@ -34,13 +34,13 @@ echo "Database started"
 
 # === Start Backend ===
 echo "Starting backend..."
-uvicorn --app-dir Backend/src app:app --host 0.0.0.0 --port 8080 > "${backend_logfile}" 2>&1 &
+uvicorn --app-dir backend/src app:app --host 0.0.0.0 --port 8080 > "${backend_logfile}" 2>&1 &
 backend_pid=$!
 echo "Backend started [PID: $backend_pid]"
 
 # === Start Frontend ===
 echo "Starting frontend..."
-cd Frontend
+cd frontend
 npm run start > "${frontend_logfile}" 2>&1 &
 frontend_pid=$!
 cd ..
