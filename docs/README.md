@@ -24,7 +24,7 @@ monitor docker usage using `docker images`, `docker prune` etc.
    Linux: `source .venv/bin/activate`
    Windows: `.venv\Scripts\activate.bat`
 3. Install dependencies
-   `pip3 install -r Backend/requirements.txt`
+   `pip3 install -r backend/requirements.txt`
 
 #### Launching Backend Server
 
