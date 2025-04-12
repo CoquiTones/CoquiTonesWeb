@@ -34,7 +34,8 @@ export default function NewNodeDialog({ setDucks }) {
     formData.append("nlatitude", latitude);
     formData.append("ndescription", description);
     // .meta.env imports
-    const web_url = "http://localhost:8080";
+    // TODO: move to datahandler
+    const web_url = import.meta.env.VITE_BACKEND_API_URL;
     const endpoint = "/api/node/insert";
 
     fetch(web_url + endpoint, {
@@ -76,7 +77,15 @@ export default function NewNodeDialog({ setDucks }) {
       <Dialog
         open={open}
         onClose={handleClose}
-        PaperProps={{ component: "form", onSubmit: handleSubmit }}
+        PaperProps={{
+          component: "form",
+          onSubmit: handleSubmit,
+          style: {
+            backgroundColor: "#313338", // Set a solid background color
+            color: "#fff", // Optional - to improve text visibility
+            borderRadius: "12px", // Optional - for cleaner styling
+          },
+        }}
       >
         <DialogTitle>New Node</DialogTitle>
         <DialogContent>

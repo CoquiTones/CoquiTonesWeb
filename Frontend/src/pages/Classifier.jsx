@@ -53,7 +53,7 @@ const Classifier = () => {
 
   useEffect(() => {
     const fetchClassification = async () => {
-      const web_url = import.meta.env.BASE_URL;
+      const web_url = import.meta.env.VITE_BACKEND_API_URL;
       const formData = new FormData();
       formData.append("file", rawAudioFile);
 

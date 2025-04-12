@@ -47,7 +47,6 @@ export const NodeCard = styled("div")({
   maxHeight: "380px",
   maxWidth: "720px",
   padding: "40px",
-  boxShadow: "0 1px 3px rgba(255,255,255,0.2)",
   transition: "all 0.2s ease-in-out",
   "&hover": {
     transform: "scale(1.02)",

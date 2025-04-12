@@ -20,7 +20,7 @@ export default function () {// Listen for messages from the main script
     function processData(file, type) {
         const formData = new FormData();
         formData.append('file', file);
-        const web_url = import.meta.env.BASE_URL;
+        const web_url = import.meta.env.VITE_BACKEND_API_URL;
 
         let endpoint;
 

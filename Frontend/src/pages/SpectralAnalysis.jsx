@@ -72,10 +72,10 @@ const SpectralAnalysis = () => {
             overflow: "auto",
           }}
         >
-          <Container sx={{ mt: 10, mb: 10 }}>
+          <Container sx={{ mt: 0, mb: 10 }}>
             <Grid container spacing={3}>
               <Grid size={{ xs: 12, md: 12, lg: 12 }}>
-                <Paper sx={{ width: "100vw" }}>
+                <Paper>
                   <DataManager
                     audioFile={rawAudioFile}
                     setAudioFile={setRawAudioFile}
@@ -122,7 +122,6 @@ const SpectralAnalysis = () => {
           </Container>
         </Box>
       </Box>
-      <Footer />
     </ThemeProvider>
   );
 };

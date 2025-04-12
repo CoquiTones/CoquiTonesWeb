@@ -114,7 +114,15 @@ const DataManager = ({ audioFile, setAudioFile }) => {
         <Dialog
           open={open}
           onClose={handleClose}
-          PaperProps={{ component: "form", onSubmit: handleSubmit }}
+          PaperProps={{
+            component: "form",
+            onSubmit: handleSubmit,
+            style: {
+              backgroundColor: "#313338", // Set a solid background color
+              color: "#fff", // Optional - to improve text visibility
+              borderRadius: "12px", // Optional - for cleaner styling
+            },
+          }}
         >
           <DialogTitle>Upload Audio to Database</DialogTitle>
           <DialogContent>
