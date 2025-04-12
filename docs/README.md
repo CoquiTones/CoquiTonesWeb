@@ -34,7 +34,7 @@ Another method would be to use the python and uvicorn cli commands similar to th
 
 ## Frontend
 
-Prepare environment variables. Modify the `Frontend/.env.template` file and remove the ".template"
+Prepare environment variables. Modify the `frontend/.env.template` file and remove the ".template"
 
 `cd frontend/` -> root of frontend
 `npm install` -> first time only
