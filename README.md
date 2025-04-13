@@ -1,5 +1,5 @@
-# [CoquiTones](https://coquitones-53173bfcf5de.herokuapp.com/)
-Full Stack Application for Bio-Acoustic Montoring of Amphibian Species
+# CoquiTones
+Full Stack Web Application for Bio-Acoustic Montoring of Amphibian Species
 ## Features 
 
 ### IoT Network Monitor
@@ -26,3 +26,6 @@ In order to offer a manual solution for finding the target species from audio, a
 
 Allows Authenticated users full Access to Database containing both Acoustic and Meta-Data. 
 
+# Development 
+
+To get Started, Read our [Development Docs](docs/README.md)

@@ -34,7 +34,8 @@ CREATE TABLE classifierreport (
 CREATE TABLE audiofile (
     afid        SERIAL PRIMARY KEY,
     tid         INTEGER REFERENCES  timestampindex,
-    data        pg_largeobject NOT NULL
+    nid         INTEGER REFERENCES node,
+    data        bytea NOT NULL
 );
 
 CREATE TABLE weatherdata (

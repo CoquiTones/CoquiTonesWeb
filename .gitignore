@@ -1,8 +1,18 @@
-node_modules
-*__pycache__
-.venv/
-*Hardware/.pio
-*Hardware/.vscode
-.vscode
-ML/RAW.csv
+# Python
+__pycache__/
 *.pkl
+.venv/
+*.env
+
+# VSCode
+.vscode/
+
+# Logs
+log/
+
+# Frontend
+frontend/dist/
+frontend/node_modules/
+
+# Data
+ML/RAW.csv
