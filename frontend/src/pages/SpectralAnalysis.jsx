@@ -5,7 +5,6 @@ import Box from "@mui/material/Box";
 import Container from "@mui/material/Container";
 import Grid from "@mui/material/Grid2";
 import Paper from "@mui/material/Paper";
-import LinearProgress from "@mui/material/LinearProgress";
 
 import Sidebar from "../components/shared/Sidebar";
 import theme from "../components/shared/Theme";
@@ -40,7 +39,7 @@ const SpectralAnalysis = () => {
   const updateColorscale = (newColor) => {
     setColorscale(newColor);
   };
-  const [xrange, setXrange] = useState([0, 60]);
+  const [xrange, setXrange] = useState([0, 15]);
   const updateXrange = (newXrange) => {
     setXrange(newXrange);
   };
@@ -88,7 +87,7 @@ const SpectralAnalysis = () => {
                   <SpectrogramVisualizer
                     audioFile={rawAudioFile}
                     colorscale={colorscale}
-                    xstart={0}
+                    xrange={xrange}
                   />
                 </Paper>
                 <Paper elevation={4} sx={{ p: 2, height: "auto", mt: 2 }}>
