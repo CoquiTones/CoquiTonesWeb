@@ -56,7 +56,7 @@ const SpectralAnalysis = () => {
     <ThemeProvider theme={theme}>
       <Sidebar isOpen={isOpen} toggle={toggle} />
       <Navbar toggle={toggle} />
-      <HeroSectionSpectralAnalysis />
+      {/* <HeroSectionSpectralAnalysis /> */}
       <Box sx={{ display: "flex" }}>
         <CssBaseline />
         <Box
@@ -71,7 +71,7 @@ const SpectralAnalysis = () => {
             overflow: "auto",
           }}
         >
-          <Container sx={{ mt: 0, mb: 10 }}>
+          <Container sx={{ mt: 10, mb: 10 }}>
             <Grid container spacing={3}>
               <Grid size={{ xs: 12, md: 12, lg: 12 }}>
                 <Paper>

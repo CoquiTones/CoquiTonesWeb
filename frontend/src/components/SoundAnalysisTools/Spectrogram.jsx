@@ -4,10 +4,11 @@ import { OrbitControls } from "@react-three/drei";
 import * as THREE from "three";
 import colormap from "colormap";
 import FFT from "fft.js";
+import Axes from "./Axes"; // You can include this back if needed
 
-const SpectrogramMesh = ({ audioFile, colorscale, xrange }) => {
-  const frequencySamples = 512;
-  const timeSamples = 400;
+const SpectrogramMesh = ({ audioFile, colorscale = "inferno", xrange }) => {
+  const frequencySamples = 1024;
+  const timeSamples = 512;
   const xSize = 40;
   const ySize = 20;
 
@@ -37,7 +38,7 @@ const SpectrogramMesh = ({ audioFile, colorscale, xrange }) => {
         varying vec3 vColor;
         void main() {
           vColor = vLut[int(displacement)];
-          vec3 newPosition = position + normal * displacement * 0.05;
+          vec3 newPosition = position + normal * displacement * 0.03;
           gl_Position = projectionMatrix * modelViewMatrix * vec4(newPosition, 1.0);
         }
       `,
@@ -56,7 +57,6 @@ const SpectrogramMesh = ({ audioFile, colorscale, xrange }) => {
     const xHalfSize = xSize / 2;
     const yHalfSize = ySize / 2;
     const xSegmentSize = xSize / xSegments;
-
     const yPowMax = Math.log(ySize);
     const yBase = Math.E;
 
@@ -118,16 +118,17 @@ const SpectrogramMesh = ({ audioFile, colorscale, xrange }) => {
     const windowFunc = (i, N) =>
       0.5 * (1 - Math.cos((2 * Math.PI * i) / (N - 1)));
 
+    const magnitudes = [];
+    let actualTimeSamples = 0;
     let minDb = Infinity;
     let maxDb = -Infinity;
-    const magnitudes = []; // store dB values before normalization
 
-    // --- Step 1: Gather magnitudes and track min/max dB
     for (let t = 0; t <= timeSamples; t++) {
       const offset = startSample + t * hopSize;
-      const frame = new Float32Array(fftSize);
+      if (offset + fftSize > endSample) break;
 
-      for (let i = 0; i < fftSize && offset + i < endSample; i++) {
+      const frame = new Float32Array(fftSize);
+      for (let i = 0; i < fftSize; i++) {
         frame[i] = channelData[offset + i] * windowFunc(i, fftSize);
       }
 
@@ -135,25 +136,28 @@ const SpectrogramMesh = ({ audioFile, colorscale, xrange }) => {
       fft.realTransform(out, frame);
       fft.completeSpectrum(out);
 
-      let row = [];
+      const row = [];
       for (let f = 0; f <= frequencySamples; f++) {
         const re = out[2 * f];
         const im = out[2 * f + 1];
         const mag = Math.sqrt(re * re + im * im);
-        const db = 20 * Math.log10(mag + 1e-12); // use log scale and avoid log(0)
-        minDb = Math.min(minDb, db);
-        maxDb = Math.max(maxDb, db);
+        const db = 20 * Math.log10(mag + 1e-12);
         row.push(db);
+        if (db > maxDb) maxDb = db;
+        if (db < minDb) minDb = db;
       }
       magnitudes.push(row);
+      actualTimeSamples++;
     }
 
-    // --- Step 2: Normalize to 0–255 and store in heights
-    for (let t = 0; t <= timeSamples; t++) {
+    const noiseFloor = Math.max(minDb, maxDb - 80);
+
+    for (let t = 0; t < actualTimeSamples; t++) {
       for (let f = 0; f <= frequencySamples; f++) {
         const db = magnitudes[t][f];
-        const norm = (db - minDb) / (maxDb - minDb); // normalize to 0–1
-        const byteVal = Math.floor(norm * 255); // scale to 0–255
+        const clippedDb = Math.max(noiseFloor, db);
+        const norm = (clippedDb - noiseFloor) / (maxDb - noiseFloor);
+        const byteVal = Math.floor(norm * 255);
         heights.current[t * (frequencySamples + 1) + f] = byteVal;
       }
     }
@@ -184,7 +188,7 @@ const SpectrogramMesh = ({ audioFile, colorscale, xrange }) => {
   );
 };
 
-const Spectrogram = ({ audioFile, colorscale, xrange }) => {
+const Spectrogram = ({ audioFile, colorscale = "inferno", xrange }) => {
   return (
     <div style={{ width: "100%", height: "100%" }}>
       <Canvas camera={{ position: [0, 0, 75], fov: 20 }}>
@@ -194,7 +198,11 @@ const Spectrogram = ({ audioFile, colorscale, xrange }) => {
           colorscale={colorscale}
           xrange={xrange}
         />
-        <OrbitControls />
+        <OrbitControls
+          enableZoom={true}
+          enablePan={false}
+          enableRotate={false}
+        />
       </Canvas>
     </div>
   );
