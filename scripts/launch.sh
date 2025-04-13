@@ -34,6 +34,7 @@ echo "Database started"
 
 # === Start Backend ===
 echo "Starting backend..."
+source .venv/bin/activate
 uvicorn --app-dir backend/src app:app --host 0.0.0.0 --port 8080 > "${backend_logfile}" 2>&1 &
 backend_pid=$!
 echo "Backend started [PID: $backend_pid]"
