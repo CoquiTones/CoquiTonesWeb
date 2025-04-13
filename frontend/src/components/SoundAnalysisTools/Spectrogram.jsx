@@ -4,7 +4,6 @@ import { OrbitControls } from "@react-three/drei";
 import * as THREE from "three";
 import colormap from "colormap";
 import FFT from "fft.js";
-import Axes from "./Axes"; // You can include this back if needed
 
 const SpectrogramMesh = ({ audioFile, colorscale = "inferno", xrange }) => {
   const frequencySamples = 1024;

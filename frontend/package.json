@@ -13,6 +13,7 @@
     "@react-three/fiber": "^9.1.0",
     "@vitejs/plugin-react-swc": "^3.8.0",
     "colormap": "^2.3.2",
+    "fft.js": "^4.0.4",
     "mapbox-gl": "^3.10.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
