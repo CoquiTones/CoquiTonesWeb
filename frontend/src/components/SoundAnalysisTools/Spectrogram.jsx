@@ -3,12 +3,18 @@ import { Canvas } from "@react-three/fiber";
 import { OrbitControls } from "@react-three/drei";
 import * as THREE from "three";
 import colormap from "colormap";
-import FFT from "fft.js";
+import { defineGridGeometry, computeSpectrogramData } from "./SpectrogramUtils";
+import Axis from "./Axis";
 
-const SpectrogramMesh = ({ audioFile, colorscale = "inferno", xrange }) => {
+const SpectrogramMesh = ({
+  audioFile,
+  colorscale = "inferno",
+  xrange,
+  yrange,
+}) => {
   const frequencySamples = 1024;
   const timeSamples = 512;
-  const xSize = 40;
+  const xSize = 60;
   const ySize = 20;
 
   const meshRef = useRef();
@@ -26,139 +32,47 @@ const SpectrogramMesh = ({ audioFile, colorscale = "inferno", xrange }) => {
     }).map((c) => new THREE.Vector3(c[0] / 255, c[1] / 255, c[2] / 255));
   }, [colorscale]);
 
-  const shaderMaterial = useMemo(() => {
-    return new THREE.ShaderMaterial({
-      uniforms: {
-        vLut: { value: colors },
-      },
-      vertexShader: `
-        uniform vec3 vLut[256];
-        attribute float displacement;
-        varying vec3 vColor;
-        void main() {
-          vColor = vLut[int(displacement)];
-          vec3 newPosition = position + normal * displacement * 0.03;
-          gl_Position = projectionMatrix * modelViewMatrix * vec4(newPosition, 1.0);
-        }
-      `,
-      fragmentShader: `
-        varying vec3 vColor;
-        void main() {
-          gl_FragColor = vec4(vColor, 1.0);
-        }
-      `,
+  const shaderMaterial = useMemo(
+    () =>
+      new THREE.ShaderMaterial({
+        uniforms: { vLut: { value: colors } },
+        vertexShader: `
+      uniform vec3 vLut[256];
+      attribute float displacement;
+      varying vec3 vColor;
+      void main() {
+        vColor = vLut[int(displacement)];
+        vec3 newPosition = position + normal * displacement * 0.03;
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(newPosition, 1.0);
+      }
+    `,
+        fragmentShader: `
+      varying vec3 vColor;
+      void main() {
+        gl_FragColor = vec4(vColor, 1.0);
+      }
+    `,
+      }),
+    [colors]
+  );
+
+  const updateDisplacementAttribute = async () => {
+    if (!audioFile || !xrange || !yrange) return;
+
+    const result = await computeSpectrogramData({
+      audioFile,
+      xrange,
+      yrange,
+      frequencySamples,
+      timeSamples,
     });
-  }, [colors]);
 
-  const defineGridGeometry = () => {
-    const xSegments = timeSamples;
-    const ySegments = frequencySamples;
-    const xHalfSize = xSize / 2;
-    const yHalfSize = ySize / 2;
-    const xSegmentSize = xSize / xSegments;
-    const yPowMax = Math.log(ySize);
-    const yBase = Math.E;
+    if (!result) return;
 
-    let vertices = [];
-    let indices = [];
+    const { heightMap } = result;
 
-    for (let i = 0; i <= xSegments; i++) {
-      let x = i * xSegmentSize - xHalfSize;
-      for (let j = 0; j <= ySegments; j++) {
-        let pow = ((ySegments - j) / ySegments) * yPowMax;
-        let y = -Math.pow(yBase, pow) + yHalfSize + 1;
-        vertices.push(x, y, 0);
-      }
-    }
-
-    for (let i = 0; i < xSegments; i++) {
-      for (let j = 0; j < ySegments; j++) {
-        let a = i * (ySegments + 1) + (j + 1);
-        let b = i * (ySegments + 1) + j;
-        let c = (i + 1) * (ySegments + 1) + j;
-        let d = (i + 1) * (ySegments + 1) + (j + 1);
-        indices.push(a, b, d, b, c, d);
-      }
-    }
-
-    geometryRef.current.setIndex(indices);
-    geometryRef.current.setAttribute(
-      "position",
-      new THREE.Float32BufferAttribute(vertices, 3)
-    );
-    geometryRef.current.setAttribute(
-      "displacement",
-      new THREE.Uint8BufferAttribute(heights.current, 1)
-    );
-    geometryRef.current.computeVertexNormals();
-  };
-
-  const computeSpectrogram = async () => {
-    if (!audioFile || !xrange) return;
-
-    const audioContext = new (window.AudioContext ||
-      window.webkitAudioContext)();
-    const arrayBuffer = await audioFile.arrayBuffer();
-    const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
-
-    const sampleRate = audioBuffer.sampleRate;
-    const channelData = audioBuffer.getChannelData(0);
-    const fftSize = frequencySamples * 2;
-    const hopSize = Math.floor(
-      ((xrange[1] - xrange[0]) * sampleRate) / timeSamples
-    );
-    const startSample = Math.floor(xrange[0] * sampleRate);
-    const endSample = Math.min(
-      Math.floor(xrange[1] * sampleRate),
-      channelData.length
-    );
-
-    const fft = new FFT(fftSize);
-    const windowFunc = (i, N) =>
-      0.5 * (1 - Math.cos((2 * Math.PI * i) / (N - 1)));
-
-    const magnitudes = [];
-    let actualTimeSamples = 0;
-    let minDb = Infinity;
-    let maxDb = -Infinity;
-
-    for (let t = 0; t <= timeSamples; t++) {
-      const offset = startSample + t * hopSize;
-      if (offset + fftSize > endSample) break;
-
-      const frame = new Float32Array(fftSize);
-      for (let i = 0; i < fftSize; i++) {
-        frame[i] = channelData[offset + i] * windowFunc(i, fftSize);
-      }
-
-      const out = fft.createComplexArray();
-      fft.realTransform(out, frame);
-      fft.completeSpectrum(out);
-
-      const row = [];
-      for (let f = 0; f <= frequencySamples; f++) {
-        const re = out[2 * f];
-        const im = out[2 * f + 1];
-        const mag = Math.sqrt(re * re + im * im);
-        const db = 20 * Math.log10(mag + 1e-12);
-        row.push(db);
-        if (db > maxDb) maxDb = db;
-        if (db < minDb) minDb = db;
-      }
-      magnitudes.push(row);
-      actualTimeSamples++;
-    }
-
-    const noiseFloor = Math.max(minDb, maxDb - 80);
-
-    for (let t = 0; t < actualTimeSamples; t++) {
-      for (let f = 0; f <= frequencySamples; f++) {
-        const db = magnitudes[t][f];
-        const clippedDb = Math.max(noiseFloor, db);
-        const norm = (clippedDb - noiseFloor) / (maxDb - noiseFloor);
-        const byteVal = Math.floor(norm * 255);
-        heights.current[t * (frequencySamples + 1) + f] = byteVal;
-      }
+    for (let i = 0; i < heightMap.length; i++) {
+      heights.current[i] = heightMap[i];
     }
 
     geometryRef.current.setAttribute(
@@ -166,17 +80,21 @@ const SpectrogramMesh = ({ audioFile, colorscale = "inferno", xrange }) => {
       new THREE.Uint8BufferAttribute(heights.current, 1)
     );
     geometryRef.current.attributes.displacement.needsUpdate = true;
-
-    audioContext.close();
   };
 
   useEffect(() => {
-    defineGridGeometry();
+    defineGridGeometry({
+      geometry: geometryRef.current,
+      xSize,
+      ySize,
+      timeSamples,
+      frequencySamples,
+    });
   }, []);
 
   useEffect(() => {
-    computeSpectrogram();
-  }, [audioFile, xrange]);
+    updateDisplacementAttribute();
+  }, [audioFile, xrange, yrange]);
 
   return (
     <mesh
@@ -187,16 +105,57 @@ const SpectrogramMesh = ({ audioFile, colorscale = "inferno", xrange }) => {
   );
 };
 
-const Spectrogram = ({ audioFile, colorscale = "inferno", xrange }) => {
+const Spectrogram = ({ audioFile, colorscale, xrange, yrange }) => {
+  const xSize = 60;
+  const ySize = 20;
+  const frequencyTicks = useMemo(() => {
+    const step = (yrange[1] - yrange[0]) / 5;
+    return Array.from({ length: 6 }, (_, i) => {
+      const val = yrange[0] + i * step; // low to high
+      return val >= 1000 ? `${(val / 1000).toFixed(0)}k` : `${val.toFixed(0)}`;
+    });
+  }, [yrange]);
+
+  const timeTicks = useMemo(() => {
+    const step = (xrange[1] - xrange[0]) / 5;
+    return Array.from({ length: 6 }, (_, i) =>
+      (xrange[0] + i * step).toFixed(1)
+    );
+  }, [xrange]);
+
   return (
     <div style={{ width: "100%", height: "100%" }}>
-      <Canvas camera={{ position: [0, 0, 75], fov: 20 }}>
+      <Canvas camera={{ position: [0, 0, 90], fov: 20 }}>
         <ambientLight />
+
+        {/* Spectrogram Mesh */}
         <SpectrogramMesh
           audioFile={audioFile}
           colorscale={colorscale}
           xrange={xrange}
+          yrange={yrange}
         />
+
+        {/* X Axis: Time */}
+        <Axis
+          orientation="x"
+          axisLength={xSize}
+          numTicks={6}
+          position={[0, -10.5, 0]} // below mesh
+          tickLabels={timeTicks}
+          label="Time (s)"
+        />
+
+        {/* Y Axis: Frequency */}
+        <Axis
+          orientation="y"
+          axisLength={ySize}
+          numTicks={6}
+          position={[-xSize / 2 - 1, 0, 0]} // to left of mesh
+          tickLabels={frequencyTicks}
+          label="Frequency (Hz)"
+        />
+
         <OrbitControls
           enableZoom={true}
           enablePan={false}
