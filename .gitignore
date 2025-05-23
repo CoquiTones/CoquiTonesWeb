@@ -16,3 +16,8 @@ frontend/node_modules/
 
 # Data
 ML/RAW.csv
+
+# NixOS
+.envrc
+*.nix
+.direnv/
