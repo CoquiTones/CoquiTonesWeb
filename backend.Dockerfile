@@ -1,5 +1,5 @@
 # Stage 1: Build frontend static assets
-FROM node:18 as frontend-builder
+FROM node:latest AS frontend-builder
 
 WORKDIR /frontend
 
