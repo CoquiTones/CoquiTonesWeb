@@ -1,23 +1,18 @@
-FROM node:latest as builder
+# backend.Dockerfile
+FROM python:3.11-slim
 
+# Set working dir to the project root, like VSCode does
 WORKDIR /app
 
-COPY Frontend/ ./Frontend
-
-RUN cd Frontend && npm install && npm run build
-
-
-FROM python:latest
-
-WORKDIR /app
-
-COPY requirements.txt .
+# Install Python deps
+COPY backend/requirements.txt .
 RUN pip install --no-cache-dir --upgrade -r requirements.txt
 
-COPY Backend/src ./src
+# Copy entire backend directory to match VSCode structure
+COPY backend/ ./backend/
 
-# Copy the built frontend assets from the builder stage
-COPY --from=builder /app/Frontend/build /app/Frontend/build
+# Expose port (optional, for clarity)
+EXPOSE 8080
 
-# Command to start the backend server
-CMD ["uvicorn", "--reload", "src.app:app", "--host", "0.0.0.0"]
+# # Run Uvicorn just like in your VSCode setup
+# CMD ["uvicorn", "--app-dir", "backend/src", "backend.src.app:app", "--reload", "--host", "0.0.0.0", "--port", "8080"]
