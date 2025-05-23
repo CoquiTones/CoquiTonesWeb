@@ -1,25 +1,42 @@
+version: '3.8'
+
 services:
-  # backend:
-  #   image: backend
-  #   build:
-  #     context: .
-  #     dockerfile: ./backend.Dockerfile
-  #   ports:
-  #     - 8080:8080
-  # frontend:
-  #   image: frontend
-  #   build:
-  #     context: .
-  #     dockerfile: ./frontend.Dockerfile
-  #   ports:
-  #     - 3000:3000
+  backend:
+    build:
+      context: .
+      dockerfile: ./backend.Dockerfile
+    volumes:
+      - ./backend:/app/backend
+      - ./frontend:/app/frontend
+    ports:
+      - 127.0.0.1:8080:8080
+    depends_on:
+      - database
+    command: uvicorn --app-dir backend/src app:app --reload --host 0.0.0.0 --port 8080
+    environment:
+      - DATABASE_URL=postgresql://postgres:secrettest@database:5432/postgres
+
+  frontend:
+    build:
+      context: .
+      dockerfile: ./frontend.Dockerfile
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules # prevent node_modules overwrite
+    ports:
+      - 127.0.0.1:5173:5173
+    command: npm run start -- --host 0.0.0.0
+    environment:
+      - CHOKIDAR_USEPOLLING=true
+
   database:
     image: postgres:latest
     environment:
       POSTGRES_DB: postgres
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: secrettest
+
     volumes:
       - ./init.sql:/docker-entrypoint-initdb.d/init.sql
     ports:
-      - 5432:5432
+      - 127.0.0.1:5432:5432

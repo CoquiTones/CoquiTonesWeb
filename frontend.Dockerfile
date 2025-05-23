@@ -1,7 +1,12 @@
-FROM node:latest as builder
+FROM node:18
 
 WORKDIR /app
-COPY Frontend/ ./Frontend
-RUN cd Frontend && npm install && npm run build
 
-CMD ["npm", "run", "start"]
+COPY frontend/package*.json ./
+RUN npm install
+
+# Do NOT build in dev mode; use Vite dev server
+# COPY frontend/ ./frontend
+# RUN npm run build
+
+EXPOSE 5173

@@ -11,8 +11,8 @@
             "module": "uvicorn",
             "args": [
                 "--app-dir",
-                "Backend/src",
-                "Backend.src.app:app",
+                "backend/src",
+                "backend.src.app:app",
                 "--reload",
                 "--port",
                 "8080"
