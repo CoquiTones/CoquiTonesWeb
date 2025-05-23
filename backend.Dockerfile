@@ -1,18 +1,29 @@
-# backend.Dockerfile
+# Stage 1: Build frontend static assets
+FROM node:18 as frontend-builder
+
+WORKDIR /frontend
+
+COPY ./frontend/package.json ./frontend/package-lock.json ./
+RUN npm install
+
+COPY ./frontend ./
+RUN npm run build
+
+
+# Stage 2: backend with static assets
 FROM python:3.11-slim
 
-# Set working dir to the project root, like VSCode does
 WORKDIR /app
 
-# Install Python deps
-COPY backend/requirements.txt .
-RUN pip install --no-cache-dir --upgrade -r requirements.txt
+# Install Python dependencies
+COPY ./backend/requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy entire backend directory to match VSCode structure
-COPY backend/ ./backend/
+# Copy backend code
+COPY ./backend/src ./backend/src
 
-# Expose port (optional, for clarity)
+# Copy frontend build from previous stage
+COPY --from=frontend-builder /frontend/dist ./frontend/dist
+
+# Expose the port (optional, in case you use docker run directly)
 EXPOSE 8080
-
-# # Run Uvicorn just like in your VSCode setup
-# CMD ["uvicorn", "--app-dir", "backend/src", "backend.src.app:app", "--reload", "--host", "0.0.0.0", "--port", "8080"]
