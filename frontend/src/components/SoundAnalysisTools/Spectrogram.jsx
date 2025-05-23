@@ -19,9 +19,7 @@ const SpectrogramMesh = ({
 
   const meshRef = useRef();
   const geometryRef = useRef(new THREE.BufferGeometry());
-  const heights = useRef(
-    new Uint8Array((frequencySamples + 1) * (timeSamples + 1))
-  );
+  const heights = useRef(null);
 
   const colors = useMemo(() => {
     return colormap({
@@ -32,29 +30,29 @@ const SpectrogramMesh = ({
     }).map((c) => new THREE.Vector3(c[0] / 255, c[1] / 255, c[2] / 255));
   }, [colorscale]);
 
-  const shaderMaterial = useMemo(
-    () =>
-      new THREE.ShaderMaterial({
-        uniforms: { vLut: { value: colors } },
-        vertexShader: `
-      uniform vec3 vLut[256];
-      attribute float displacement;
-      varying vec3 vColor;
-      void main() {
-        vColor = vLut[int(displacement)];
-        vec3 newPosition = position + normal * displacement * 0.03;
-        gl_Position = projectionMatrix * modelViewMatrix * vec4(newPosition, 1.0);
-      }
-    `,
-        fragmentShader: `
-      varying vec3 vColor;
-      void main() {
-        gl_FragColor = vec4(vColor, 1.0);
-      }
-    `,
-      }),
-    [colors]
-  );
+  const shaderMaterial = useMemo(() => {
+    return new THREE.ShaderMaterial({
+      uniforms: {
+        vLut: { value: colors },
+      },
+      vertexShader: `
+        uniform vec3 vLut[256];
+        attribute float displacement;
+        varying vec3 vColor;
+        void main() {
+          vColor = vLut[int(displacement)];
+          vec3 newPosition = position + normal * displacement * 0.03;
+          gl_Position = projectionMatrix * modelViewMatrix * vec4(newPosition, 1.0);
+        }
+      `,
+      fragmentShader: `
+        varying vec3 vColor;
+        void main() {
+          gl_FragColor = vec4(vColor, 1.0);
+        }
+      `,
+    });
+  }, [colors]);
 
   const updateDisplacementAttribute = async () => {
     if (!audioFile || !xrange || !yrange) return;
@@ -71,26 +69,42 @@ const SpectrogramMesh = ({
 
     const { heightMap } = result;
 
-    for (let i = 0; i < heightMap.length; i++) {
-      heights.current[i] = heightMap[i];
+    // Clip to yrange
+    const nyquist = 24000; // or derive from sample rate if available
+    const totalFreqBins = frequencySamples + 1;
+    const minBin = Math.floor((yrange[0] / nyquist) * totalFreqBins);
+    const maxBin = Math.ceil((yrange[1] / nyquist) * totalFreqBins);
+    const clippedFreqBins = maxBin - minBin;
+
+    const clippedHeightMap = new Uint8Array(
+      (timeSamples + 1) * clippedFreqBins
+    );
+
+    for (let t = 0; t <= timeSamples; t++) {
+      for (let f = 0; f < clippedFreqBins; f++) {
+        const originalIndex = t * totalFreqBins + (minBin + f);
+        const newIndex = t * clippedFreqBins + f;
+        clippedHeightMap[newIndex] = heightMap[originalIndex];
+      }
     }
 
-    geometryRef.current.setAttribute(
-      "displacement",
-      new THREE.Uint8BufferAttribute(heights.current, 1)
-    );
-    geometryRef.current.attributes.displacement.needsUpdate = true;
-  };
-
-  useEffect(() => {
+    // Redefine geometry grid
     defineGridGeometry({
       geometry: geometryRef.current,
       xSize,
       ySize,
       timeSamples,
-      frequencySamples,
+      frequencySamples: clippedFreqBins - 1,
     });
-  }, []);
+
+    geometryRef.current.setAttribute(
+      "displacement",
+      new THREE.Uint8BufferAttribute(clippedHeightMap, 1)
+    );
+    geometryRef.current.attributes.displacement.needsUpdate = true;
+
+    heights.current = clippedHeightMap;
+  };
 
   useEffect(() => {
     updateDisplacementAttribute();
@@ -108,10 +122,11 @@ const SpectrogramMesh = ({
 const Spectrogram = ({ audioFile, colorscale, xrange, yrange }) => {
   const xSize = 60;
   const ySize = 20;
+
   const frequencyTicks = useMemo(() => {
     const step = (yrange[1] - yrange[0]) / 5;
     return Array.from({ length: 6 }, (_, i) => {
-      const val = yrange[0] + i * step; // low to high
+      const val = yrange[1] - i * step;
       return val >= 1000 ? `${(val / 1000).toFixed(0)}k` : `${val.toFixed(0)}`;
     });
   }, [yrange]);
@@ -128,7 +143,6 @@ const Spectrogram = ({ audioFile, colorscale, xrange, yrange }) => {
       <Canvas camera={{ position: [0, 0, 90], fov: 20 }}>
         <ambientLight />
 
-        {/* Spectrogram Mesh */}
         <SpectrogramMesh
           audioFile={audioFile}
           colorscale={colorscale}
@@ -136,22 +150,20 @@ const Spectrogram = ({ audioFile, colorscale, xrange, yrange }) => {
           yrange={yrange}
         />
 
-        {/* X Axis: Time */}
         <Axis
           orientation="x"
           axisLength={xSize}
           numTicks={6}
-          position={[0, -10.5, 0]} // below mesh
+          position={[0, -11, 0]}
           tickLabels={timeTicks}
           label="Time (s)"
         />
 
-        {/* Y Axis: Frequency */}
         <Axis
           orientation="y"
           axisLength={ySize}
           numTicks={6}
-          position={[-xSize / 2 - 1, 0, 0]} // to left of mesh
+          position={[-xSize / 2 - 1, 0, 0]}
           tickLabels={frequencyTicks}
           label="Frequency (Hz)"
         />
