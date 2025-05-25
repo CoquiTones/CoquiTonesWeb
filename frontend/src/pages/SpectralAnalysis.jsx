@@ -9,9 +9,9 @@ import Paper from "@mui/material/Paper";
 import Sidebar from "../components/shared/Sidebar";
 import theme from "../components/shared/Theme";
 import DataManager from "../components/shared/DataManager";
-import SoundPlayer from "../components/SoundAnalysisTools/SoundPlayer";
-import SpectrogramVisualizer from "../components/SoundAnalysisTools/Spectrogram";
-import SpectrogramControls from "../components/SoundAnalysisTools/SpectrogramControls";
+import SoundPlayer from "../components/SoundAnalysisTools/render/SoundPlayer";
+import SpectrogramVisualizer from "../components/SoundAnalysisTools/render/Spectrogram";
+import SpectrogramControls from "../components/SoundAnalysisTools/render/SpectrogramControls";
 import Navbar from "../components/shared/Navbar";
 // import HeroSectionSpectralAnalysis from "../components/shared/HeroSectionSpectralAnalysis";
 

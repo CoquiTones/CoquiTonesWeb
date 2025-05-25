@@ -3,7 +3,7 @@ import { Canvas } from "@react-three/fiber";
 import { OrbitControls } from "@react-three/drei";
 import * as THREE from "three";
 import colormap from "colormap";
-import { updateDisplacementAttribute } from "./SpectrogramDataComputer";
+import { setSpectrogramData } from "../processing/SpectrogramDataComputer";
 import Axis from "./Axis";
 
 const SpectrogramMesh = ({
@@ -53,7 +53,7 @@ const SpectrogramMesh = ({
   }, [colors]);
 
   useEffect(() => {
-    updateDisplacementAttribute({
+    setSpectrogramData({
       audioFile,
       geometryRef,
       xSize,
@@ -130,7 +130,7 @@ const Spectrogram = ({ audioFile, colorscale, xrange, yrange }) => {
         />
 
         <OrbitControls
-          enableZoom={true}
+          enableZoom={false}
           enablePan={false}
           enableRotate={false}
         />

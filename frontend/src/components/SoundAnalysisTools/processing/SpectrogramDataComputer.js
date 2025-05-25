@@ -1,7 +1,7 @@
 import * as THREE from "three";
 import FFT from "fft.js";
 
-export const defineGridGeometry = ({ geometry, xSize, ySize, timeSamples, frequencySamples }) => {
+const defineGridGeometry = ({ geometry, xSize, ySize, timeSamples, frequencySamples }) => {
     const xSegments = timeSamples;
     const ySegments = frequencySamples;
     const xHalfSize = xSize / 2;
@@ -41,7 +41,7 @@ export const defineGridGeometry = ({ geometry, xSize, ySize, timeSamples, freque
     geometry.computeVertexNormals();
 };
 
-export const computeSpectrogramData = async ({ audioFile, xrange, frequencySamples, timeSamples }) => {
+const computeSpectrogramData = async ({ audioFile, xrange, frequencySamples, timeSamples }) => {
     const audioContext = new (window.AudioContext || window.webkitAudioContext)();
     const arrayBuffer = await audioFile.arrayBuffer();
     const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
@@ -106,7 +106,7 @@ export const computeSpectrogramData = async ({ audioFile, xrange, frequencySampl
     return { heightMap, sampleRate };
 };
 
-export const updateDisplacementAttribute = async ({ audioFile, geometryRef, xSize, ySize, xrange, yrange, frequencySamples, timeSamples }) => {
+export const setSpectrogramData = async ({ audioFile, geometryRef, xSize, ySize, xrange, yrange, frequencySamples, timeSamples }) => {
     if (!audioFile || !xrange || !yrange) return;
 
     const result = await computeSpectrogramData({
