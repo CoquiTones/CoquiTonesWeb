@@ -3,7 +3,7 @@ import { Canvas } from "@react-three/fiber";
 import { OrbitControls } from "@react-three/drei";
 import * as THREE from "three";
 import colormap from "colormap";
-import { defineGridGeometry, computeSpectrogramData } from "./SpectrogramUtils";
+import { updateDisplacementAttribute } from "./SpectrogramDataComputer";
 import Axis from "./Axis";
 
 const SpectrogramMesh = ({
@@ -54,60 +54,17 @@ const SpectrogramMesh = ({
     });
   }, [colors]);
 
-  const updateDisplacementAttribute = async () => {
-    if (!audioFile || !xrange || !yrange) return;
-
-    const result = await computeSpectrogramData({
+  useEffect(() => {
+    updateDisplacementAttribute({
       audioFile,
+      geometryRef,
+      xSize,
+      ySize,
       xrange,
       yrange,
       frequencySamples,
       timeSamples,
     });
-
-    if (!result) return;
-
-    const { heightMap } = result;
-
-    // Clip to yrange
-    const nyquist = 24000; // or derive from sample rate if available
-    const totalFreqBins = frequencySamples + 1;
-    const minBin = Math.floor((yrange[0] / nyquist) * totalFreqBins);
-    const maxBin = Math.ceil((yrange[1] / nyquist) * totalFreqBins);
-    const clippedFreqBins = maxBin - minBin;
-
-    const clippedHeightMap = new Uint8Array(
-      (timeSamples + 1) * clippedFreqBins
-    );
-
-    for (let t = 0; t <= timeSamples; t++) {
-      for (let f = 0; f < clippedFreqBins; f++) {
-        const originalIndex = t * totalFreqBins + (minBin + f);
-        const newIndex = t * clippedFreqBins + f;
-        clippedHeightMap[newIndex] = heightMap[originalIndex];
-      }
-    }
-
-    // Redefine geometry grid
-    defineGridGeometry({
-      geometry: geometryRef.current,
-      xSize,
-      ySize,
-      timeSamples,
-      frequencySamples: clippedFreqBins - 1,
-    });
-
-    geometryRef.current.setAttribute(
-      "displacement",
-      new THREE.Uint8BufferAttribute(clippedHeightMap, 1)
-    );
-    geometryRef.current.attributes.displacement.needsUpdate = true;
-
-    heights.current = clippedHeightMap;
-  };
-
-  useEffect(() => {
-    updateDisplacementAttribute();
   }, [audioFile, xrange, yrange]);
 
   return (
