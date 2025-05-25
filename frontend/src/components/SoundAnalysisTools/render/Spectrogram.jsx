@@ -91,8 +91,8 @@ const Spectrogram = ({ audioFile, colorscale, xrange, yrange }) => {
   }, [xrange]);
 
   // TODO: Add these as additional settings in
-  const frequencySamples = 1024;
-  const timeSamples = 512;
+  const frequencySamples = 2048;
+  const timeSamples = 1024;
   const xSize = 60;
   const ySize = 20;
   return (
