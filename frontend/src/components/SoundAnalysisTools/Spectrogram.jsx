@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { Canvas } from "@react-three/fiber";
 import { OrbitControls } from "@react-three/drei";
 import * as THREE from "three";
@@ -11,15 +11,13 @@ const SpectrogramMesh = ({
   colorscale = "inferno",
   xrange,
   yrange,
+  xSize,
+  ySize,
+  frequencySamples,
+  timeSamples,
 }) => {
-  const frequencySamples = 1024;
-  const timeSamples = 512;
-  const xSize = 60;
-  const ySize = 20;
-
   const meshRef = useRef();
   const geometryRef = useRef(new THREE.BufferGeometry());
-  const heights = useRef(null);
 
   const colors = useMemo(() => {
     return colormap({
@@ -77,9 +75,6 @@ const SpectrogramMesh = ({
 };
 
 const Spectrogram = ({ audioFile, colorscale, xrange, yrange }) => {
-  const xSize = 60;
-  const ySize = 20;
-
   const frequencyTicks = useMemo(() => {
     const step = (yrange[1] - yrange[0]) / 5;
     return Array.from({ length: 6 }, (_, i) => {
@@ -95,6 +90,11 @@ const Spectrogram = ({ audioFile, colorscale, xrange, yrange }) => {
     );
   }, [xrange]);
 
+  // TODO: Add these as additional settings in
+  const frequencySamples = 1024;
+  const timeSamples = 512;
+  const xSize = 60;
+  const ySize = 20;
   return (
     <div style={{ width: "100%", height: "100%" }}>
       <Canvas camera={{ position: [0, 0, 90], fov: 20 }}>
@@ -105,6 +105,10 @@ const Spectrogram = ({ audioFile, colorscale, xrange, yrange }) => {
           colorscale={colorscale}
           xrange={xrange}
           yrange={yrange}
+          xSize={xSize}
+          ySize={ySize}
+          frequencySamples={frequencySamples}
+          timeSamples={timeSamples}
         />
 
         <Axis
