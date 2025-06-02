@@ -163,8 +163,39 @@ def populate_audio(connection, number_of_nodes, number_of_inserts):
     connection.commit()
 
 
-def populate_classifierreport(connection, number_of_records):
-    prepared_statement = "INSERT INTO classifierreport ()"
+def populate_classifierreport(connection, number_of_inserts):
+    prepared_statement = "INSERT INTO classifierreport (tid, afid, cr_common_coqui_detected, cr_coqui_gryllus_detected, cr_coqui_locustus_detected, cr_coqui_portoricensis_detected, cr_coqui_unicolor_detected, cr_coqui_hedricki_detected, cr_coqui_richmondi_detected, cr_coqui_wightmanae_detected) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)"
+    necessary_statements = (number_of_inserts // MAX_BATCH_SIZE) + 1
+    number_of_inserts_left = number_of_inserts
+
+    with connection.cursor() as cursor:
+        for i in range(necessary_statements):
+            number_of_rows_to_insert = (
+                number_of_inserts_left
+                if (number_of_inserts_left < MAX_BATCH_SIZE)
+                else MAX_BATCH_SIZE
+            )
+            batch_values = [
+                (
+                    random_integer(1, number_of_inserts),  # tid
+                    random_integer(1, number_of_inserts),  # afid
+                    random_integer(1, 50),
+                    random_integer(1, 50),
+                    random_integer(1, 50),
+                    random_integer(1, 50),
+                    random_integer(1, 50),
+                    random_integer(1, 50),
+                    random_integer(1, 50),
+                    random_integer(1, 50),
+                )
+                for i in range(number_of_rows_to_insert)
+            ]
+            psycopg2.extras.execute_batch(
+                cursor, prepared_statement, batch_values, page_size=MAX_BATCH_SIZE
+            )
+            number_of_inserts_left -= number_of_rows_to_insert
+
+    connection.commit()
 
 
 def populate_weatherdata(connection, number_of_nodes, number_of_inserts):
@@ -209,7 +240,7 @@ def main():
         populate_node(connection, number_of_nodes)
         populate_timestamp(connection, number_of_records, number_of_nodes)
         populate_audio(connection, number_of_nodes, number_of_records)
-        # populate_classifierreport(connection, number_of_records); needs schema change
+        populate_classifierreport(connection, number_of_records)
         populate_weatherdata(connection, number_of_nodes, number_of_records)
 
     except psycopg2.Error as e:
