@@ -24,9 +24,9 @@ const SpectralAnalysis = () => {
   const [type, setType] = useState("mel-spectrogram");
   const [colorscale, setColorscale] = useState("inferno");
   const [xrange, setXrange] = useState([0, 15]);
-  const [yrange, setYrange] = useState([0, 10000]);
+  const [yrange, setYrange] = useState([0, 20000]);
   const [defaultX, setDefaultX] = useState([0, 60]);
-  const [defaultY, setDefaultY] = useState([0, 10000]);
+  const [defaultY, setDefaultY] = useState([0, 20000]);
 
   return (
     <ThemeProvider theme={theme}>

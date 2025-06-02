@@ -47,6 +47,7 @@ const computeSpectrogramData = async ({ audioFile, xrange, frequencySamples, tim
     const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
 
     const sampleRate = audioBuffer.sampleRate;
+    const nyquist = sampleRate / 2;
     const channelData = audioBuffer.getChannelData(0);
     const fftSize = frequencySamples * 2;
     const hopSize = Math.floor(((xrange[1] - xrange[0]) * sampleRate) / timeSamples);
@@ -103,34 +104,38 @@ const computeSpectrogramData = async ({ audioFile, xrange, frequencySamples, tim
 
     await audioContext.close();
 
-    return { heightMap, sampleRate };
+    return { heightMap, sampleRate, nyquist };
 };
 
-export const setSpectrogramData = async ({ audioFile, geometryRef, xSize, ySize, xrange, yrange, frequencySamples, timeSamples }) => {
+export const setSpectrogramData = async ({
+    audioFile,
+    geometryRef,
+    xSize,
+    ySize,
+    xrange,
+    yrange,
+    frequencySamples,
+    timeSamples,
+}) => {
     if (!audioFile || !xrange || !yrange) return;
 
     const result = await computeSpectrogramData({
         audioFile,
         xrange,
-        yrange,
         frequencySamples,
         timeSamples,
     });
 
     if (!result) return;
 
-    const { heightMap } = result;
+    const { heightMap, nyquist } = result;
 
-    // Clip to yrange
-    const nyquist = 24000; // or derive from sample rate if available
     const totalFreqBins = frequencySamples + 1;
     const minBin = Math.floor((yrange[0] / nyquist) * totalFreqBins);
-    const maxBin = Math.ceil((yrange[1] / nyquist) * totalFreqBins);
+    const maxBin = Math.min(Math.ceil((yrange[1] / nyquist) * totalFreqBins), totalFreqBins);
     const clippedFreqBins = maxBin - minBin;
 
-    const clippedHeightMap = new Uint8Array(
-        (timeSamples + 1) * clippedFreqBins
-    );
+    const clippedHeightMap = new Uint8Array((timeSamples + 1) * clippedFreqBins);
 
     for (let t = 0; t <= timeSamples; t++) {
         for (let f = 0; f < clippedFreqBins; f++) {
@@ -140,7 +145,6 @@ export const setSpectrogramData = async ({ audioFile, geometryRef, xSize, ySize,
         }
     }
 
-    // Redefine geometry grid
     defineGridGeometry({
         geometry: geometryRef.current,
         xSize,
@@ -154,6 +158,4 @@ export const setSpectrogramData = async ({ audioFile, geometryRef, xSize, ySize,
         new THREE.Uint8BufferAttribute(clippedHeightMap, 1)
     );
     geometryRef.current.attributes.displacement.needsUpdate = true;
-
-    heights.current = clippedHeightMap;
 };
