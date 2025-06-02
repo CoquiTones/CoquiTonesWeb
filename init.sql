@@ -18,7 +18,7 @@ CREATE TABLE node (
 CREATE TABLE timestampindex (
     tid         SERIAL PRIMARY KEY,
     nid         INTEGER REFERENCES node,
-    ttime       TIME NOT NULL
+    ttime       TIMESTAMP NOT NULL
 );
 
 CREATE TABLE classifierreport (
@@ -41,6 +41,7 @@ CREATE TABLE audiofile (
 CREATE TABLE weatherdata (
     wdid            SERIAL PRIMARY KEY,
     tid             INTEGER REFERENCES timestampindex,
+    nid             INTEGER REFERENCES node,
     wdtemperature   REAL,
     wdhumidity      REAL,
     wdpressure      REAL,
