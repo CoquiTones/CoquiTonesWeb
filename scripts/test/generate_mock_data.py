@@ -184,9 +184,9 @@ def populate_weatherdata(connection, number_of_nodes, number_of_inserts):
                 (
                     random_integer(1, number_of_inserts),
                     random_integer(1, number_of_nodes),
-                    random_float(40, 115),
-                    random_float(40, 115),
-                    random_float(40, 115),
+                    random_float(40, 115),  # temp
+                    random_float(20, 100),  # humidity
+                    random_float(40, 115),  # pressure
                     random_bool(),
                 )
                 for i in range(number_of_rows_to_insert)
