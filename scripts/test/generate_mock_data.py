@@ -50,6 +50,9 @@ def prepare_database(connection):
         cursor.execute("DELETE FROM node")
         cursor.execute("ALTER SEQUENCE node_nid_seq RESTART WITH 1")
         cursor.execute("ALTER SEQUENCE timestampindex_tid_seq RESTART WITH 1")
+        cursor.execute("ALTER SEQUENCE weatherdata_wdid_seq RESTART WITH 1")
+        cursor.execute("ALTER SEQUENCE classifierreport_crid_seq RESTART WITH 1")
+        cursor.execute("ALTER SEQUENCE audiofile_afid_seq RESTART WITH 1")
 
     connection.commit()
 
