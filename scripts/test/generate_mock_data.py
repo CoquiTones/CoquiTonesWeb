@@ -78,8 +78,8 @@ def random_float(min, max) -> float:
 
 def populate_node(connection, number_of_inserts):
 
-    latitude_range = (0, 100)
-    longitude_range = (0, 100)
+    latitude_range = (-90, 90)
+    longitude_range = (-90, 90)
     description_length = 10
     prepared_statement = "INSERT INTO node (ntype, nlatitude, nlongitude, ndescription) VALUES (%s, %s, %s, %s)"
 
