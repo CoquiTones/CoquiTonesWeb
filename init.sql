@@ -18,7 +18,7 @@ CREATE TABLE node (
 CREATE TABLE timestampindex (
     tid         SERIAL PRIMARY KEY,
     nid         INTEGER REFERENCES node,
-    ttime       TIME NOT NULL
+    ttime       TIMESTAMP WITHOUT TIMEZONE NOT NULL
 );
 
 CREATE TABLE classifierreport (
