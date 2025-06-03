@@ -271,10 +271,20 @@ class Dashboard:
                         from classifierreport natural inner join timestampindex
                         where ttime > (CURRENT_TIMESTAMP - interval '7 days')
                         group by "bin" 
+                        order by "bin"
                         """
                     )
                 )
-                db_output = curs.collect_all()
+                db_output = curs.fetchall()
+                column_transposed = list(map(list, zip(*db_output)))
+                return {
+                    "total_coqui_antillensis": column_transposed[0],
+                    "total_common_coqui": column_transposed[1],
+                    "total_coqui_e_monensis": column_transposed[2],
+                    "total_samples": column_transposed[3],
+                    "total_no_hit": column_transposed[4],
+                    "date_bin": column_transposed[5]
+                }
             except psycopg2.Error as e:
                 print("Error executing SQL query:", e)
                 raise HTTPException(status_code=500, detail="Database error")
