@@ -1,9 +1,9 @@
-DROP TYPE IF EXISTS node_type;
-DROP TABLE IF EXISTS node;
-DROP TABLE IF EXISTS timestampindex;
-DROP TABLE IF EXISTS audiofile;
-DROP TABLE IF EXISTS weatherdata;
-DROP TABLE IF EXISTS classifierreport;
+DROP TYPE IF EXISTS node_type CASCADE;
+DROP TABLE IF EXISTS node CASCADE;
+DROP TABLE IF EXISTS timestampindex CASCADE;
+DROP TABLE IF EXISTS audiofile CASCADE;
+DROP TABLE IF EXISTS weatherdata CASCADE;
+DROP TABLE IF EXISTS classifierreport CASCADE;
 
 CREATE TYPE node_type AS ENUM ('primary', 'secondary');
 
@@ -18,7 +18,7 @@ CREATE TABLE node (
 CREATE TABLE timestampindex (
     tid         SERIAL PRIMARY KEY,
     nid         INTEGER REFERENCES node,
-    ttime       TIME NOT NULL
+    ttime       TIMESTAMP NOT NULL
 );
 
 CREATE TABLE classifierreport (
@@ -53,6 +53,3 @@ VALUES
     ('primary',18.1504,-66.9869,'Bosque Estatal Maricao'),
     ('secondary',18.4103,-66.0944,'Bosque San Patricio'),
     ('primary',18.2201,-66.5283,'Bosque Los Tres Picachos');
-
-
-
