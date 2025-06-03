@@ -54,7 +54,6 @@ def prepare_database(connection):
         cursor.execute("ALTER SEQUENCE classifierreport_crid_seq RESTART WITH 1")
         cursor.execute("ALTER SEQUENCE audiofile_afid_seq RESTART WITH 1")
 
-    connection.commit()
 
 
 def random_string(length: int) -> str:
