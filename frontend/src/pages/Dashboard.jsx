@@ -28,7 +28,7 @@ export default function Dashboard() {
     <ThemeProvider theme={theme}>
       <Sidebar isOpen={isOpen} toggle={toggle} />
       <Navbar toggle={toggle} />
-      {/* <Box sx={{ display: "flex" }}>
+      {<Box sx={{ display: "flex" }}>
         <CssBaseline />
         <Box
           component="main"
@@ -79,7 +79,7 @@ export default function Dashboard() {
             </Grid>
           </Container>
         </Box>
-      </Box> */}
+      </Box>}
       <Footer />
     </ThemeProvider>
   );
