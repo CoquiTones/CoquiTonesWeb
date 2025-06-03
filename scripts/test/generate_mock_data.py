@@ -166,7 +166,7 @@ def populate_audio(connection, number_of_nodes, number_of_inserts):
 
 
 def populate_classifierreport(connection, number_of_inserts):
-    prepared_statement = "INSERT INTO classifierreport (tid, afid, cr_common_coqui_detected, cr_coqui_gryllus_detected, cr_coqui_locustus_detected, cr_coqui_portoricensis_detected, cr_coqui_unicolor_detected, cr_coqui_hedricki_detected, cr_coqui_richmondi_detected, cr_coqui_wightmanae_detected) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)"
+    prepared_statement = "INSERT INTO classifierreport (tid, crsamples, crcoqui_common, crcoqui_e_monensis, crcoqui_antillensis, crno_hit) VALUES (%s,%s,%s,%s,%s,%s)"
     necessary_statements = (number_of_inserts // MAX_BATCH_SIZE) + 1
     number_of_inserts_left = number_of_inserts
 
@@ -180,15 +180,12 @@ def populate_classifierreport(connection, number_of_inserts):
             batch_values = [
                 (
                     random_integer(1, number_of_inserts),  # tid
-                    random_integer(1, number_of_inserts),  # afid
-                    random_integer(1, 50),
-                    random_integer(1, 50),
-                    random_integer(1, 50),
-                    random_integer(1, 50),
-                    random_integer(1, 50),
-                    random_integer(1, 50),
-                    random_integer(1, 50),
-                    random_integer(1, 50),
+                    random_integer(1, 50), # crssamples 
+                    # In theory crsamples should equal the sum of all the following columns
+                    random_integer(1, 50), # crcoqui_common
+                    random_integer(1, 50), # crcoqui_e_monensis
+                    random_integer(1, 50), # crcoqui_antillensis
+                    random_integer(1, 50)  # cr_nohit
                 )
                 for i in range(number_of_rows_to_insert)
             ]
@@ -202,7 +199,7 @@ def populate_classifierreport(connection, number_of_inserts):
 
 def populate_weatherdata(connection, number_of_nodes, number_of_inserts):
 
-    prepared_statement = "INSERT INTO weatherdata (tid, nid, wdtemperature, wdhumidity, wdpressure, wddid_rain) VALUES(%s,%s,%s,%s,%s,%s)"
+    prepared_statement = "INSERT INTO weatherdata (tid, wdtemperature, wdhumidity, wdpressure, wddid_rain) VALUES(%s,%s,%s,%s,%s)"
     necessary_statements = (number_of_inserts // MAX_BATCH_SIZE) + 1
     number_of_inserts_left = number_of_inserts
 
@@ -216,7 +213,6 @@ def populate_weatherdata(connection, number_of_nodes, number_of_inserts):
             batch_values = [
                 (
                     random_integer(1, number_of_inserts),
-                    random_integer(1, number_of_nodes),
                     random_float(40, 115),  # temp
                     random_float(20, 100),  # humidity
                     random_float(40, 115),  # pressure
