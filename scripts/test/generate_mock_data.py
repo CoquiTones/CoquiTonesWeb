@@ -125,7 +125,7 @@ def populate_timestamp(connection, number_of_inserts, number_of_nodes):
             batch_values = [
                 (
                     random_integer(1, number_of_nodes),
-                    datetime.datetime.now(datetime.timezone.utc),
+                    datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(days=random_integer(0, 30), seconds=random_integer(0, 60*60*24)), # generate some random time in the last month
                 )
                 for i in range(number_of_rows_to_insert)
             ]
