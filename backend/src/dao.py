@@ -252,3 +252,29 @@ class AudioFile(DAO):
             except psycopg2.Error as e:
                 print("Error executing SQL query:", e)
                 raise HTTPException(status_code=500, detail="Database error")
+
+class Dashboard:
+    """Collection of queries for dashboard endpoints"""
+    @staticmethod
+    def week_species_summary(db: connection) -> dict[str, list]:
+        with db.cursor() as curs:
+            try:
+                curs.execute(
+                    sql.SQL(
+                        """
+                        select sum(crcoqui_antillensis) as total_coqui_antillensis, 
+                            sum(crcoqui_common) as total_common_coqui,
+                            sum(crcoqui_e_monensis) as total_coqui_e_monensis, 
+                            sum(crsamples) as total_samples, 
+                            sum(crno_hit) as total_no_hit, 
+                            date_bin('1 day', ttime at local, CURRENT_TIMESTAMP) as bin
+                        from classifierreport natural inner join timestampindex
+                        where ttime > (CURRENT_TIMESTAMP - interval '7 days')
+                        group by "bin" 
+                        """
+                    )
+                )
+                db_output = curs.collect_all()
+            except psycopg2.Error as e:
+                print("Error executing SQL query:", e)
+                raise HTTPException(status_code=500, detail="Database error")
