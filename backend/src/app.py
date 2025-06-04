@@ -146,6 +146,10 @@ async def classify(file: UploadFile = File(...), model=Depends(get_model)):
 async def week_species_summary(db=Depends(get_db_connection)):
     return dao.Dashboard.week_species_summary(db)
 
+@app.get(path="/api/dashboard/node-health-check")
+async def node_health_check(db=Depends(get_db_connection)):
+    return dao.Dashboard.node_health_check(db)
+
 @app.get("/{full_path:path}", response_class=HTMLResponse)
 async def serve_frontend():
     index_path = os.path.join(frontend_dist, "index.html")
