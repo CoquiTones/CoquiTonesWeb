@@ -144,7 +144,7 @@ async def classify(file: UploadFile = File(...), model=Depends(get_model)):
 
 @app.get(path="/api/dashboard/week-species-summary")
 async def week_species_summary(db=Depends(get_db_connection)):
-    return dao.Dashboard.week_species_summary()
+    return dao.Dashboard.week_species_summary(db)
 
 @app.get("/{full_path:path}", response_class=HTMLResponse)
 async def serve_frontend():
