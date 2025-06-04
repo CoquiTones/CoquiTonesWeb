@@ -6,6 +6,8 @@ from datetime import datetime
 from fastapi import HTTPException
 from time import time
 
+from itertools import starmap
+
 node_type = str
 
 
@@ -288,3 +290,71 @@ class Dashboard:
             except psycopg2.Error as e:
                 print("Error executing SQL query:", e)
                 raise HTTPException(status_code=500, detail="Database error")
+        
+    @staticmethod
+    def recent_reports(
+        low_temp: float, high_temp: float,
+        low_humidity: float, high_humidity: float,
+        low_pressure: float, high_pressure: float,
+        low_coqui_common: int, high_coqui_common: int,
+        low_coqui_e_monensis: int, high_coqui_e_monensis: int,
+        low_coqui_antillensis: int, high_coqui_antillensis: int,
+        skip: int, limit: int,
+        db: connection) -> list:
+
+        @dataclass
+        class ReportTableEntry:
+            ttime: datetime
+            crcoqui_common: int
+            crcoqui_e_monensis: int
+            crcoqui_antillensis: int
+            wdhumidity: float
+            wdtemperature: float
+            wdpressure: float
+            wddid_rain: bool
+            afid: int # Front end should generate URL to audio file by using get audio file endpoint
+        
+        with db.cursor() as curs:
+            try:
+                curs.execute(
+                    sql.SQL(
+                        """
+                        select t.ttime, c.crcoqui_common, c.crcoqui_e_monensis, c.crcoqui_antillensis, w.wdhumidity, w.wdtemperature, w.wdpressure, w.wddid_rain, a.afid
+                        from timestampindex t natural inner join classifierreport c natural inner join weatherdata w natural inner join audiofile a 
+                        where 
+                        %(lowhum)s <= w.wdhumidity and w.wdhumidity <= %(highhum)s and
+                        %(lowtemp)s <= w.wdtemperature and w.wdtemperature <= %(hightemp)s and
+                        %(lowpress)s <= w.wdpressure and w.wdpressure <= %(highpress)s and
+                        %(lowcommon)s <= c.crcoqui_common and c.crcoqui_common <= %(highcommon)s and
+                        %(lowmonensis)s <= c.crcoqui_e_monensis and c.crcoqui_e_monensis <= %(highmonensis)s and
+                        %(lowantillensis)s <= c.crcoqui_antillensis and c.crcoqui_antillensis <= %(highantillensis)s
+                        order by t.ttime
+                        offset %(offset)s
+                        limit %(limit)s
+                        """
+                    ),
+                    {
+                        'lowhum': low_humidity,
+                        'highhum': high_humidity,
+                        'lowtemp': low_temp,
+                        'hightemp': high_temp,
+                        'lowpress': low_pressure,
+                        'highpress': high_pressure,
+                        'lowcommon': low_coqui_common,
+                        'highcommon': high_coqui_common,
+                        'lowmonensis': low_coqui_e_monensis,
+                        'highmonensis': high_coqui_e_monensis,
+                        'lowantillensis': low_coqui_antillensis,
+                        'highantillensis': high_coqui_antillensis,
+                        'offset': skip,
+                        'limit': limit
+                    }
+                )
+
+                return list(starmap(ReportTableEntry, curs.fetchall()))
+
+            except psycopg2.Error as e:
+                print("Error executing SQL query:", e)
+                raise HTTPException(status_code=500, detail="Database error")
+
+
