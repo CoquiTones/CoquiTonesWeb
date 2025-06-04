@@ -13,7 +13,6 @@ import SoundPlayer from "../components/SoundAnalysisTools/render/SoundPlayer";
 import SpectrogramVisualizer from "../components/SoundAnalysisTools/render/Spectrogram";
 import SpectrogramControls from "../components/SoundAnalysisTools/render/SpectrogramControls";
 import Navbar from "../components/shared/Navbar";
-// import HeroSectionSpectralAnalysis from "../components/shared/HeroSectionSpectralAnalysis";
 
 const SpectralAnalysis = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -22,7 +21,7 @@ const SpectralAnalysis = () => {
   const [rawAudioFile, setRawAudioFile] = useState(null);
   const [currentTime, setCurrentTime] = useState(0);
   const [type, setType] = useState("mel-spectrogram");
-  const [colorscale, setColorscale] = useState("inferno");
+  const [colorscale, setColorscale] = useState("jet");
   const [xrange, setXrange] = useState([0, 15]);
   const [yrange, setYrange] = useState([0, 20000]);
   const [defaultX, setDefaultX] = useState([0, 60]);
