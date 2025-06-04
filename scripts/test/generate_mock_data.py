@@ -31,15 +31,6 @@ def get_connection_from_development_config(config_file_path):
             return None
 
 
-def random_integer(min, max) -> int:
-    return random.randint(min, max)
-
-
-def random_bool():
-    choices = [True, False]
-    return random.choice(choices)
-
-
 def prepare_database(connection):
 
     with connection.cursor() as cursor:
@@ -54,6 +45,14 @@ def prepare_database(connection):
         cursor.execute("ALTER SEQUENCE classifierreport_crid_seq RESTART WITH 1")
         cursor.execute("ALTER SEQUENCE audiofile_afid_seq RESTART WITH 1")
 
+
+def random_integer(min, max) -> int:
+    return random.randint(min, max)
+
+
+def random_bool():
+    choices = [True, False]
+    return random.choice(choices)
 
 
 def random_string(length: int) -> str:
@@ -76,6 +75,12 @@ def random_binary_data(size=10) -> bytes:
 
 def random_float(min, max) -> float:
     return random.uniform(min, max)
+
+
+def random_date() -> datetime:
+    return datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(
+        days=random_integer(0, 30), seconds=random_integer(0, 60 * 60 * 24)
+    )
 
 
 def populate_node(connection, number_of_inserts):
@@ -125,7 +130,7 @@ def populate_timestamp(connection, number_of_inserts, number_of_nodes):
             batch_values = [
                 (
                     random_integer(1, number_of_nodes),
-                    datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(days=random_integer(0, 30), seconds=random_integer(0, 60*60*24)), # generate some random time in the last month
+                    random_date(),  # generate some random time in the last month
                 )
                 for i in range(number_of_rows_to_insert)
             ]
@@ -170,6 +175,12 @@ def populate_classifierreport(connection, number_of_inserts):
     necessary_statements = (number_of_inserts // MAX_BATCH_SIZE) + 1
     number_of_inserts_left = number_of_inserts
 
+    crsamples = random_integer(1, 50)  # crssamples
+    crcoqui_common = random_integer(1, 50)  # crcoqui_common
+    crcoqui_e_monensis = random_integer(1, 50)  # crcoqui_e_monensis
+    crcoqui_antillensis = random_integer(1, 50)  # crcoqui_antillensis
+    cr_nohit = sum([crcoqui_common, crcoqui_e_monensis, crcoqui_antillensis])
+
     with connection.cursor() as cursor:
         for i in range(necessary_statements):
             number_of_rows_to_insert = (
@@ -180,12 +191,11 @@ def populate_classifierreport(connection, number_of_inserts):
             batch_values = [
                 (
                     random_integer(1, number_of_inserts),  # tid
-                    random_integer(1, 50), # crssamples 
-                    # In theory crsamples should equal the sum of all the following columns
-                    random_integer(1, 50), # crcoqui_common
-                    random_integer(1, 50), # crcoqui_e_monensis
-                    random_integer(1, 50), # crcoqui_antillensis
-                    random_integer(1, 50)  # cr_nohit
+                    crsamples,
+                    crcoqui_common,
+                    crcoqui_e_monensis,
+                    crcoqui_antillensis,
+                    cr_nohit,
                 )
                 for i in range(number_of_rows_to_insert)
             ]
