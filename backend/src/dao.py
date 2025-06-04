@@ -304,17 +304,22 @@ class Dashboard:
             latest_time: datetime
             ndescription: str
             ntype: str
-
         with db.cursor() as curs:
-            curs.execute(sql.SQL(
-                """
-                select latest_time, n.ndescription, n.ntype from  (
-                    select max(t.ttime) as latest_time, n.nid from timestampindex t natural inner join node n 
-                    group by  n.nid
-                )
-                natural inner join node n
-                order by n.ntype 
-                """
-            ))
+            try:
+                curs.execute(sql.SQL(
+                    """
+                    select latest_time, n.ndescription, n.ntype from  (
+                        select max(t.ttime) as latest_time, n.nid from timestampindex t natural inner join node n 
+                        group by  n.nid
+                    )
+                    natural inner join node n
+                    order by n.ntype 
+                    """
+                ))
 
-            return list(starmap(NodeReport, curs.fetchall()))
+                return list(starmap(NodeReport, curs.fetchall()))
+                
+            except psycopg2.Error as e:
+                print("Error executing SQL query:", e)
+                raise HTTPException(status_code=500, detail="Database error")
+       
