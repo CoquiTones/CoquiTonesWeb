@@ -146,6 +146,19 @@ async def classify(file: UploadFile = File(...), model=Depends(get_model)):
 async def week_species_summary(db=Depends(get_db_connection)):
     return dao.Dashboard.week_species_summary(db)
 
+@app.get(path="/api/dashboard/recent-reports/")
+async def recent_reports(
+    low_temp: float = float('-inf'), high_temp: float = float('inf'),
+    low_humidity: float = float('-inf'), high_humidity: float = float('inf'),
+    low_pressure: float = float('-inf'), high_pressure: float = float('inf'),
+    low_coqui_common: int = 0, high_coqui_common: int = 1 << 31 - 1,
+    low_coqui_e_monensis: int = 0, high_coqui_e_monensis: int = 1 << 31 - 1,
+    low_coqui_antillensis: int = 0, high_coqui_antillensis: int = 1 << 31 - 1,
+    skip: int = 0, limit: int = 10,
+     db=Depends(get_db_connection)):
+    # TODO text filter for node description
+    return dao.Dashboard.recent_reports(**locals()) # pass all keyword args as unpacked dictionary
+
 @app.get("/{full_path:path}", response_class=HTMLResponse)
 async def serve_frontend():
     index_path = os.path.join(frontend_dist, "index.html")
