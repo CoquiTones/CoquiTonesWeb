@@ -175,12 +175,6 @@ def populate_classifierreport(connection, number_of_inserts):
     necessary_statements = (number_of_inserts // MAX_BATCH_SIZE) + 1
     number_of_inserts_left = number_of_inserts
 
-    crsamples = random_integer(1, 50)  # crssamples
-    crcoqui_common = random_integer(1, 50)  # crcoqui_common
-    crcoqui_e_monensis = random_integer(1, 50)  # crcoqui_e_monensis
-    crcoqui_antillensis = random_integer(1, 50)  # crcoqui_antillensis
-    cr_nohit = sum([crcoqui_common, crcoqui_e_monensis, crcoqui_antillensis])
-
     with connection.cursor() as cursor:
         for i in range(necessary_statements):
             number_of_rows_to_insert = (
@@ -188,17 +182,28 @@ def populate_classifierreport(connection, number_of_inserts):
                 if (number_of_inserts_left < MAX_BATCH_SIZE)
                 else MAX_BATCH_SIZE
             )
-            batch_values = [
-                (
-                    random_integer(1, number_of_inserts),  # tid
-                    crsamples,
-                    crcoqui_common,
-                    crcoqui_e_monensis,
-                    crcoqui_antillensis,
-                    cr_nohit,
+            batch_values = []
+            for i in range(number_of_rows_to_insert):
+
+                tid = random_integer(1, number_of_inserts)
+                crsamples = random_integer(1, 50)  # crssamples
+                crcoqui_common = random_integer(1, 50)  # crcoqui_common
+                crcoqui_e_monensis = random_integer(1, 50)  # crcoqui_e_monensis
+                crcoqui_antillensis = random_integer(1, 50)  # crcoqui_antillensis
+                cr_nohit = sum(
+                    [crcoqui_common, crcoqui_e_monensis, crcoqui_antillensis]
                 )
-                for i in range(number_of_rows_to_insert)
-            ]
+
+                batch_values.append(
+                    (
+                        tid,
+                        crsamples,
+                        crcoqui_common,
+                        crcoqui_e_monensis,
+                        crcoqui_antillensis,
+                        cr_nohit,
+                    )
+                )
             psycopg2.extras.execute_batch(
                 cursor, prepared_statement, batch_values, page_size=MAX_BATCH_SIZE
             )
