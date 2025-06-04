@@ -6,7 +6,7 @@ from datetime import datetime
 from fastapi import HTTPException
 from time import time
 
-import itertools
+from itertools import starmap
 
 node_type = str
 
@@ -317,4 +317,4 @@ class Dashboard:
                 """
             ))
 
-            return list(itertools.starmap(NodeReport, curs.fetchall()))
+            return list(starmap(NodeReport, curs.fetchall()))
