@@ -6,6 +6,8 @@ from datetime import datetime
 from fastapi import HTTPException
 from time import time
 
+from itertools import starmap
+
 node_type = str
 
 
@@ -257,6 +259,7 @@ class Dashboard:
     """Collection of queries for dashboard endpoints"""
     @staticmethod
     def week_species_summary(db: connection) -> dict[str, list]:
+        """Returns time series with sums of classifier hits of each species from all nodes, binned into days"""
         with db.cursor() as curs:
             try:
                 curs.execute(
@@ -288,3 +291,35 @@ class Dashboard:
             except psycopg2.Error as e:
                 print("Error executing SQL query:", e)
                 raise HTTPException(status_code=500, detail="Database error")
+
+
+    
+    @staticmethod
+    def node_health_check(db: connection) -> list:
+        """Returns the time of the last message from each node along with the type of node"""
+        @dataclass
+
+        class NodeReport:
+            """Node health report query object"""
+            latest_time: datetime
+            ndescription: str
+            ntype: str
+        with db.cursor() as curs:
+            try:
+                curs.execute(sql.SQL(
+                    """
+                    SELECT latest_time, n.ndescription, n.ntype FROM  (
+                        SELECT max(ttime) as latest_time, nid FROM timestampindex
+                        GROUP by  nid
+                    )
+                    NATURAL INNER JOIN node n
+                    ORDER by n.ntype 
+                    """
+                ))
+
+                return list(starmap(NodeReport, curs.fetchall()))
+                
+            except psycopg2.Error as e:
+                print("Error executing SQL query:", e)
+                raise HTTPException(status_code=500, detail="Database error")
+       
