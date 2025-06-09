@@ -308,12 +308,12 @@ class Dashboard:
             try:
                 curs.execute(sql.SQL(
                     """
-                    select latest_time, n.ndescription, n.ntype from  (
-                        select max(t.ttime) as latest_time, n.nid from timestampindex t natural inner join node n 
-                        group by  n.nid
+                    SELECT latest_time, n.ndescription, n.ntype FROM  (
+                        SELECT max(t.ttime) as latest_time, n.nid FROM timestampindex t NATURAL INNER JOIN node n 
+                        GROUP by  n.nid
                     )
-                    natural inner join node n
-                    order by n.ntype 
+                    NATURAL INNER JOIN node n
+                    ORDER by n.ntype 
                     """
                 ))
 
