@@ -157,7 +157,7 @@ async def recent_reports(
     description_filter: str = '%',
     skip: int = 0, limit: int = 10,
      db=Depends(get_db_connection)):
-    # TODO parametric order by, desc/asc
+    # TODO #34 parametric order by, desc/asc
     return dao.Dashboard.recent_reports(**locals()) # pass all keyword args as unpacked dictionary
 
 @app.get("/{full_path:path}", response_class=HTMLResponse)
