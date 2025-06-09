@@ -151,7 +151,7 @@ async def recent_reports(
     low_temp: float = float('-inf'), high_temp: float = float('inf'),
     low_humidity: float = float('-inf'), high_humidity: float = float('inf'),
     low_pressure: float = float('-inf'), high_pressure: float = float('inf'),
-    low_coqui_common: int = 0, high_coqui_common: int = 1 << 31 - 1,
+    low_coqui_common: int = 0, high_coqui_common: int = 1 << 31 - 1, # int max for PostgresSQL integer data type
     low_coqui_e_monensis: int = 0, high_coqui_e_monensis: int = 1 << 31 - 1,
     low_coqui_antillensis: int = 0, high_coqui_antillensis: int = 1 << 31 - 1,
     description_filter: str = '%',
