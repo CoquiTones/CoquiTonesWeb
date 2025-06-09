@@ -154,9 +154,10 @@ async def recent_reports(
     low_coqui_common: int = 0, high_coqui_common: int = 1 << 31 - 1,
     low_coqui_e_monensis: int = 0, high_coqui_e_monensis: int = 1 << 31 - 1,
     low_coqui_antillensis: int = 0, high_coqui_antillensis: int = 1 << 31 - 1,
+    description_filter: str = '%',
     skip: int = 0, limit: int = 10,
      db=Depends(get_db_connection)):
-    # TODO text filter for node description
+    # TODO parametric order by, desc/asc
     return dao.Dashboard.recent_reports(**locals()) # pass all keyword args as unpacked dictionary
 
 @app.get("/{full_path:path}", response_class=HTMLResponse)

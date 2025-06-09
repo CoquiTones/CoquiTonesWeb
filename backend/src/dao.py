@@ -299,11 +299,13 @@ class Dashboard:
         low_coqui_common: int, high_coqui_common: int,
         low_coqui_e_monensis: int, high_coqui_e_monensis: int,
         low_coqui_antillensis: int, high_coqui_antillensis: int,
+        description_filter: str,
         skip: int, limit: int,
         db: connection) -> list:
 
         @dataclass
         class ReportTableEntry:
+            ndescription: str
             ttime: datetime
             crcoqui_common: int
             crcoqui_e_monensis: int
@@ -319,15 +321,16 @@ class Dashboard:
                 curs.execute(
                     sql.SQL(
                         """
-                        SELECT t.ttime, c.crcoqui_common, c.crcoqui_e_monensis, c.crcoqui_antillensis, w.wdhumidity, w.wdtemperature, w.wdpressure, w.wddid_rain, a.afid
-                        FROM timestampindex t NATURAL INNER JOIN classifierreport c NATURAL INNER JOIN weatherdata w NATURAL INNER JOIN audiofile a 
-                        where 
+                        SELECT n.ndescription, t.ttime, c.crcoqui_common, c.crcoqui_e_monensis, c.crcoqui_antillensis, w.wdhumidity, w.wdtemperature, w.wdpressure, w.wddid_rain, a.afid
+                        FROM timestampindex t NATURAL INNER JOIN classifierreport c NATURAL INNER JOIN weatherdata w NATURAL INNER JOIN audiofile a NATURAL INNER JOIN node n
+                        WHERE 
                         %(lowhum)s <= w.wdhumidity and w.wdhumidity <= %(highhum)s and
                         %(lowtemp)s <= w.wdtemperature and w.wdtemperature <= %(hightemp)s and
                         %(lowpress)s <= w.wdpressure and w.wdpressure <= %(highpress)s and
                         %(lowcommon)s <= c.crcoqui_common and c.crcoqui_common <= %(highcommon)s and
                         %(lowmonensis)s <= c.crcoqui_e_monensis and c.crcoqui_e_monensis <= %(highmonensis)s and
-                        %(lowantillensis)s <= c.crcoqui_antillensis and c.crcoqui_antillensis <= %(highantillensis)s
+                        %(lowantillensis)s <= c.crcoqui_antillensis and c.crcoqui_antillensis <= %(highantillensis)s and
+                        n.ndescription LIKE %(descriptionfilter)s
                         ORDER BY t.ttime
                         OFFSET %(offset)s
                         LIMIT %(limit)s
@@ -346,6 +349,7 @@ class Dashboard:
                         'highmonensis': high_coqui_e_monensis,
                         'lowantillensis': low_coqui_antillensis,
                         'highantillensis': high_coqui_antillensis,
+                        'descriptionfilter': description_filter,
                         'offset': skip,
                         'limit': limit
                     }
