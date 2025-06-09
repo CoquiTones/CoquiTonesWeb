@@ -319,8 +319,8 @@ class Dashboard:
                 curs.execute(
                     sql.SQL(
                         """
-                        select t.ttime, c.crcoqui_common, c.crcoqui_e_monensis, c.crcoqui_antillensis, w.wdhumidity, w.wdtemperature, w.wdpressure, w.wddid_rain, a.afid
-                        from timestampindex t natural inner join classifierreport c natural inner join weatherdata w natural inner join audiofile a 
+                        SELECT t.ttime, c.crcoqui_common, c.crcoqui_e_monensis, c.crcoqui_antillensis, w.wdhumidity, w.wdtemperature, w.wdpressure, w.wddid_rain, a.afid
+                        FROM timestampindex t NATURAL INNER JOIN classifierreport c NATURAL INNER JOIN weatherdata w NATURAL INNER JOIN audiofile a 
                         where 
                         %(lowhum)s <= w.wdhumidity and w.wdhumidity <= %(highhum)s and
                         %(lowtemp)s <= w.wdtemperature and w.wdtemperature <= %(hightemp)s and
@@ -328,9 +328,9 @@ class Dashboard:
                         %(lowcommon)s <= c.crcoqui_common and c.crcoqui_common <= %(highcommon)s and
                         %(lowmonensis)s <= c.crcoqui_e_monensis and c.crcoqui_e_monensis <= %(highmonensis)s and
                         %(lowantillensis)s <= c.crcoqui_antillensis and c.crcoqui_antillensis <= %(highantillensis)s
-                        order by t.ttime
-                        offset %(offset)s
-                        limit %(limit)s
+                        ORDER BY t.ttime
+                        OFFSET %(offset)s
+                        LIMIT %(limit)s
                         """
                     ),
                     {
