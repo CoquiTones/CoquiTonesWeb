@@ -26,7 +26,7 @@ class DAO:
                 )
             except psycopg2.Error as e:
                 print("Error executing SQL query:", e)
-                raise HTTPException(status_code=500, detail="Database error")
+                raise HTTPException(status_code=500, detail=f"Database error: {e}")
 
             # Unpack the tuples into constructor
             return [cls(*row) for row in curs.fetchall()]
@@ -47,7 +47,7 @@ class DAO:
                 )
             except psycopg2.Error as e:
                 print("Error executing SQL query:", e)
-                raise HTTPException(status_code=500, detail="Database error")
+                raise HTTPException(status_code=500, detail=f"Database error: {e}")
 
             # Unpack the tuple into constructor
             return cls(*curs.fetchone())
@@ -80,7 +80,7 @@ class DAO:
                 )
             except psycopg2.Error as e:
                 print("Error executing SQL query:", e)
-                raise HTTPException(status_code=500, detail="Database error")
+                raise HTTPException(status_code=500, detail=f"Database error: {e}")
 
             # Unpack the tuple into constructor
 
@@ -127,7 +127,7 @@ class Node(DAO):
                 return cls(nid, ntype, nlatitude, nlongitude, ndescription)
             except psycopg2.Error as e:
                 print("Error executing SQL query:", e)
-                raise HTTPException(status_code=500, detail="Database error")
+                raise HTTPException(status_code=500, detail=f"Database error: {e}")
 
 
 @dataclass
@@ -161,7 +161,7 @@ class TimestampIndex(DAO):
                 return tid
             except psycopg2.Error as e:
                 print("Error executing SQL query:", e)
-                raise HTTPException(status_code=500, detail="Database error")
+                raise HTTPException(status_code=500, detail=f"Database error: {e}")
 
 
 @dataclass
@@ -226,7 +226,7 @@ class AudioFile(DAO):
                 )
             except psycopg2.Error as e:
                 print("Error executing SQL query:", e)
-                raise HTTPException(status_code=500, detail="Database error")
+                raise HTTPException(status_code=500, detail=f"Database error: {e}")
 
             # Not pulling the audio data.
             return [cls(row[0], row[1], None) for row in curs.fetchall()]
@@ -253,7 +253,7 @@ class AudioFile(DAO):
                 return str(afid)
             except psycopg2.Error as e:
                 print("Error executing SQL query:", e)
-                raise HTTPException(status_code=500, detail="Database error")
+                raise HTTPException(status_code=500, detail=f"Database error: {e}")
 
 class Dashboard:
     """Collection of queries for dashboard endpoints"""
@@ -290,7 +290,7 @@ class Dashboard:
                 }
             except psycopg2.Error as e:
                 print("Error executing SQL query:", e)
-                raise HTTPException(status_code=500, detail="Database error")
+                raise HTTPException(status_code=500, detail=f"Database error: {e}")
 
 
     
@@ -321,7 +321,7 @@ class Dashboard:
                 
             except psycopg2.Error as e:
                 print("Error executing SQL query:", e)
-                raise HTTPException(status_code=500, detail="Database error")
+                raise HTTPException(status_code=500, detail=f"Database error: {e}")
        
         
     @staticmethod
@@ -392,6 +392,6 @@ class Dashboard:
 
             except psycopg2.Error as e:
                 print("Error executing SQL query:", e)
-                raise HTTPException(status_code=500, detail="Database error")
+                raise HTTPException(status_code=500, detail=f"Database error: {e}")
 
 
