@@ -7,10 +7,10 @@ import InputLabel from "@mui/material/InputLabel";
 import MenuItem from "@mui/material/MenuItem";
 import FormControl from "@mui/material/FormControl";
 import Select from "@mui/material/Select";
-import FileUpload from "../shared/FileUpload";
+import FileUpload from "../../shared/FileUpload";
 import Box from "@mui/material/Box"; // Import Box component
 
-import StyledSlider from "../shared/StyledSlider";
+import StyledSlider from "../../shared/StyledSlider";
 
 function ValueLabelComponent(props) {
   const { children, value } = props;
