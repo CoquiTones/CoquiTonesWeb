@@ -1,22 +1,28 @@
-import { useEffect, useMemo, useRef } from "react";
-
+import { useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
 import colormap from "colormap";
-import { setSpectrogramData } from "../processing/SpectrogramDataComputer";
+import {
+  computeSpectrogramData,
+  createSpectrogramGeometry,
+  updateSpectrogramGeometry,
+} from "../processing/SpectrogramDataComputer";
 
 const SpectrogramMesh = ({
   audioFile,
   colorscale = "inferno",
   xrange,
   yrange,
-  xSize,
-  ySize,
-  frequencySamples,
-  timeSamples,
+  xSize = 10,
+  ySize = 5,
+  frequencySamples = 248,
+  timeSamples = 150,
 }) => {
   const meshRef = useRef();
-  const geometryRef = useRef(new THREE.BufferGeometry());
+  const geometryRef = useRef(null);
+  const [initialized, setInitialized] = useState(false);
+  const previousYRangeRef = useRef(yrange);
 
+  // Color map generation
   const colors = useMemo(() => {
     return colormap({
       colormap: colorscale,
@@ -26,6 +32,7 @@ const SpectrogramMesh = ({
     }).map((c) => new THREE.Vector3(c[0] / 255, c[1] / 255, c[2] / 255));
   }, [colorscale]);
 
+  // Shader material
   const shaderMaterial = useMemo(() => {
     return new THREE.ShaderMaterial({
       uniforms: {
@@ -50,18 +57,74 @@ const SpectrogramMesh = ({
     });
   }, [colors]);
 
+  // Process audio data and update geometry
   useEffect(() => {
-    setSpectrogramData({
-      audioFile,
-      geometryRef,
-      xSize,
-      ySize,
-      xrange,
-      yrange,
-      frequencySamples,
-      timeSamples,
-    });
-  }, [audioFile, xrange, yrange]);
+    if (!audioFile || !xrange || !yrange) return;
+
+    const processAudio = async () => {
+      try {
+        const { heightMap, nyquist } = await computeSpectrogramData({
+          audioFile,
+          xrange,
+          frequencySamples,
+          timeSamples,
+        });
+
+        // Check if yrange has changed significantly
+        const yrangeChanged =
+          previousYRangeRef.current[0] !== yrange[0] ||
+          previousYRangeRef.current[1] !== yrange[1];
+
+        if (!initialized || yrangeChanged) {
+          // Create new geometry when:
+          // 1. First run
+          // 2. Y-range has changed significantly
+          const geometry = createSpectrogramGeometry({
+            heightMap,
+            nyquist,
+            xSize,
+            ySize,
+            xrange,
+            yrange,
+            frequencySamples,
+            timeSamples,
+          });
+
+          geometryRef.current = geometry;
+          setInitialized(true);
+          previousYRangeRef.current = yrange;
+
+          // Update mesh reference
+          if (meshRef.current) {
+            meshRef.current.geometry = geometry;
+          }
+        } else {
+          // Update existing geometry for other changes
+          updateSpectrogramGeometry({
+            geometry: geometryRef.current,
+            heightMap,
+            nyquist,
+            yrange,
+            frequencySamples,
+            timeSamples,
+          });
+        }
+      } catch (error) {
+        console.error("Error processing audio data:", error);
+      }
+    };
+
+    processAudio();
+  }, [
+    audioFile,
+    xrange,
+    yrange,
+    xSize,
+    ySize,
+    frequencySamples,
+    timeSamples,
+    initialized,
+  ]);
 
   return (
     <mesh

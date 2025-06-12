@@ -1,7 +1,8 @@
 import * as THREE from "three";
 import FFT from "fft.js";
 
-const defineGridGeometry = ({ geometry, xSize, ySize, timeSamples, frequencySamples }) => {
+// Pure function to create grid geometry data
+const createGridGeometryData = ({ xSize, ySize, timeSamples, frequencySamples }) => {
     const xSegments = timeSamples;
     const ySegments = frequencySamples;
     const xHalfSize = xSize / 2;
@@ -10,45 +11,65 @@ const defineGridGeometry = ({ geometry, xSize, ySize, timeSamples, frequencySamp
     const yPowMax = Math.log(ySize);
     const yBase = Math.E;
 
-    let vertices = [];
-    let indices = [];
+    const vertices = [];
+    const indices = [];
 
     for (let i = 0; i <= xSegments; i++) {
-        let x = i * xSegmentSize - xHalfSize;
+        const x = i * xSegmentSize - xHalfSize;
         for (let j = 0; j <= ySegments; j++) {
-            let pow = ((ySegments - j) / ySegments) * yPowMax;
-            let y = -Math.pow(yBase, pow) + yHalfSize + 1;
+            const pow = ((ySegments - j) / ySegments) * yPowMax;
+            const y = -Math.pow(yBase, pow) + yHalfSize + 1;
             vertices.push(x, y, 0);
         }
     }
 
     for (let i = 0; i < xSegments; i++) {
         for (let j = 0; j < ySegments; j++) {
-            let a = i * (ySegments + 1) + (j + 1);
-            let b = i * (ySegments + 1) + j;
-            let c = (i + 1) * (ySegments + 1) + j;
-            let d = (i + 1) * (ySegments + 1) + (j + 1);
+            const a = i * (ySegments + 1) + (j + 1);
+            const b = i * (ySegments + 1) + j;
+            const c = (i + 1) * (ySegments + 1) + j;
+            const d = (i + 1) * (ySegments + 1) + (j + 1);
             indices.push(a, b, d, b, c, d);
         }
     }
 
-    geometry.setIndex(indices);
-    geometry.setAttribute("position", new THREE.Float32BufferAttribute(vertices, 3));
-    geometry.setAttribute(
-        "displacement",
-        new THREE.Uint8BufferAttribute(new Uint8Array((frequencySamples + 1) * (timeSamples + 1)), 1)
-    );
-    geometry.computeVertexNormals();
+    return { vertices, indices };
 };
 
-const computeSpectrogramData = async ({ audioFile, xrange, frequencySamples, timeSamples }) => {
-    const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-    const arrayBuffer = await audioFile.arrayBuffer();
-    const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
+// Pure function to create a THREE.BufferGeometry from data
+const createGeometryFromData = ({ vertices, indices, displacementData }) => {
+    const geometry = new THREE.BufferGeometry();
+    geometry.setIndex(indices);
+    geometry.setAttribute("position", new THREE.Float32BufferAttribute(vertices, 3));
 
-    const sampleRate = audioBuffer.sampleRate;
+    if (displacementData) {
+        geometry.setAttribute(
+            "displacement",
+            new THREE.Uint8BufferAttribute(displacementData, 1)
+        );
+    }
+
+    geometry.computeVertexNormals();
+    return geometry;
+};
+
+// Pure function to compute FFT frame
+const computeFFTFrame = ({ fft, frame, windowFunc }) => {
+    const out = fft.createComplexArray();
+    fft.realTransform(out, frame);
+    fft.completeSpectrum(out);
+    return out;
+};
+
+// Pure function to process audio data into spectrogram
+const processAudioData = ({
+    channelData,
+    sampleRate,
+    xrange,
+    frequencySamples,
+    timeSamples
+}) => {
     const nyquist = sampleRate / 2;
-    const channelData = audioBuffer.getChannelData(0);
     const fftSize = frequencySamples * 2;
     const hopSize = Math.floor(((xrange[1] - xrange[0]) * sampleRate) / timeSamples);
     const startSample = Math.floor(xrange[0] * sampleRate);
@@ -57,10 +78,9 @@ const computeSpectrogramData = async ({ audioFile, xrange, frequencySamples, tim
     const fft = new FFT(fftSize);
     const windowFunc = (i, N) => 0.5 * (1 - Math.cos((2 * Math.PI * i) / (N - 1)));
 
-    const magnitudes = [];
-    let actualTimeSamples = 0;
     let minDb = Infinity;
     let maxDb = -Infinity;
+    const magnitudes = [];
 
     for (let t = 0; t <= timeSamples; t++) {
         const offset = startSample + t * hopSize;
@@ -71,26 +91,28 @@ const computeSpectrogramData = async ({ audioFile, xrange, frequencySamples, tim
             frame[i] = channelData[offset + i] * windowFunc(i, fftSize);
         }
 
-        const out = fft.createComplexArray();
-        fft.realTransform(out, frame);
-        fft.completeSpectrum(out);
-
+        const out = computeFFTFrame({ fft, frame, windowFunc });
         const row = [];
+
         for (let f = 0; f <= frequencySamples; f++) {
             const re = out[2 * f];
             const im = out[2 * f + 1];
             const mag = Math.sqrt(re * re + im * im);
             const db = 20 * Math.log10(mag + 1e-12);
             row.push(db);
-            if (db > maxDb) maxDb = db;
-            if (db < minDb) minDb = db;
+            minDb = Math.min(minDb, db);
+            maxDb = Math.max(maxDb, db);
         }
         magnitudes.push(row);
-        actualTimeSamples++;
     }
 
+    return { magnitudes, minDb, maxDb, nyquist, actualTimeSamples: magnitudes.length };
+};
+
+// Pure function to normalize magnitude data to height map
+const createHeightMap = ({ magnitudes, minDb, maxDb, frequencySamples, actualTimeSamples }) => {
     const noiseFloor = Math.max(minDb, maxDb - 80);
-    const heightMap = new Uint8Array((frequencySamples + 1) * (timeSamples + 1));
+    const heightMap = new Uint8Array((frequencySamples + 1) * (actualTimeSamples + 1));
 
     for (let t = 0; t < actualTimeSamples; t++) {
         for (let f = 0; f <= frequencySamples; f++) {
@@ -102,34 +124,17 @@ const computeSpectrogramData = async ({ audioFile, xrange, frequencySamples, tim
         }
     }
 
-    await audioContext.close();
-
-    return { heightMap, sampleRate, nyquist };
+    return heightMap;
 };
 
-export const setSpectrogramData = async ({
-    audioFile,
-    geometryRef,
-    xSize,
-    ySize,
-    xrange,
+// Pure function to clip frequency range
+const clipFrequencyRange = ({
+    heightMap,
+    nyquist,
     yrange,
     frequencySamples,
-    timeSamples,
+    timeSamples
 }) => {
-    if (!audioFile || !xrange || !yrange) return;
-
-    const result = await computeSpectrogramData({
-        audioFile,
-        xrange,
-        frequencySamples,
-        timeSamples,
-    });
-
-    if (!result) return;
-
-    const { heightMap, nyquist } = result;
-
     const totalFreqBins = frequencySamples + 1;
     const minBin = Math.floor((yrange[0] / nyquist) * totalFreqBins);
     const maxBin = Math.min(Math.ceil((yrange[1] / nyquist) * totalFreqBins), totalFreqBins);
@@ -145,17 +150,103 @@ export const setSpectrogramData = async ({
         }
     }
 
-    defineGridGeometry({
-        geometry: geometryRef.current,
+    return {
+        clippedHeightMap,
+        clippedFreqBins: clippedFreqBins - 1
+    };
+};
+
+// Main function to compute spectrogram data (pure)
+export const computeSpectrogramData = async ({
+    audioFile,
+    xrange,
+    frequencySamples,
+    timeSamples
+}) => {
+    const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    const arrayBuffer = await audioFile.arrayBuffer();
+    const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
+
+    const result = processAudioData({
+        channelData: audioBuffer.getChannelData(0),
+        sampleRate: audioBuffer.sampleRate,
+        xrange,
+        frequencySamples,
+        timeSamples
+    });
+
+    const heightMap = createHeightMap({
+        magnitudes: result.magnitudes,
+        minDb: result.minDb,
+        maxDb: result.maxDb,
+        frequencySamples,
+        actualTimeSamples: result.actualTimeSamples
+    });
+
+    await audioContext.close();
+
+    return {
+        heightMap,
+        sampleRate: audioBuffer.sampleRate,
+        nyquist: result.nyquist
+    };
+};
+
+// Function to create spectrogram geometry (pure)
+export const createSpectrogramGeometry = ({
+    heightMap,
+    nyquist,
+    xSize,
+    ySize,
+    xrange,
+    yrange,
+    frequencySamples,
+    timeSamples
+}) => {
+    const { clippedHeightMap, clippedFreqBins } = clipFrequencyRange({
+        heightMap,
+        nyquist,
+        yrange,
+        frequencySamples,
+        timeSamples
+    });
+
+    const gridData = createGridGeometryData({
         xSize,
         ySize,
         timeSamples,
-        frequencySamples: clippedFreqBins - 1,
+        frequencySamples: clippedFreqBins
     });
 
-    geometryRef.current.setAttribute(
+    return createGeometryFromData({
+        vertices: gridData.vertices,
+        indices: gridData.indices,
+        displacementData: clippedHeightMap
+    });
+};
+
+// Function to update existing geometry (minimal mutation)
+export const updateSpectrogramGeometry = ({
+    geometry,
+    heightMap,
+    nyquist,
+    yrange,
+    frequencySamples,
+    timeSamples
+}) => {
+    const { clippedHeightMap } = clipFrequencyRange({
+        heightMap,
+        nyquist,
+        yrange,
+        frequencySamples,
+        timeSamples
+    });
+
+    geometry.setAttribute(
         "displacement",
         new THREE.Uint8BufferAttribute(clippedHeightMap, 1)
     );
-    geometryRef.current.attributes.displacement.needsUpdate = true;
+    geometry.attributes.displacement.needsUpdate = true;
+    return geometry;
 };
+
