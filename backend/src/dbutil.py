@@ -33,7 +33,7 @@ def get_connection_from_environment():
         )
         return connection
     except psycopg2.Error as e:
-        print("Error Creating Connection Object to database:", e)
+        print("Error Creating Connection Object to database:", e.pgerror)
         return None
 
 
@@ -52,7 +52,7 @@ def get_connection_from_development_config():
             connection = psycopg2.connect(**db_config)
             return connection
         except psycopg2.Error as e:
-            print("Error connecting to database:", e)
+            print("Error connecting to database:", e.pgerror)
             return None
 
 
