@@ -31,7 +31,7 @@ cleanup() {
 }
 
 # MAIN:
-if [$# -ne 0 ]; then
+if [[ $# -ne 0 ]]; then
     usage
 fi
 

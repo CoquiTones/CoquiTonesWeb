@@ -2,14 +2,14 @@ import * as THREE from "three";
 import FFT from "fft.js";
 
 // Pure function to create grid geometry data
+// Linear Y-axis implementation
 const createGridGeometryData = ({ xSize, ySize, timeSamples, frequencySamples }) => {
     const xSegments = timeSamples;
     const ySegments = frequencySamples;
     const xHalfSize = xSize / 2;
     const yHalfSize = ySize / 2;
     const xSegmentSize = xSize / xSegments;
-    const yPowMax = Math.log(ySize);
-    const yBase = Math.E;
+    const ySegmentSize = ySize / ySegments;
 
     const vertices = [];
     const indices = [];
@@ -17,8 +17,7 @@ const createGridGeometryData = ({ xSize, ySize, timeSamples, frequencySamples })
     for (let i = 0; i <= xSegments; i++) {
         const x = i * xSegmentSize - xHalfSize;
         for (let j = 0; j <= ySegments; j++) {
-            const pow = ((ySegments - j) / ySegments) * yPowMax;
-            const y = -Math.pow(yBase, pow) + yHalfSize + 1;
+            const y = j * ySegmentSize - yHalfSize;
             vertices.push(x, y, 0);
         }
     }
@@ -65,15 +64,15 @@ const computeFFTFrame = ({ fft, frame, windowFunc }) => {
 const processAudioData = ({
     channelData,
     sampleRate,
-    xrange,
+    currentTimeRange,
     frequencySamples,
     timeSamples
 }) => {
     const nyquist = sampleRate / 2;
     const fftSize = frequencySamples * 2;
-    const hopSize = Math.floor(((xrange[1] - xrange[0]) * sampleRate) / timeSamples);
-    const startSample = Math.floor(xrange[0] * sampleRate);
-    const endSample = Math.min(Math.floor(xrange[1] * sampleRate), channelData.length);
+    const hopSize = Math.floor(((currentTimeRange[1] - currentTimeRange[0]) * sampleRate) / timeSamples);
+    const startSample = Math.floor(currentTimeRange[0] * sampleRate);
+    const endSample = Math.min(Math.floor(currentTimeRange[1] * sampleRate), channelData.length);
 
     const fft = new FFT(fftSize);
     const windowFunc = (i, N) => 0.5 * (1 - Math.cos((2 * Math.PI * i) / (N - 1)));
@@ -128,16 +127,16 @@ const createHeightMap = ({ magnitudes, minDb, maxDb, frequencySamples, actualTim
 };
 
 // Pure function to clip frequency range
-const clipFrequencyRange = ({
+const clipFrequenccurrentFrequencyRange = ({
     heightMap,
     nyquist,
-    yrange,
+    currentFrequencyRange,
     frequencySamples,
     timeSamples
 }) => {
     const totalFreqBins = frequencySamples + 1;
-    const minBin = Math.floor((yrange[0] / nyquist) * totalFreqBins);
-    const maxBin = Math.min(Math.ceil((yrange[1] / nyquist) * totalFreqBins), totalFreqBins);
+    const minBin = Math.floor((currentFrequencyRange[0] / nyquist) * totalFreqBins);
+    const maxBin = Math.min(Math.ceil((currentFrequencyRange[1] / nyquist) * totalFreqBins), totalFreqBins);
     const clippedFreqBins = maxBin - minBin;
 
     const clippedHeightMap = new Uint8Array((timeSamples + 1) * clippedFreqBins);
@@ -159,7 +158,7 @@ const clipFrequencyRange = ({
 // Main function to compute spectrogram data (pure)
 export const computeSpectrogramData = async ({
     audioFile,
-    xrange,
+    currentTimeRange,
     frequencySamples,
     timeSamples
 }) => {
@@ -170,7 +169,7 @@ export const computeSpectrogramData = async ({
     const result = processAudioData({
         channelData: audioBuffer.getChannelData(0),
         sampleRate: audioBuffer.sampleRate,
-        xrange,
+        currentTimeRange,
         frequencySamples,
         timeSamples
     });
@@ -198,15 +197,15 @@ export const createSpectrogramGeometry = ({
     nyquist,
     xSize,
     ySize,
-    xrange,
-    yrange,
+    currentTimeRange,
+    currentFrequencyRange,
     frequencySamples,
     timeSamples
 }) => {
-    const { clippedHeightMap, clippedFreqBins } = clipFrequencyRange({
+    const { clippedHeightMap, clippedFreqBins } = clipFrequenccurrentFrequencyRange({
         heightMap,
         nyquist,
-        yrange,
+        currentFrequencyRange,
         frequencySamples,
         timeSamples
     });
@@ -230,14 +229,14 @@ export const updateSpectrogramGeometry = ({
     geometry,
     heightMap,
     nyquist,
-    yrange,
+    currentFrequencyRange,
     frequencySamples,
     timeSamples
 }) => {
-    const { clippedHeightMap } = clipFrequencyRange({
+    const { clippedHeightMap } = clipFrequenccurrentFrequencyRange({
         heightMap,
         nyquist,
-        yrange,
+        currentFrequencyRange,
         frequencySamples,
         timeSamples
     });
@@ -249,4 +248,43 @@ export const updateSpectrogramGeometry = ({
     geometry.attributes.displacement.needsUpdate = true;
     return geometry;
 };
+
+// Clip both time and frequency ranges from full spectrogram
+export const clipSpectrogramRegion = ({
+    heightMap,
+    nyquist,
+    currentTimeRange,
+    currentFrequencyRange,
+    timeSamples,
+    frequencySamples,
+    fullDuration,
+}) => {
+    const totalTimeBins = timeSamples + 1;
+    const totalFreqBins = frequencySamples + 1;
+
+    const timeStart = Math.floor((currentTimeRange[0] / fullDuration) * totalTimeBins);
+    const timeEnd = Math.ceil((currentTimeRange[1] / fullDuration) * totalTimeBins);
+    const clippedTimeBins = timeEnd - timeStart;
+
+    const minFreqBin = Math.floor((currentFrequencyRange[0] / nyquist) * totalFreqBins);
+    const maxFreqBin = Math.min(Math.ceil((currentFrequencyRange[1] / nyquist) * totalFreqBins), totalFreqBins);
+    const clippedFreqBins = maxFreqBin - minFreqBin;
+
+    const clippedHeightMap = new Uint8Array(clippedTimeBins * clippedFreqBins);
+
+    for (let t = 0; t < clippedTimeBins; t++) {
+        for (let f = 0; f < clippedFreqBins; f++) {
+            const originalIndex = (timeStart + t) * totalFreqBins + (minFreqBin + f);
+            const newIndex = t * clippedFreqBins + f;
+            clippedHeightMap[newIndex] = heightMap[originalIndex];
+        }
+    }
+
+    return {
+        clippedHeightMap,
+        clippedTimeBins: clippedTimeBins - 1,
+        clippedFreqBins: clippedFreqBins - 1,
+    };
+};
+
 

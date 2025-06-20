@@ -1,39 +1,61 @@
 import React from "react";
+import PropTypes from "prop-types";
 import { Text } from "@react-three/drei";
+import * as THREE from "three";
 
+/**
+ * Reusable 3D Axis with ticks and labels.
+ */
 const Axis = ({
-  axisLength = 40,
+  orientation = "x", // "x" or "y"
+  axisLength = 10,
   numTicks = 5,
-  orientation = "x", // 'x' or 'y'
   position = [0, 0, 0],
   tickLabels = [],
   label = "",
+  color = "white",
+  fontSize = 0.8,
 }) => {
   const isX = orientation === "x";
 
-  const axisSize = isX ? [axisLength, 0.05, 0.05] : [0.05, axisLength, 0.05];
-  const tickSize = isX ? [0.05, 0.5, 0.05] : [0.5, 0.05, 0.05];
-  const labelOffset = isX ? [0, -1, 0] : [-1, 0, 0];
-  const axisLabelPos = isX ? [0, -2, 0] : [-2.5, 0, 0];
-  const axisLabelRot = isX ? [0, 0, 0] : [0, 0, Math.PI / 2];
+  // Main axis size
+  const axisSize = isX ? [axisLength, 0.1, 0.1] : [0.1, axisLength, 0.1];
 
+  // Tick mark size - make them more visible
+  const tickSize = isX ? [0.1, 0.8, 0.1] : [0.8, 0.1, 0.1];
+
+  // Label offsets - adjust for better positioning
+  const tickLabelOffset = isX ? [0, -1.5, 0] : [-1.8, 0, 0];
+  const axisLabelPosition = isX ? [0, -3, 0] : [-3.5, 0, 0];
+  const axisLabelRotation = isX ? [0, 0, 0] : [0, 0, Math.PI / 2];
+
+  // Generate tick positions that align with actual data
   const ticks = Array.from({ length: numTicks }, (_, i) => {
-    const t = i / (numTicks - 1);
-    const tickPos = isX
-      ? [t * axisLength - axisLength / 2, 0, 0]
-      : [0, (1 - t) * axisLength - axisLength / 2, 0];
+    let tickPos;
+
+    if (isX) {
+      // For X-axis: distribute evenly across the length, centered at origin
+      const t = i / (numTicks - 1); // 0 to 1
+      const x = (t - 0.5) * axisLength; // Center around 0
+      tickPos = [x, 0, 0];
+    } else {
+      // For Y-axis: distribute evenly across the length, centered at origin
+      const t = i / (numTicks - 1); // 0 to 1
+      const y = (t - 0.5) * axisLength; // Center around 0
+      tickPos = [0, y, 0];
+    }
 
     return (
       <group key={i} position={tickPos}>
         <mesh>
           <boxGeometry args={tickSize} />
-          <meshStandardMaterial color="white" />
+          <meshStandardMaterial color={color} />
         </mesh>
         {tickLabels[i] && (
           <Text
-            position={labelOffset}
-            fontSize={0.8}
-            color="white"
+            position={tickLabelOffset}
+            fontSize={fontSize}
+            color={color}
             anchorX="center"
             anchorY="middle"
           >
@@ -46,28 +68,41 @@ const Axis = ({
 
   return (
     <group position={position}>
-      {/* Main axis line */}
+      {/* Axis line */}
       <mesh>
         <boxGeometry args={axisSize} />
-        <meshStandardMaterial color="white" />
+        <meshStandardMaterial color={color} />
       </mesh>
 
-      {/* Ticks and labels */}
+      {/* Ticks */}
       {ticks}
 
       {/* Axis label */}
       {label && (
         <Text
-          position={axisLabelPos}
-          fontSize={1}
-          color="white"
-          rotation={axisLabelRot}
+          position={axisLabelPosition}
+          rotation={axisLabelRotation}
+          fontSize={fontSize + 0.2}
+          color={color}
+          anchorX="center"
+          anchorY="middle"
         >
           {label}
         </Text>
       )}
     </group>
   );
+};
+
+Axis.propTypes = {
+  orientation: PropTypes.oneOf(["x", "y"]),
+  axisLength: PropTypes.number,
+  numTicks: PropTypes.number,
+  position: PropTypes.arrayOf(PropTypes.number),
+  tickLabels: PropTypes.arrayOf(PropTypes.string),
+  label: PropTypes.string,
+  color: PropTypes.string,
+  fontSize: PropTypes.number,
 };
 
 export default Axis;
