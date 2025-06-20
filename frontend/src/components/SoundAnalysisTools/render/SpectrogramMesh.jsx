@@ -73,32 +73,34 @@ const SpectrogramMesh = ({
         uniform float timeOffset;
         uniform float freqOffset;
         uniform vec4 viewBounds; // timeMin, timeMax, freqMin, freqMax
-        
+
         attribute float displacement;
         varying vec3 vColor;
         varying float vVisible;
-        
+
         void main() {
-          // Calculate normalized coordinates (0 to 1) based on original geometry
-          float normalizedX = (position.x + ${xSize / 2}.0) / ${xSize}.0;
-          float normalizedY = (position.y + ${ySize / 2}.0) / ${ySize}.0;
-          
-          // Check if this vertex is within the view bounds
+          float percentX = (position.x + ${xSize / 2}.0) / ${xSize}.0;
+          float percentY = (position.y + ${ySize / 2}.0) / ${ySize}.0;
+
           vVisible = 1.0;
-          if (normalizedX < viewBounds.x || normalizedX > viewBounds.y ||
-              normalizedY < viewBounds.z || normalizedY > viewBounds.w) {
+          if (percentX < viewBounds.x || percentX > viewBounds.y ||
+              percentY < viewBounds.z || percentY > viewBounds.w) {
             vVisible = 0.0;
           }
-          
-          // Color mapping
+
+          float visibleX = (percentX - viewBounds.x) / (viewBounds.y - viewBounds.x);
+          float visibleY = (percentY - viewBounds.z) / (viewBounds.w - viewBounds.z);
+
+          float remappedX = visibleX * ${xSize}.0 - ${xSize / 2}.0;
+          float remappedY = visibleY * ${ySize}.0 - ${ySize / 2}.0;
+
           int colorIndex = int(clamp(displacement, 0.0, 255.0));
           vColor = vLut[colorIndex];
-          
-          // Keep the geometry in its original position - don't apply transformations
-          // The clipping is handled by the view bounds check above
-          vec3 newPosition = position + normal * displacement * 0.01;
+
+          vec3 newPosition = vec3(remappedX, remappedY, 0.0) + normal * displacement * 0.01;
           gl_Position = projectionMatrix * modelViewMatrix * vec4(newPosition, 1.0);
         }
+
       `,
       fragmentShader: `
         varying vec3 vColor;

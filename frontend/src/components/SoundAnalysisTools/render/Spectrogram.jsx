@@ -46,8 +46,8 @@ const Spectrogram = ({
     });
   }, [currentTimeRange]);
 
-  const frequencySamples = 2048;
-  const timeSamples = 1024 / 2;
+  const frequencySamples = 4096;
+  const timeSamples = 1024;
   const xSize = 60;
   const ySize = 20;
 

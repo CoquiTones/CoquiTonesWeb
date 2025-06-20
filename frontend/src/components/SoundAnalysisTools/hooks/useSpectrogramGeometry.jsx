@@ -32,7 +32,7 @@ export const useSpectrogramGeometry = ({
     const process = async () => {
       try {
         console.log("Starting spectrogram processing...");
-        // setIsLoading(true);
+
         setIsReady(false);
 
         const audioContext = new (window.AudioContext ||
@@ -88,13 +88,13 @@ export const useSpectrogramGeometry = ({
         }
       } finally {
         if (!isCancelled) {
-          setIsLoading(false);
           console.log("Processing complete, loading state cleared");
         }
       }
     };
-
+    setIsLoading(true);
     process();
+    setIsLoading(false);
 
     return () => {
       console.log("Cleanup: cancelling processing");
