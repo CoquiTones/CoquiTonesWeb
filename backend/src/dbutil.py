@@ -80,8 +80,12 @@ def get_db_connection():
     """
     connection = get_database_connection()
     if connection is None:
-        raise HTTPException(status_code=500, detail="Database connection error")
+        raise HTTPException(status_code=500, detail="Database connection error while making connection")
     try:
         yield connection
     finally:
         connection.close()
+
+
+def default_HTTP_exception(code: str, additional_info: str) -> HTTPException.HTTPException:
+    return HTTPException(status_code=500, detail=f"Database error {code}: {psycopg2.errors.lookup(code)}\n While doing " + additional_info)
