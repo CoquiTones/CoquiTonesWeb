@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { useMemo, useRef, useEffect } from "react";
+import { useMemo, useRef, useEffect, useState } from "react";
 import colormap from "colormap";
 import { useSpectrogramGeometry } from "../hooks/useSpectrogramGeometry";
 
@@ -15,15 +15,7 @@ const SpectrogramMesh = ({
   setIsLoading,
 }) => {
   const meshRef = useRef();
-
-  console.log("SpectrogramMesh render:", {
-    audioFile: !!audioFile,
-    currentTimeRange,
-    currentFrequencyRange,
-    xSize,
-    ySize,
-  });
-
+  const [tooltipData, setTooltipData] = useState(null);
   const { geometry, isReady, audioMetadata } = useSpectrogramGeometry({
     audioFile,
     currentTimeRange,
@@ -35,12 +27,6 @@ const SpectrogramMesh = ({
     setIsLoading,
   });
 
-  console.log("Geometry hook result:", {
-    hasGeometry: !!geometry,
-    isReady,
-    audioMetadata,
-  });
-
   const colors = useMemo(() => {
     const colorArray = colormap({
       colormap: colorscale,
@@ -48,7 +34,6 @@ const SpectrogramMesh = ({
       format: "rgba",
       alpha: 1,
     }).map((c) => new THREE.Vector3(c[0] / 255, c[1] / 255, c[2] / 255));
-    console.log("Generated colors:", colorArray.length);
     return colorArray;
   }, [colorscale]);
 
@@ -167,6 +152,42 @@ const SpectrogramMesh = ({
     return geo;
   }, [xSize, ySize]);
 
+  const onPointerMove = (event) => {
+    event.stopPropagation();
+
+    if (!meshRef.current || !geometry) return;
+
+    const uv = event.uv;
+    if (!uv) return;
+
+    const { duration, nyquist } = audioMetadata;
+    const time =
+      uv.x * (currentTimeRange[1] - currentTimeRange[0]) + currentTimeRange[0];
+    const freq =
+      uv.y * (currentFrequencyRange[1] - currentFrequencyRange[0]) +
+      currentFrequencyRange[0];
+
+    const xBin = Math.floor(uv.x * timeSamples);
+    const yBin = Math.floor(uv.y * frequencySamples);
+
+    const displacementAttr = geometry.getAttribute("displacement");
+    const index = xBin * (frequencySamples + 1) + yBin;
+
+    if (index >= 0 && index < displacementAttr.count) {
+      const value = displacementAttr.array[index] * (80.0 / 255.0) - 80; // reverse normalization
+      setTooltipData({ x: time, y: freq, value });
+      setAnchorEl(gl.domElement);
+    } else {
+      setTooltipData(null);
+      setAnchorEl(null);
+    }
+  };
+
+  const onPointerOut = () => {
+    setTooltipData(null);
+    setAnchorEl(null);
+  };
+
   if (!isReady && !geometry) {
     console.log("Rendering fallback geometry for testing");
     return (
@@ -184,7 +205,20 @@ const SpectrogramMesh = ({
   }
 
   console.log("Rendering actual geometry");
-  return <mesh ref={meshRef} geometry={geometry} material={shaderMaterial} />;
+  return (
+    <>
+      <mesh ref={meshRef} geometry={geometry} material={shaderMaterial} />{" "}
+      {tooltipData && (
+        <SpectrogramTooltip
+          anchorEl={anchorEl}
+          open={!!tooltipData}
+          x={tooltipData.x}
+          y={tooltipData.y}
+          value={tooltipData.value}
+        />
+      )}
+    </>
+  );
 };
 
 export default SpectrogramMesh;
