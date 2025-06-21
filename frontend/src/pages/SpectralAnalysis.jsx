@@ -13,7 +13,6 @@ import SoundPlayer from "../components/SoundAnalysisTools/render/SoundPlayer";
 import SpectrogramVisualizer from "../components/SoundAnalysisTools/render/Spectrogram";
 import SpectrogramControls from "../components/SoundAnalysisTools/render/SpectrogramControls";
 import Navbar from "../components/shared/Navbar";
-import { CircularProgress } from "@mui/material";
 
 const SpectralAnalysis = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -25,9 +24,8 @@ const SpectralAnalysis = () => {
   const [colorscale, setColorscale] = useState("jet");
   const [xrange, setXrange] = useState([0, 15]);
   const [yrange, setYrange] = useState([0, 20000]);
-  const [defaultX, setDefaultX] = useState([0, 60]);
+  const [defaultX, setDefaultX] = useState([0, 120]);
   const [defaultY, setDefaultY] = useState([0, 10000]);
-  const [isLoading, setIsLoading] = useState(false);
   return (
     <ThemeProvider theme={theme}>
       <Sidebar isOpen={isOpen} toggle={toggle} />
@@ -59,6 +57,8 @@ const SpectralAnalysis = () => {
                   <DataManager
                     audioFile={rawAudioFile}
                     setAudioFile={setRawAudioFile}
+                    setDefaultX={setDefaultX}
+                    setDefaultY={setDefaultY}
                   />
                 </Paper>
               </Grid>
@@ -69,17 +69,14 @@ const SpectralAnalysis = () => {
                   elevation={4}
                   sx={{ p: 2, width: "100%", height: "80vh" }}
                 >
-                  {isLoading ? (
-                    <CircularProgress color="secondary" />
-                  ) : (
-                    <SpectrogramVisualizer
-                      audioFile={rawAudioFile}
-                      colorscale={colorscale}
-                      currentTimeRange={xrange}
-                      currentFrequencyRange={yrange}
-                      setIsLoading={setIsLoading}
-                    />
-                  )}
+                  <SpectrogramVisualizer
+                    audioFile={rawAudioFile}
+                    colorscale={colorscale}
+                    currentTimeRange={xrange}
+                    currentFrequencyRange={yrange}
+                    setDefaultX={setDefaultX}
+                    setDefaultY={setDefaultY}
+                  />
                 </Paper>
               </Grid>
 

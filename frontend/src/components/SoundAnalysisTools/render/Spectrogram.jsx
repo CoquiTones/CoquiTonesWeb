@@ -10,22 +10,7 @@ const Spectrogram = ({
   colorscale,
   currentTimeRange,
   currentFrequencyRange,
-  setIsLoading,
 }) => {
-  const [internalLoading, setInternalLoading] = useState(false);
-
-  // Use internal loading state if setIsLoading is not provided
-  const isLoading = setIsLoading ? false : internalLoading; // Assume external loading management if setIsLoading exists
-  const handleSetLoading = setIsLoading || setInternalLoading;
-
-  // Debug logging
-  console.log("Spectrogram render:", {
-    audioFile: !!audioFile,
-    isLoading,
-    currentTimeRange,
-    currentFrequencyRange,
-  });
-
   const frequencyTicks = useMemo(() => {
     if (!currentFrequencyRange) return [];
     const [minFreq, maxFreq] = currentFrequencyRange;
@@ -50,22 +35,6 @@ const Spectrogram = ({
   const timeSamples = 1024;
   const xSize = 60;
   const ySize = 20;
-
-  // Show loading state
-  if (isLoading) {
-    return (
-      <Box
-        display="flex"
-        justifyContent="center"
-        alignItems="center"
-        width="100%"
-        height="100%"
-        minHeight="400px"
-      >
-        <CircularProgress />
-      </Box>
-    );
-  }
 
   // Show message if no audio file
   if (!audioFile) {
@@ -98,7 +67,6 @@ const Spectrogram = ({
           ySize={ySize}
           frequencySamples={frequencySamples}
           timeSamples={timeSamples}
-          setIsLoading={handleSetLoading}
         />
 
         {/* Only render axes if we have valid ranges */}

@@ -1,7 +1,7 @@
 import * as THREE from "three";
 import { useMemo, useRef, useEffect, useState } from "react";
 import colormap from "colormap";
-import { useSpectrogramGeometry } from "../hooks/useSpectrogramGeometry";
+import { useSpectrogramGeometry } from "../processing/useSpectrogramGeometry";
 
 const SpectrogramMesh = ({
   audioFile,
@@ -12,7 +12,6 @@ const SpectrogramMesh = ({
   ySize = 5,
   frequencySamples = 248,
   timeSamples = 150,
-  setIsLoading,
 }) => {
   const meshRef = useRef();
   const [tooltipData, setTooltipData] = useState(null);
@@ -24,7 +23,6 @@ const SpectrogramMesh = ({
     ySize,
     frequencySamples,
     timeSamples,
-    setIsLoading,
   });
 
   const colors = useMemo(() => {

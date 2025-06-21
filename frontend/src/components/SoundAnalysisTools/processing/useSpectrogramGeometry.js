@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import {
   computeSpectrogramData,
   createSpectrogramGeometry,
-} from "../processing/SpectrogramDataComputer";
+} from "./SpectrogramDataComputer";
 
 export const useSpectrogramGeometry = ({
   audioFile,
@@ -12,17 +12,14 @@ export const useSpectrogramGeometry = ({
   ySize,
   frequencySamples,
   timeSamples,
-  setIsLoading,
 }) => {
   const geometryRef = useRef(null);
   const fullSpectrogramRef = useRef(null);
   const audioMetadataRef = useRef({ nyquist: 0, duration: 0 });
   const [isReady, setIsReady] = useState(false);
 
-  // Calculate full spectrogram only once when audio file changes
   useEffect(() => {
     if (!audioFile) {
-      console.log("No audio file provided");
       setIsReady(false);
       return;
     }
@@ -31,8 +28,6 @@ export const useSpectrogramGeometry = ({
 
     const process = async () => {
       try {
-        console.log("Starting spectrogram processing...");
-
         setIsReady(false);
 
         const audioContext = new (window.AudioContext ||
@@ -40,8 +35,6 @@ export const useSpectrogramGeometry = ({
         const arrayBuffer = await audioFile.arrayBuffer();
         const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
         const fullDuration = audioBuffer.duration;
-
-        console.log(`Audio duration: ${fullDuration}s`);
 
         // Calculate spectrogram for ENTIRE file
         const { heightMap, sampleRate, nyquist } = await computeSpectrogramData(
@@ -57,10 +50,6 @@ export const useSpectrogramGeometry = ({
           console.log("Processing cancelled");
           return;
         }
-
-        console.log(
-          `Spectrogram calculated: ${heightMap.length} samples, nyquist: ${nyquist}Hz`
-        );
 
         // Store the full spectrogram data
         fullSpectrogramRef.current = heightMap;
@@ -92,27 +81,19 @@ export const useSpectrogramGeometry = ({
         }
       }
     };
-    setIsLoading(true);
     process();
-    setIsLoading(false);
 
     return () => {
       console.log("Cleanup: cancelling processing");
       isCancelled = true;
     };
-  }, [audioFile, frequencySamples, timeSamples]);
+  }, [audioFile]);
 
-  // Update view bounds using Three.js clipping/scaling instead of recalculating data
   useEffect(() => {
     if (!isReady || !geometryRef.current || !fullSpectrogramRef.current) {
       console.log("Skipping view update - not ready or missing data");
       return;
     }
-
-    console.log("Updating view bounds:", {
-      currentTimeRange,
-      currentFrequencyRange,
-    });
     updateGeometryView();
   }, [currentTimeRange, currentFrequencyRange, xSize, ySize, isReady]);
 
@@ -154,12 +135,6 @@ export const useSpectrogramGeometry = ({
       },
     };
   };
-
-  console.log("Hook state:", {
-    isReady,
-    hasGeometry: !!geometryRef.current,
-    hasData: !!fullSpectrogramRef.current,
-  });
 
   return {
     geometry: geometryRef.current,
