@@ -197,7 +197,6 @@ export const createSpectrogramGeometry = ({
     nyquist,
     xSize,
     ySize,
-    currentTimeRange,
     currentFrequencyRange,
     frequencySamples,
     timeSamples

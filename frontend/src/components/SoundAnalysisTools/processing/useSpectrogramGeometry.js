@@ -61,7 +61,6 @@ export const useSpectrogramGeometry = ({
           nyquist,
           xSize,
           ySize,
-          currentTimeRange: [0, fullDuration],
           currentFrequencyRange: [0, nyquist],
           frequencySamples,
           timeSamples,
