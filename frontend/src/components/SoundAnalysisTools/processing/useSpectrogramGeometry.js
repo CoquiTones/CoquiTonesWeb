@@ -47,7 +47,6 @@ export const useSpectrogramGeometry = ({
         );
 
         if (isCancelled) {
-          console.log("Processing cancelled");
           return;
         }
 
@@ -66,7 +65,6 @@ export const useSpectrogramGeometry = ({
           timeSamples,
         });
 
-        console.log("Geometry created successfully");
         geometryRef.current = geometry;
         setIsReady(true);
       } catch (err) {
@@ -113,12 +111,7 @@ export const useSpectrogramGeometry = ({
     const timeOffset = (currentTimeRange[0] / duration - 0.5) * 2; // Normalize to [-1, 1]
     const freqOffset = (currentFrequencyRange[0] / nyquist - 0.5) * 2; // Normalize to [-1, 1]
 
-    console.log("View update params:", {
-      timeScale,
-      freqScale,
-      timeOffset,
-      freqOffset,
-    });
+
 
     // Update geometry attributes for view bounds
     geometryRef.current.userData = {
