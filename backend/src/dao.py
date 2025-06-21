@@ -6,6 +6,8 @@ from datetime import datetime
 from fastapi import HTTPException
 from time import time
 
+from itertools import starmap
+
 node_type = str
 
 
@@ -257,6 +259,7 @@ class Dashboard:
     """Collection of queries for dashboard endpoints"""
     @staticmethod
     def week_species_summary(db: connection) -> dict[str, list]:
+        """Returns time series with sums of classifier hits of each species from all nodes, binned into days"""
         with db.cursor() as curs:
             try:
                 curs.execute(
@@ -271,10 +274,124 @@ class Dashboard:
                         from classifierreport natural inner join timestampindex
                         where ttime > (CURRENT_TIMESTAMP - interval '7 days')
                         group by "bin" 
+                        order by "bin"
                         """
                     )
                 )
-                db_output = curs.collect_all()
+                db_output = curs.fetchall()
+                column_transposed = list(map(list, zip(*db_output)))
+                return {
+                    "total_coqui_antillensis": column_transposed[0],
+                    "total_common_coqui": column_transposed[1],
+                    "total_coqui_e_monensis": column_transposed[2],
+                    "total_samples": column_transposed[3],
+                    "total_no_hit": column_transposed[4],
+                    "date_bin": column_transposed[5]
+                }
             except psycopg2.Error as e:
                 print("Error executing SQL query:", e)
                 raise HTTPException(status_code=500, detail="Database error")
+
+
+    
+    @staticmethod
+    def node_health_check(db: connection) -> list:
+        """Returns the time of the last message from each node along with the type of node"""
+        @dataclass
+
+        class NodeReport:
+            """Node health report query object"""
+            latest_time: datetime
+            ndescription: str
+            ntype: str
+        with db.cursor() as curs:
+            try:
+                curs.execute(sql.SQL(
+                    """
+                    SELECT latest_time, n.ndescription, n.ntype FROM  (
+                        SELECT max(ttime) as latest_time, nid FROM timestampindex
+                        GROUP by  nid
+                    )
+                    NATURAL INNER JOIN node n
+                    ORDER by n.ntype 
+                    """
+                ))
+
+                return list(starmap(NodeReport, curs.fetchall()))
+                
+            except psycopg2.Error as e:
+                print("Error executing SQL query:", e)
+                raise HTTPException(status_code=500, detail="Database error")
+       
+        
+    @staticmethod
+    def recent_reports(
+        low_temp: float, high_temp: float,
+        low_humidity: float, high_humidity: float,
+        low_pressure: float, high_pressure: float,
+        low_coqui_common: int, high_coqui_common: int,
+        low_coqui_e_monensis: int, high_coqui_e_monensis: int,
+        low_coqui_antillensis: int, high_coqui_antillensis: int,
+        description_filter: str,
+        skip: int, limit: int,
+        db: connection) -> list:
+
+        @dataclass
+        class ReportTableEntry:
+            ndescription: str
+            ttime: datetime
+            crcoqui_common: int
+            crcoqui_e_monensis: int
+            crcoqui_antillensis: int
+            wdhumidity: float
+            wdtemperature: float
+            wdpressure: float
+            wddid_rain: bool
+            afid: int # Front end should generate URL to audio file by using get audio file endpoint
+        
+        with db.cursor() as curs:
+            try:
+                curs.execute(
+                    sql.SQL(
+                        """
+                        SELECT n.ndescription, t.ttime, c.crcoqui_common, c.crcoqui_e_monensis, c.crcoqui_antillensis, w.wdhumidity, w.wdtemperature, w.wdpressure, w.wddid_rain, a.afid
+                        FROM timestampindex t NATURAL INNER JOIN classifierreport c NATURAL INNER JOIN weatherdata w NATURAL INNER JOIN audiofile a NATURAL INNER JOIN node n
+                        WHERE 
+                        %(lowhum)s <= w.wdhumidity and w.wdhumidity <= %(highhum)s and
+                        %(lowtemp)s <= w.wdtemperature and w.wdtemperature <= %(hightemp)s and
+                        %(lowpress)s <= w.wdpressure and w.wdpressure <= %(highpress)s and
+                        %(lowcommon)s <= c.crcoqui_common and c.crcoqui_common <= %(highcommon)s and
+                        %(lowmonensis)s <= c.crcoqui_e_monensis and c.crcoqui_e_monensis <= %(highmonensis)s and
+                        %(lowantillensis)s <= c.crcoqui_antillensis and c.crcoqui_antillensis <= %(highantillensis)s and
+                        n.ndescription LIKE %(descriptionfilter)s
+                        ORDER BY t.ttime
+                        OFFSET %(offset)s
+                        LIMIT %(limit)s
+                        """
+                    ),
+                    {
+                        'lowhum': low_humidity,
+                        'highhum': high_humidity,
+                        'lowtemp': low_temp,
+                        'hightemp': high_temp,
+                        'lowpress': low_pressure,
+                        'highpress': high_pressure,
+                        'lowcommon': low_coqui_common,
+                        'highcommon': high_coqui_common,
+                        'lowmonensis': low_coqui_e_monensis,
+                        'highmonensis': high_coqui_e_monensis,
+                        'lowantillensis': low_coqui_antillensis,
+                        'highantillensis': high_coqui_antillensis,
+                        'descriptionfilter': description_filter,
+                        'offset': skip,
+                        'limit': limit
+                    }
+                )
+
+                return list(starmap(ReportTableEntry, curs.fetchall()))
+
+            except psycopg2.Error as e:
+                print("Error executing SQL query:", e)
+                raise HTTPException(status_code=500, detail="Database error")
+
+
