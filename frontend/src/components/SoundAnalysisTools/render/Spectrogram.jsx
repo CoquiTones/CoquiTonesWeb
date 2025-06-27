@@ -95,8 +95,8 @@ const Spectrogram = ({
         )}
 
         <OrbitControls
-          enableZoom={true}
-          enablePan={true}
+          enableZoom={false}
+          enablePan={false}
           enableRotate={false}
         />
       </Canvas>
