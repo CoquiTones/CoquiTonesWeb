@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { ThemeProvider } from "@mui/material/styles";
 import { Button } from "@mui/material";
-import theme from "../shared/Theme";
+import theme from "../../shared/Theme";
 
 export default function SoundPlayer({
   file,
