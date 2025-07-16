@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from fastapi import HTTPException
 from time import time
+from dbutil import default_HTTP_exception
 
 from itertools import starmap
 
@@ -26,7 +27,7 @@ class DAO:
                 )
             except psycopg2.Error as e:
                 print("Error executing SQL query:", e)
-                raise HTTPException(status_code=500, detail="Database error")
+                raise default_HTTP_exception(e.pgcode, "get all query")
 
             # Unpack the tuples into constructor
             return [cls(*row) for row in curs.fetchall()]
@@ -47,7 +48,7 @@ class DAO:
                 )
             except psycopg2.Error as e:
                 print("Error executing SQL query:", e)
-                raise HTTPException(status_code=500, detail="Database error")
+                raise default_HTTP_exception(e.pgcode, "get query")
 
             # Unpack the tuple into constructor
             return cls(*curs.fetchone())
@@ -80,7 +81,7 @@ class DAO:
                 )
             except psycopg2.Error as e:
                 print("Error executing SQL query:", e)
-                raise HTTPException(status_code=500, detail="Database error")
+                raise default_HTTP_exception(e.pgcode, "delete query")
 
             # Unpack the tuple into constructor
 
@@ -127,7 +128,7 @@ class Node(DAO):
                 return cls(nid, ntype, nlatitude, nlongitude, ndescription)
             except psycopg2.Error as e:
                 print("Error executing SQL query:", e)
-                raise HTTPException(status_code=500, detail="Database error")
+                raise default_HTTP_exception(e.pgcode, "insert node query")
 
 
 @dataclass
@@ -161,7 +162,7 @@ class TimestampIndex(DAO):
                 return tid
             except psycopg2.Error as e:
                 print("Error executing SQL query:", e)
-                raise HTTPException(status_code=500, detail="Database error")
+                raise default_HTTP_exception(e.pgcode, "insert timestamp query")
 
 
 @dataclass
@@ -226,7 +227,7 @@ class AudioFile(DAO):
                 )
             except psycopg2.Error as e:
                 print("Error executing SQL query:", e)
-                raise HTTPException(status_code=500, detail="Database error")
+                raise default_HTTP_exception(e.pgcode, "get audio file query")
 
             # Not pulling the audio data.
             return [cls(row[0], row[1], None) for row in curs.fetchall()]
@@ -253,7 +254,7 @@ class AudioFile(DAO):
                 return str(afid)
             except psycopg2.Error as e:
                 print("Error executing SQL query:", e)
-                raise HTTPException(status_code=500, detail="Database error")
+                raise default_HTTP_exception(e.pgcode, "insert audio file query")
 
 class Dashboard:
     """Collection of queries for dashboard endpoints"""
@@ -290,7 +291,7 @@ class Dashboard:
                 }
             except psycopg2.Error as e:
                 print("Error executing SQL query:", e)
-                raise HTTPException(status_code=500, detail="Database error")
+                raise default_HTTP_exception(e.pgcode, "dashboard species weekly summary query")
 
 
     
@@ -321,7 +322,7 @@ class Dashboard:
                 
             except psycopg2.Error as e:
                 print("Error executing SQL query:", e)
-                raise HTTPException(status_code=500, detail="Database error")
+                raise default_HTTP_exception(e.pgcode, "dashboard node health check query")
        
         
     @staticmethod
@@ -392,6 +393,6 @@ class Dashboard:
 
             except psycopg2.Error as e:
                 print("Error executing SQL query:", e)
-                raise HTTPException(status_code=500, detail="Database error")
+                raise default_HTTP_exception(e.pgcode, "dashboard recent reports query")
 
 

@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import PropTypes from "prop-types";
 
 import Typography from "@mui/material/Typography";
@@ -7,10 +7,9 @@ import InputLabel from "@mui/material/InputLabel";
 import MenuItem from "@mui/material/MenuItem";
 import FormControl from "@mui/material/FormControl";
 import Select from "@mui/material/Select";
-import FileUpload from "../shared/FileUpload";
-import Box from "@mui/material/Box"; // Import Box component
+import Box from "@mui/material/Box";
 
-import StyledSlider from "../shared/StyledSlider";
+import StyledSlider from "../../shared/StyledSlider";
 
 function ValueLabelComponent(props) {
   const { children, value } = props;
@@ -39,20 +38,32 @@ export default function SpectrogramControls({
   defaultX,
   defaultY,
 }) {
-  const handleXRangeChange = (newValue) => {
+  // Local states to track slider during drag
+  const [tempX, setTempX] = useState(xrange);
+  const [tempY, setTempY] = useState(yrange);
+
+  const handleXSliderChange = (event, newValue) => {
+    setTempX(newValue);
+  };
+
+  const handleXSliderCommit = (event, newValue) => {
     setXrange(newValue);
   };
 
-  const handleYRangeChange = (newValue) => {
+  const handleYSliderChange = (event, newValue) => {
+    setTempY(newValue);
+  };
+
+  const handleYSliderCommit = (event, newValue) => {
     setYrange(newValue);
   };
 
   return (
     <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
       <FormControl fullWidth>
-        <InputLabel id="demo-simple-select-label">Chart Type</InputLabel>
+        <InputLabel id="chart-type-label">Chart Type</InputLabel>
         <Select
-          defaultValue={"basic-spectrogram"}
+          labelId="chart-type-label"
           value={type}
           label="Chart Type"
           onChange={(event) => setType(event.target.value)}
@@ -69,11 +80,10 @@ export default function SpectrogramControls({
           <MenuItem value={"basic-spectrogram"}>Basic Spectrogram</MenuItem>
         </Select>
       </FormControl>
-
       <FormControl fullWidth>
-        <InputLabel id="demo-simple-select-label">Color Scale</InputLabel>
+        <InputLabel id="colorscale-label">Color Scale</InputLabel>
         <Select
-          defaultValue={"Jet"}
+          labelId="colorscale-label"
           value={colorscale}
           label="Color Scale"
           onChange={(event) => setColorscale(event.target.value)}
@@ -87,42 +97,43 @@ export default function SpectrogramControls({
           }}
         >
           <MenuItem value={"RdBu"}>RedBlue</MenuItem>
-          <MenuItem value={"Portland"}> Portland</MenuItem>
+          <MenuItem value={"Portland"}>Portland</MenuItem>
           <MenuItem value={"Picnic"}>Picnic</MenuItem>
-          <MenuItem value={"jet"}> Jet</MenuItem>
+          <MenuItem value={"jet"}>Jet</MenuItem>
           <MenuItem value={"hot"}>Hot</MenuItem>
-          <MenuItem value={"Greys"}> Greyscale</MenuItem>
+          <MenuItem value={"Greys"}>Greyscale</MenuItem>
           <MenuItem value={"Electric"}>Electric</MenuItem>
-          <MenuItem value={"Bluered"}> BlueRed</MenuItem>
+          <MenuItem value={"Bluered"}>BlueRed</MenuItem>
           <MenuItem value={"Blackbody"}>BlackBody</MenuItem>
         </Select>
       </FormControl>
-
       <Typography gutterBottom>Time (s) Range</Typography>
       <Box sx={{ display: "flex", alignItems: "center" }}>
         <StyledSlider
           sx={{ marginTop: 4, flexGrow: 1 }}
-          defaultValue={defaultX}
-          value={xrange.map((val) => val.toFixed(1))}
-          onChange={(event, newValue) => handleXRangeChange(newValue)}
+          value={tempX}
+          onChange={handleXSliderChange}
+          onChangeCommitted={handleXSliderCommit}
           valueLabelDisplay="on"
           min={defaultX[0]}
           max={defaultX[1]}
+          step={0.1}
         />
       </Box>
-
       <Typography gutterBottom>Frequency (Hz) Range</Typography>
       <Box sx={{ display: "flex", alignItems: "center" }}>
         <StyledSlider
           sx={{ marginTop: 4, flexGrow: 1 }}
-          defaultValue={defaultY}
-          value={yrange.map((val) => val.toFixed(0))}
-          onChange={(event, newValue) => handleYRangeChange(newValue)}
+          value={tempY}
+          onChange={handleYSliderChange}
+          onChangeCommitted={handleYSliderCommit}
           valueLabelDisplay="on"
           min={defaultY[0]}
           max={defaultY[1]}
+          step={1}
         />
       </Box>
+      x
     </Box>
   );
 }

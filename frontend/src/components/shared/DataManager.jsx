@@ -19,7 +19,12 @@ import DialogTitle from "@mui/material/DialogTitle";
  *
  *
  */
-const DataManager = ({ audioFile, setAudioFile }) => {
+const DataManager = ({
+  audioFile,
+  setAudioFile,
+  setDefaultX,
+  setDefaaultY,
+}) => {
   const [stats, setStats] = useState({
     duration: 0,
     sampleRate: 22000,
@@ -49,6 +54,7 @@ const DataManager = ({ audioFile, setAudioFile }) => {
           const bitrate = duration ? (size * 8) / duration : 0;
           const codec = audioFile.name.split(".").pop();
 
+          setDefaultX([0, duration.toFixed(1)]);
           setStats({
             duration,
             sampleRate,

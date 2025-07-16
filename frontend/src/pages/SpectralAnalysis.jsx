@@ -3,60 +3,33 @@ import { ThemeProvider } from "@mui/material/styles";
 import CssBaseline from "@mui/material/CssBaseline";
 import Box from "@mui/material/Box";
 import Container from "@mui/material/Container";
-import Grid from "@mui/material/Grid2";
+import Grid from "@mui/material/Grid";
 import Paper from "@mui/material/Paper";
 
 import Sidebar from "../components/shared/Sidebar";
 import theme from "../components/shared/Theme";
 import DataManager from "../components/shared/DataManager";
-import SoundPlayer from "../components/SoundAnalysisTools/SoundPlayer";
-import SpectrogramVisualizer from "../components/SoundAnalysisTools/Spectrogram";
-import SpectrogramControls from "../components/SoundAnalysisTools/SpectrogramControls";
+import SoundPlayer from "../components/SoundAnalysisTools/render/SoundPlayer";
+import SpectrogramVisualizer from "../components/SoundAnalysisTools/render/Spectrogram";
+import SpectrogramControls from "../components/SoundAnalysisTools/render/SpectrogramControls";
 import Navbar from "../components/shared/Navbar";
-import Footer from "../components/shared/Footer";
-import HeroSectionSpectralAnalysis from "../components/shared/HeroSectionSpectralAnalysis";
 
 const SpectralAnalysis = () => {
   const [isOpen, setIsOpen] = useState(false);
-  const toggle = () => {
-    setIsOpen(!isOpen);
-  };
+  const toggle = () => setIsOpen(!isOpen);
 
   const [rawAudioFile, setRawAudioFile] = useState(null);
-  const updateRawAudioFile = (newAudioFile) => {
-    setRawAudioFile(newAudioFile);
-  };
-
   const [currentTime, setCurrentTime] = useState(0);
-  const updateTime = (newTime) => {
-    setCurrentTime(newTime);
-  };
   const [type, setType] = useState("mel-spectrogram");
-  const updateType = (newType) => {
-    setType(newType);
-  };
   const [colorscale, setColorscale] = useState("jet");
-  const updateColorscale = (newColor) => {
-    setColorscale(newColor);
-  };
   const [xrange, setXrange] = useState([0, 15]);
-  const updateXrange = (newXrange) => {
-    setXrange(newXrange);
-  };
-  const [yrange, setYrange] = useState([0, 10000]);
-
-  const updateYrange = (newYrange) => {
-    setYrange(newYrange);
-  };
-
-  const [defaultX, setDefaultX] = useState([0, 60]);
+  const [yrange, setYrange] = useState([0, 20000]);
+  const [defaultX, setDefaultX] = useState([0, 120]);
   const [defaultY, setDefaultY] = useState([0, 10000]);
-
   return (
     <ThemeProvider theme={theme}>
       <Sidebar isOpen={isOpen} toggle={toggle} />
       <Navbar toggle={toggle} />
-      {/* <HeroSectionSpectralAnalysis /> */}
       <Box sx={{ display: "flex" }}>
         <CssBaseline />
         <Box
@@ -68,49 +41,70 @@ const SpectralAnalysis = () => {
                 : theme.palette.grey[900],
             flexGrow: 1,
             height: "100vh",
+            width: "100vw",
             overflow: "auto",
           }}
         >
-          <Container sx={{ mt: 10, mb: 10 }}>
+          <Container
+            maxWidth={false}
+            disableGutters
+            sx={{ mt: 10, mb: 10, px: 2 }}
+          >
             <Grid container spacing={3}>
-              <Grid size={{ xs: 12, md: 12, lg: 12 }}>
-                <Paper>
+              {/* Data Manager */}
+              <Grid item xs={12}>
+                <Paper sx={{ width: "100%", p: 2 }}>
                   <DataManager
                     audioFile={rawAudioFile}
                     setAudioFile={setRawAudioFile}
+                    setDefaultX={setDefaultX}
+                    setDefaultY={setDefaultY}
                   />
                 </Paper>
+              </Grid>
+
+              {/* Spectrogram */}
+              <Grid item xs={12}>
                 <Paper
                   elevation={4}
-                  sx={{ p: 2, height: "60vh", width: "60vw" }}
+                  sx={{ p: 2, width: "100%", height: "80vh" }}
                 >
                   <SpectrogramVisualizer
                     audioFile={rawAudioFile}
                     colorscale={colorscale}
-                    xrange={xrange}
+                    currentTimeRange={xrange}
+                    currentFrequencyRange={yrange}
+                    setDefaultX={setDefaultX}
+                    setDefaultY={setDefaultY}
                   />
                 </Paper>
-                <Paper elevation={4} sx={{ p: 2, height: "auto", mt: 2 }}>
+              </Grid>
+
+              {/* Controls */}
+              <Grid item xs={12}>
+                <Paper elevation={4} sx={{ p: 2, width: "100%" }}>
                   <SpectrogramControls
-                    setAudioFile={updateRawAudioFile}
+                    setAudioFile={setRawAudioFile}
                     type={type}
-                    setType={updateType}
+                    setType={setType}
                     colorscale={colorscale}
-                    setColorscale={updateColorscale}
+                    setColorscale={setColorscale}
                     xrange={xrange}
-                    setXrange={updateXrange}
+                    setXrange={setXrange}
                     yrange={yrange}
-                    setYrange={updateYrange}
+                    setYrange={setYrange}
                     defaultX={defaultX}
                     defaultY={defaultY}
                   />
                 </Paper>
               </Grid>
-              <Grid sx={{ p: 2 }}>
-                <Paper elevation={4}>
+
+              {/* Audio Player */}
+              <Grid item xs={12}>
+                <Paper elevation={4} sx={{ p: 2, width: "100%" }}>
                   <SoundPlayer
                     file={rawAudioFile}
-                    setCurrentTime={updateTime}
+                    setCurrentTime={setCurrentTime}
                     yrange={yrange}
                     xrange={xrange}
                     currentTime={currentTime}
