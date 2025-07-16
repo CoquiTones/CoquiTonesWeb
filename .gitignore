@@ -21,3 +21,5 @@ ML/RAW.csv
 .envrc
 *.nix
 .direnv/
+machine_learning/processed/processed.csv
+machine_learning/.ipynb_checkpoints/train_model-checkpoint.ipynb
