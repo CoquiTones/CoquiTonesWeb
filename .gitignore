@@ -15,8 +15,8 @@ frontend/dist/
 frontend/node_modules/
 
 # Data
-ML/RAW.csv
-
+machine_learning/dataset
+machine_learning/processed
 # NixOS
 .envrc
 *.nix
