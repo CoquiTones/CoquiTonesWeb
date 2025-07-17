@@ -5,17 +5,19 @@ import concurrent.futures
 import itertools
 from fastapi import HTTPException
 
-species_schema = ('E. coqui - co, E. coqui - qui',
-                  'E. coqui - co, E. coqui - qui, E. gryllus, E. locustus',
-                  'E. coqui - co, E. coqui - qui, E. gryllus, E. portoricensis - co, E. portoricensis - qui, E. unicolor',
-                  'E. coqui - co, E. coqui - qui, E. hedricki',
-                  'E. coqui - co, E. coqui - qui, E. hedricki, E. portoricensis - co, E. portoricensis - qui',
-                  'E. coqui - co, E. coqui - qui, E. hedricki, E. portoricensis - co, E. portoricensis - qui, E. unicolor',
-                  'E. coqui - co, E. coqui - qui, E. portoricensis - co, E. portoricensis - qui, E. richmondi',
-                  'E. coqui - co, E. coqui - qui, E. portoricensis - co, E. portoricensis - qui, E. unicolor',
-                  'E. coqui - co, E. coqui - qui, E. richmondi',
-                  'E. coqui - co, E. coqui - qui, E. richmondi, E. wightmanae',
-                  'E. coqui - co, E. coqui - qui, E. wightmanae')
+species_schema = (
+    "E. coqui - co, E. coqui - qui",
+    "E. coqui - co, E. coqui - qui, E. gryllus, E. locustus",
+    "E. coqui - co, E. coqui - qui, E. gryllus, E. portoricensis - co, E. portoricensis - qui, E. unicolor",
+    "E. coqui - co, E. coqui - qui, E. hedricki",
+    "E. coqui - co, E. coqui - qui, E. hedricki, E. portoricensis - co, E. portoricensis - qui",
+    "E. coqui - co, E. coqui - qui, E. hedricki, E. portoricensis - co, E. portoricensis - qui, E. unicolor",
+    "E. coqui - co, E. coqui - qui, E. portoricensis - co, E. portoricensis - qui, E. richmondi",
+    "E. coqui - co, E. coqui - qui, E. portoricensis - co, E. portoricensis - qui, E. unicolor",
+    "E. coqui - co, E. coqui - qui, E. richmondi",
+    "E. coqui - co, E. coqui - qui, E. richmondi, E. wightmanae",
+    "E. coqui - co, E. coqui - qui, E. wightmanae",
+)
 
 SAMPLES_PER_SLICE = 22050 * 5  # 22050Hz sample rate * 5 seconds per slice
 
@@ -81,7 +83,7 @@ def extract_features_samples(audio, sr):
 
 
 def initialize_predictor():
-    with open("Backend/trainedRF.pkl", 'rb') as f:
+    with open("backend/trainedRF.pkl", "rb") as f:
         return pickle.load(f)
 
 
@@ -90,8 +92,7 @@ def classify_slice(slice: np.array, model):
     # hard coded sample rate because that's what the model is trained on
     spectrogram = extract_features_samples(slice, 22050)
     if spectrogram.shape[0] < 161:
-        spectrogram = np.pad(
-            spectrogram, (0, 161 - spectrogram.shape[0]), 'edge')
+        spectrogram = np.pad(spectrogram, (0, 161 - spectrogram.shape[0]), "edge")
     else:
         spectrogram = spectrogram[0:161]
 
@@ -101,14 +102,14 @@ def classify_slice(slice: np.array, model):
 
 def classify_audio_file(f, model):
     all_samples, sr = librosa.load(f)
-    assert (sr == 22050)
+    assert sr == 22050
     n_slices = all_samples.shape[0] // SAMPLES_PER_SLICE
     slices = np.reshape(
-        all_samples[0:SAMPLES_PER_SLICE * n_slices], (n_slices, SAMPLES_PER_SLICE))
+        all_samples[0 : SAMPLES_PER_SLICE * n_slices], (n_slices, SAMPLES_PER_SLICE)
+    )
 
     with concurrent.futures.ThreadPoolExecutor() as executor:
-        prob_matrix = executor.map(
-            classify_slice, slices, itertools.repeat(model))
+        prob_matrix = executor.map(classify_slice, slices, itertools.repeat(model))
 
     return {"data": list(prob_matrix), "species_schema": species_schema}
 
@@ -119,6 +120,5 @@ def classify_audio_file(f, model):
 def get_model():
     predictor = initialize_predictor()
     if predictor is None:
-        raise HTTPException(
-            status_code=500, detail="ML model error")
+        raise HTTPException(status_code=500, detail="ML model error")
     yield predictor
