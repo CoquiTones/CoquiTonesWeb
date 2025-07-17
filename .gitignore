@@ -16,10 +16,10 @@ frontend/node_modules/
 
 # Data
 ML/RAW.csv
+machine_learning/processed/processed.csv
+machine_learning/.ipynb_checkpoints/
 
 # NixOS
 .envrc
 *.nix
 .direnv/
-machine_learning/processed/processed.csv
-machine_learning/.ipynb_checkpoints/train_model-checkpoint.ipynb
