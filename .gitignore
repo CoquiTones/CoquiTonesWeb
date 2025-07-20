@@ -16,6 +16,9 @@ frontend/node_modules/
 
 # Data
 ML/RAW.csv
+machine_learning/processed/processed.csv
+.ipynb_checkpoints/*
+machine_learning/.ipynb_checkpoints/*
 
 # NixOS
 .envrc
