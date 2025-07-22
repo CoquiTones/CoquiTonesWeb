@@ -32,8 +32,8 @@ CREATE TABLE audiofile (
 CREATE TABLE audioslice (
     asid        SERIAL PRIMARY KEY,
     afid        INTEGER REFERENCES timestampindex,
-    starttime   INTERVAL
-    endtime     INTERVAL
+    starttime   INTERVAL,
+    endtime     INTERVAL,
     coqui       bool,
     wightmanae  bool,
     gryllus     bool,
@@ -42,7 +42,7 @@ CREATE TABLE audioslice (
     hedricki    bool,
     locustus    bool,
     richmondi   bool
-)
+);
 
 CREATE TABLE weatherdata (
     wdid            SERIAL PRIMARY KEY,
