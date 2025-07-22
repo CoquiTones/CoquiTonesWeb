@@ -5,16 +5,15 @@ import concurrent.futures
 import itertools
 from fastapi import HTTPException
 
-species_schema = ('E. coqui - co',
-    'E. coqui - qui',
+species_schema = (
     'E. wightmanae',
-    'E. gryllus',
-    'E. portoricensis - co',
-    'E. portoricensis - qui',
+    'E. gryllus'
     'E. unicolor',
     'E. hedricki',
     'E. locustus',
-    'E. richmondi'
+    'E. richmondi',
+    'E. coqui',
+    'E. portoricensis'
 )
 SLICE_SECONDS = 10 # Length of input slices for model.
 FFT_HOP_LENGTH = 512 # How many time domain samples per spectrogram frame
