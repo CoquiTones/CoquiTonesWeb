@@ -5,112 +5,71 @@ import concurrent.futures
 import itertools
 from fastapi import HTTPException
 
-species_schema = ('E. coqui - co, E. coqui - qui',
-                  'E. coqui - co, E. coqui - qui, E. gryllus, E. locustus',
-                  'E. coqui - co, E. coqui - qui, E. gryllus, E. portoricensis - co, E. portoricensis - qui, E. unicolor',
-                  'E. coqui - co, E. coqui - qui, E. hedricki',
-                  'E. coqui - co, E. coqui - qui, E. hedricki, E. portoricensis - co, E. portoricensis - qui',
-                  'E. coqui - co, E. coqui - qui, E. hedricki, E. portoricensis - co, E. portoricensis - qui, E. unicolor',
-                  'E. coqui - co, E. coqui - qui, E. portoricensis - co, E. portoricensis - qui, E. richmondi',
-                  'E. coqui - co, E. coqui - qui, E. portoricensis - co, E. portoricensis - qui, E. unicolor',
-                  'E. coqui - co, E. coqui - qui, E. richmondi',
-                  'E. coqui - co, E. coqui - qui, E. richmondi, E. wightmanae',
-                  'E. coqui - co, E. coqui - qui, E. wightmanae')
-
-SAMPLES_PER_SLICE = 22050 * 5  # 22050Hz sample rate * 5 seconds per slice
+species_schema = ('E. coqui - co',
+    'E. coqui - qui',
+    'E. wightmanae',
+    'E. gryllus',
+    'E. portoricensis - co',
+    'E. portoricensis - qui',
+    'E. unicolor',
+    'E. hedricki',
+    'E. locustus',
+    'E. richmondi'
+)
+SLICE_SECONDS = 10 # Length of input slices for model.
+FFT_HOP_LENGTH = 512 # How many time domain samples per spectrogram frame
+SAMPLE_RATE = 22050
+Y_RESOLUTION = 20
+slice_width = SAMPLE_RATE // FFT_HOP_LENGTH * SLICE_SECONDS
+n_model_input_parameters = SAMPLE_RATE // FFT_HOP_LENGTH * SLICE_SECONDS * Y_RESOLUTION
 
 # TODO standardize and import this version in train_model notebook
 
 
-def extract_features(file):
+def extract_features(file_path, resample_to=SAMPLE_RATE):
     """
-    Extract features from audio file using librosa.
+    Extract spectrogram from audio file using librosa. Resamples to a standardized sample rate.
 
     Args:
-        file: file object.
+        file_path (str): Path to the audio file.
+        resample_to (int): Sample rate to resample to. Defaults to SAMPLE_RATE
 
     Returns:
         np.array: Extracted features.
     """
-    audio, sr = librosa.load(file)
-    result = np.array([])
+    audio, sr = librosa.load(file_path)
 
     # MFCC
-    mfccs = np.mean(librosa.feature.mfcc(y=audio, sr=sr).T, axis=0)
-    result = np.hstack((result, mfccs))
-
-    # Chroma
-    stft = np.abs(librosa.stft(audio))
-    chroma = np.mean(librosa.feature.chroma_stft(S=stft, sr=sr).T, axis=0)
-    result = np.hstack((result, chroma))
-
-    # Mel-scaled spectrogram
-    mel = np.mean(librosa.feature.melspectrogram(y=audio, sr=sr).T, axis=0)
-    result = np.hstack((result, mel))
-
-    return result
-
-
-def extract_features_samples(audio, sr):
-    """
-    Extract features from audio samples.
-
-    Args:
-        audio: np.array containing audio samples.
-        sr: sample rate
-
-    Returns:
-        np.array: Extracted features.
-    """
-    result = np.array([])
-
-    # MFCC
-    mfccs = np.mean(librosa.feature.mfcc(y=audio, sr=sr).T, axis=0)
-    result = np.hstack((result, mfccs))
-
-    # Chroma
-    stft = np.abs(librosa.stft(audio))
-    chroma = np.mean(librosa.feature.chroma_stft(S=stft, sr=sr).T, axis=0)
-    result = np.hstack((result, chroma))
-
-    # Mel-scaled spectrogram
-    mel = np.mean(librosa.feature.melspectrogram(y=audio, sr=sr).T, axis=0)
-    result = np.hstack((result, mel))
-
-    return result
+    spectrogram = librosa.feature.mfcc(y=audio, sr=sr, hop_length = FFT_HOP_LENGTH)
+    return librosa.resample(y=spectrogram, orig_sr=sr, target_sr=resample_to)
 
 
 def initialize_predictor():
-    with open("Backend/trainedRF.pkl", 'rb') as f:
+    with open("backend/trainedRF.pkl", 'rb') as f:
         return pickle.load(f)
 
-
-def classify_slice(slice: np.array, model):
-    global species_schema
-    # hard coded sample rate because that's what the model is trained on
-    spectrogram = extract_features_samples(slice, 22050)
-    if spectrogram.shape[0] < 161:
-        spectrogram = np.pad(
-            spectrogram, (0, 161 - spectrogram.shape[0]), 'edge')
-    else:
-        spectrogram = spectrogram[0:161]
-
-    results = model.predict_proba(spectrogram.reshape(-1, 161))
-    return results.tolist()[0]
-
+def classify_slice(spectrogram, model):
+    return model.predict(spectrogram.reshape(1, -1))
 
 def classify_audio_file(f, model):
-    all_samples, sr = librosa.load(f)
-    assert (sr == 22050)
-    n_slices = all_samples.shape[0] // SAMPLES_PER_SLICE
+    all_samples = extract_features(f)
+    n_slices = all_samples.shape[1] // slice_width
     slices = np.reshape(
-        all_samples[0:SAMPLES_PER_SLICE * n_slices], (n_slices, SAMPLES_PER_SLICE))
+        all_samples[:, 0: slice_width * n_slices], (n_slices, 20, slice_width))
 
     with concurrent.futures.ThreadPoolExecutor() as executor:
         prob_matrix = executor.map(
             classify_slice, slices, itertools.repeat(model))
 
-    return {"data": list(prob_matrix), "species_schema": species_schema}
+    return {
+        f"slice{i}": {
+            species_name: bool(prediction) for species_name, prediction in zip(species_schema, slice_classification[0])
+        } | {
+            "start_time": start_time,
+            "end_time": start_time + SLICE_SECONDS
+        }
+        for i, (slice_classification, start_time) in enumerate(zip(prob_matrix, itertools.count(0, SLICE_SECONDS)))
+    }
 
 
 # Injectable dependency
