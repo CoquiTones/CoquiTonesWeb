@@ -21,15 +21,6 @@ CREATE TABLE timestampindex (
     ttime       TIMESTAMP NOT NULL
 );
 
-CREATE TABLE classifierreport (
-    crid                SERIAL PRIMARY KEY,
-    tid                 INTEGER REFERENCES timestampindex,
-    crsamples           INTEGER NOT NULL,
-    crcoqui_common      INTEGER NOT NULL,
-    crcoqui_e_monensis  INTEGER NOT NULL,
-    crcoqui_antillensis INTEGER NOT NULL,
-    crno_hit            INTEGER NOT NULL
-);
 
 CREATE TABLE audiofile (
     afid        SERIAL PRIMARY KEY,
@@ -37,6 +28,21 @@ CREATE TABLE audiofile (
     nid         INTEGER REFERENCES node,
     data        bytea NOT NULL
 );
+
+CREATE TABLE audioslice (
+    asid        SERIAL PRIMARY KEY,
+    afid        INTEGER REFERENCES timestampindex,
+    starttime   INTERVAL
+    endtime     INTERVAL
+    coqui       bool,
+    wightmanae  bool,
+    gryllus     bool,
+    portoricensis   bool,
+    unicolor    bool,
+    hedricki    bool,
+    locustus    bool,
+    richmondi   bool
+)
 
 CREATE TABLE weatherdata (
     wdid            SERIAL PRIMARY KEY,
