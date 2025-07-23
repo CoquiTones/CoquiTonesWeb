@@ -357,7 +357,8 @@ class Dashboard:
         low_locustus:       int, high_locustus:         int,
         low_richmondi:      int, high_richmondi:        int,        
         description_filter: str,
-        skip: int, limit: int,
+        skip: int, limit: int, 
+        orderby: int,
         db: connection) -> list:
 
         @dataclass
@@ -422,7 +423,28 @@ class Dashboard:
                         %(lowlocustus)s <= c.locustus_hits AND c.locustus_hits <= %(highlocustus)s AND
                         %(lowrichmondi)s <= c.richmondi_hits AND c.richmondi_hits <= %(highrichmondi)s AND
                         n.ndescription LIKE %(descriptionfilter)s
-                        ORDER BY t.ttime
+                        ORDER BY 
+                            CASE %(orderby)s
+                                WHEN 1 THEN t.ttime
+                                ELSE NULL
+                            END,
+                            CASE %(orderby)s
+                                WHEN 2 THEN c.coqui_hits
+                                WHEN 3 THEN c.wightmanae_hits
+                                WHEN 4 THEN c.gryllus_hits
+                                WHEN 5 THEN c.portoricensis_hits
+                                WHEN 6 THEN c.unicolor_hits
+                                WHEN 7 THEN c.hedricki_hits
+                                WHEN 8 THEN c.locustus_hits
+                                WHEN 9 THEN c.richmondi_hits
+                                ELSE NULL
+                            END,
+                            CASE %(orderby)s
+                                WHEN 10 THEN w.wdhumidity
+                                WHEN 11 THEN w.wdtemperature
+                                WHEN 12 THEN w.wdpressure
+                                ELSE NULL
+                            END
                         OFFSET %(offset)s
                         LIMIT %(limit)s
                         """
@@ -452,7 +474,8 @@ class Dashboard:
                         'highrichmondi': high_richmondi,
                         'descriptionfilter': description_filter,
                         'offset': skip,
-                        'limit': limit
+                        'limit': limit,
+                        'orderby': orderby,
                     }
                 )
 

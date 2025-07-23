@@ -164,9 +164,9 @@ async def recent_reports(
     low_locustus:       int = 0, high_locustus:         int = 1 << 31 - 1,
     low_richmondi:      int = 0, high_richmondi:        int = 1 << 31 - 1,   
     description_filter: str = '%',
-    skip: int = 0, limit: int = 10,
-     db=Depends(get_db_connection)):
-    # TODO #34 parametric order by, desc/asc
+    skip: int = 0, limit: int = 10, 
+    orderby: int = 1, # This could be changed to an enum, but passing through the query might be weird.
+    db=Depends(get_db_connection)):
     return dao.Dashboard.recent_reports(**locals()) # pass all keyword args as unpacked dictionary
 
 @app.get("/{full_path:path}", response_class=HTMLResponse)
