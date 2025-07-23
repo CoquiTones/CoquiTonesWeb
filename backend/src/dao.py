@@ -264,28 +264,48 @@ class Dashboard:
                 curs.execute(
                     sql.SQL(
                         """
-                        select sum(crcoqui_antillensis) as total_coqui_antillensis, 
-                            sum(crcoqui_common) as total_common_coqui,
-                            sum(crcoqui_e_monensis) as total_coqui_e_monensis, 
-                            sum(crsamples) as total_samples, 
-                            sum(crno_hit) as total_no_hit, 
-                            date_bin('1 day', ttime at local, CURRENT_TIMESTAMP) as bin
-                        from classifierreport natural inner join timestampindex
-                        where ttime > (CURRENT_TIMESTAMP - interval '7 days')
-                        group by "bin" 
-                        order by "bin"
+                        WITH classifierreport AS (
+                            SELECT afid, 
+                                SUM(coqui::int) AS coqui_hits,
+                                SUM(wightmanae::int) AS wightmanae_hits,
+                                SUM(gryllus::int) AS gryllus_hits,
+                                SUM(portoricensis::int) AS portoricensis_hits,
+                                SUM(unicolor::int) AS unicolor_hits,
+                                SUM(hedricki::int) AS hedricki_hits,
+                                SUM(locustus::int) AS locustus_hits,
+                                SUM(richmondi::int) AS richmondi_hits
+                            FROM audioslice a  
+                            GROUP BY afid 
+                        ) 
+                        SELECT 
+                            sum(coqui_hits) AS total_coqui,
+                            sum(wightmanae_hits) AS total_wightmanae,
+                            sum(gryllus_hits) AS total_gryllus,
+                            sum(portoricensis_hits) AS total_portoricensis,
+                            sum(unicolor_hits) AS total_unicolor,
+                            sum(hedricki_hits) AS total_hedricki,
+                            sum(locustus_hits) AS total_locustus,
+                            sum(richmondi_hits) AS total_richmondi, 
+                            date_bin('1 day', ttime AT LOCAL, CURRENT_TIMESTAMP) as bin
+                        FROM classifierreport NATURAL INNER JOIN timestampindex
+                        WHERE ttime > (CURRENT_TIMESTAMP - '7 days'::INTERVAL)
+                        GROUP BY "bin" 
+                        ORDER BY "bin"
                         """
                     )
                 )
                 db_output = curs.fetchall()
                 column_transposed = list(map(list, zip(*db_output)))
                 return {
-                    "total_coqui_antillensis": column_transposed[0],
-                    "total_common_coqui": column_transposed[1],
-                    "total_coqui_e_monensis": column_transposed[2],
-                    "total_samples": column_transposed[3],
-                    "total_no_hit": column_transposed[4],
-                    "date_bin": column_transposed[5]
+                    "total_coqui": column_transposed[0],
+                    "total_wightmanae": column_transposed[1],
+                    "total_gryllus": column_transposed[2],
+                    "total_portoricensis": column_transposed[3],
+                    "total_unicolor": column_transposed[4],
+                    "total_hedricki": column_transposed[5],
+                    "total_locustus": column_transposed[6],
+                    "total_richmondi": column_transposed[7],
+                    "date_bin": column_transposed[8]
                 }
             except psycopg2.Error as e:
                 print("Error executing SQL query:", e)
