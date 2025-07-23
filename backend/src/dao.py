@@ -166,26 +166,24 @@ class TimestampIndex(DAO):
 
 
 @dataclass
-class ClassifierReport(DAO):
-    """Classifier report DAO"""
+class AudioSlice(DAO):
+    """Audio slice DAO"""
 
-    crid: int
-    tid: int
-    crsamples: int
-    crcoqui: int
-    crantillensis: int
-    crcochranae: int
-    cre_monensis: int
-    crgryllus: int
-    crhedricki: int
-    crlocustus: int
-    crportoricensis: int
-    crrichmondi: int
-    crwightmanae: int
-    crno_hit: int
+    asid: int
+    afid: int
+    starttime: datetime
+    endtime: datetime
+    coqui: bool
+    wightmanae: bool
+    gryllus: bool
+    portoricensis: bool
+    unicolor: bool
+    hedricki: bool
+    locustus: bool
+    richmondi: bool
 
-    table = "classifierreport"
-    id_column = "crid"
+    table = "audioslice"
+    id_column = "asid"
 
 
 @dataclass
@@ -330,40 +328,79 @@ class Dashboard:
         low_temp: float, high_temp: float,
         low_humidity: float, high_humidity: float,
         low_pressure: float, high_pressure: float,
-        low_coqui_common: int, high_coqui_common: int,
-        low_coqui_e_monensis: int, high_coqui_e_monensis: int,
-        low_coqui_antillensis: int, high_coqui_antillensis: int,
+        low_coqui:          int, high_coqui:            int,
+        low_wightmanae:     int, high_wightmanae:       int,
+        low_gryllus:        int, high_gryllus:          int,
+        low_portoricensis:  int, high_portoricensis:    int,
+        low_unicolor:       int, high_unicolor:         int,
+        low_hedricki:       int, high_hedricki:         int,
+        low_locustus:       int, high_locustus:         int,
+        low_richmondi:      int, high_richmondi:        int,        
         description_filter: str,
         skip: int, limit: int,
         db: connection) -> list:
 
         @dataclass
         class ReportTableEntry:
-            ndescription: str
-            ttime: datetime
-            crcoqui_common: int
-            crcoqui_e_monensis: int
-            crcoqui_antillensis: int
-            wdhumidity: float
-            wdtemperature: float
-            wdpressure: float
-            wddid_rain: bool
-            afid: int # Front end should generate URL to audio file by using get audio file endpoint
+            ndescription:   str
+            ttime:          datetime
+            coqui:          int
+            wightmanae:     int
+            gryllus:        int
+            portoricensis:  int
+            unicolor:       int
+            hedricki:       int
+            locustus:       int
+            richmondi:      int
+            wdhumidity:     float
+            wdtemperature:  float
+            wdpressure:     float
+            wddid_rain:     bool
+            afid:           int # Front end should generate URL to audio file by using get audio file endpoint
         
         with db.cursor() as curs:
             try:
                 curs.execute(
                     sql.SQL(
                         """
-                        SELECT n.ndescription, t.ttime, c.crcoqui_common, c.crcoqui_e_monensis, c.crcoqui_antillensis, w.wdhumidity, w.wdtemperature, w.wdpressure, w.wddid_rain, a.afid
-                        FROM timestampindex t NATURAL INNER JOIN classifierreport c NATURAL INNER JOIN weatherdata w NATURAL INNER JOIN audiofile a NATURAL INNER JOIN node n
+                        WITH cr AS (
+                            SELECT afid, 
+                                SUM(coqui::int) AS coqui_hits,
+                                SUM(wightmanae::int) AS wightmanae_hits,
+                                SUM(gryllus::int) AS gryllus_hits,
+                                SUM(portoricensis::int) AS portoricensis_hits,
+                                SUM(unicolor::int) AS unicolor_hits,
+                                SUM(hedricki::int) AS hedricki_hits,
+                                SUM(locustus::int) AS locustus_hits,
+                                SUM(richmondi::int) AS richmondi_hits
+                            FROM audioslice a  
+                            GROUP BY afid 
+                        )
+                        SELECT n.ndescription,
+                                t.ttime, 
+                                c.coqui_hits, 
+                                c.wightmanae_hits, 
+                                c.gryllus_hits, 
+                                c.portoricensis_hits, 
+                                c.unicolor_hits, 
+                                c.hedricki_hits, 
+                                c.locustus_hits, 
+                                c.richmondi_hits, 
+                                w.wdhumidity, w.wdtemperature, w.wdpressure, w.wddid_rain, 
+                                a.afid
+                        FROM timestampindex t NATURAL INNER JOIN cr c NATURAL INNER JOIN weatherdata w NATURAL INNER JOIN audiofile a NATURAL INNER JOIN node n
                         WHERE 
-                        %(lowhum)s <= w.wdhumidity and w.wdhumidity <= %(highhum)s and
-                        %(lowtemp)s <= w.wdtemperature and w.wdtemperature <= %(hightemp)s and
-                        %(lowpress)s <= w.wdpressure and w.wdpressure <= %(highpress)s and
-                        %(lowcommon)s <= c.crcoqui_common and c.crcoqui_common <= %(highcommon)s and
-                        %(lowmonensis)s <= c.crcoqui_e_monensis and c.crcoqui_e_monensis <= %(highmonensis)s and
-                        %(lowantillensis)s <= c.crcoqui_antillensis and c.crcoqui_antillensis <= %(highantillensis)s and
+                        %(lowhum)s <= w.wdhumidity AND w.wdhumidity <= %(highhum)s AND 
+                        %(lowtemp)s <= w.wdtemperature AND w.wdtemperature <= %(hightemp)s AND 
+                        %(lowpress)s <= w.wdpressure AND w.wdpressure <= %(highpress)s AND 
+                        %(lowcoqui)s <= c.coqui_hits AND c.coqui_hits <= %(highcoqui)s and
+                        %(lowwightmanae)s <= c.wightmanae_hits AND c.wightmanae_hits <= %(highwightmanae)s AND
+                        %(lowgryllus)s <= c.gryllus_hits AND c.gryllus_hits <= %(highgryllus)s AND
+                        %(lowportoricensis)s <= c.portoricensis_hits AND c.portoricensis_hits <= %(highportoricensis)s AND
+                        %(lowunicolor)s <= c.unicolor_hits AND c.unicolor_hits <= %(highunicolor)s AND
+                        %(lowhedricki)s <= c.hedricki_hits AND c.hedricki_hits <= %(highhedricki)s AND
+                        %(lowlocustus)s <= c.locustus_hits AND c.locustus_hits <= %(highlocustus)s AND
+                        %(lowrichmondi)s <= c.richmondi_hits AND c.richmondi_hits <= %(highrichmondi)s AND
                         n.ndescription LIKE %(descriptionfilter)s
                         ORDER BY t.ttime
                         OFFSET %(offset)s
@@ -377,12 +414,22 @@ class Dashboard:
                         'hightemp': high_temp,
                         'lowpress': low_pressure,
                         'highpress': high_pressure,
-                        'lowcommon': low_coqui_common,
-                        'highcommon': high_coqui_common,
-                        'lowmonensis': low_coqui_e_monensis,
-                        'highmonensis': high_coqui_e_monensis,
-                        'lowantillensis': low_coqui_antillensis,
-                        'highantillensis': high_coqui_antillensis,
+                        'lowcoqui': low_coqui,
+                        'highcoqui': high_coqui,
+                        'lowwightmanae': low_wightmanae,
+                        'highwightmanae': high_wightmanae,
+                        'lowgryllus': low_gryllus,
+                        'highgryllus': high_gryllus,
+                        'lowportoricensis': low_portoricensis,
+                        'highportoricensis': high_portoricensis,
+                        'lowunicolor': low_unicolor,
+                        'highunicolor': high_unicolor,
+                        'lowhedricki': low_hedricki,
+                        'highhedricki': high_hedricki,
+                        'lowlocustus': low_locustus,
+                        'highlocustus': high_locustus,
+                        'lowrichmondi': low_richmondi,
+                        'highrichmondi': high_richmondi,
                         'descriptionfilter': description_filter,
                         'offset': skip,
                         'limit': limit

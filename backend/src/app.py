@@ -155,9 +155,14 @@ async def recent_reports(
     low_temp: float = float('-inf'), high_temp: float = float('inf'),
     low_humidity: float = float('-inf'), high_humidity: float = float('inf'),
     low_pressure: float = float('-inf'), high_pressure: float = float('inf'),
-    low_coqui_common: int = 0, high_coqui_common: int = 1 << 31 - 1, # int max for PostgresSQL integer data type
-    low_coqui_e_monensis: int = 0, high_coqui_e_monensis: int = 1 << 31 - 1,
-    low_coqui_antillensis: int = 0, high_coqui_antillensis: int = 1 << 31 - 1,
+    low_coqui:          int = 0, high_coqui:            int = 1 << 31 - 1, # int max for PostgresSQL integer data type
+    low_wightmanae:     int = 0, high_wightmanae:       int = 1 << 31 - 1,
+    low_gryllus:        int = 0, high_gryllus:          int = 1 << 31 - 1,
+    low_portoricensis:  int = 0, high_portoricensis:    int = 1 << 31 - 1,
+    low_unicolor:       int = 0, high_unicolor:         int = 1 << 31 - 1,
+    low_hedricki:       int = 0, high_hedricki:         int = 1 << 31 - 1,
+    low_locustus:       int = 0, high_locustus:         int = 1 << 31 - 1,
+    low_richmondi:      int = 0, high_richmondi:        int = 1 << 31 - 1,   
     description_filter: str = '%',
     skip: int = 0, limit: int = 10,
      db=Depends(get_db_connection)):
