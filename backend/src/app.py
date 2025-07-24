@@ -9,6 +9,10 @@ import json
 import psycopg2
 import dao as dao
 import os
+import io
+import asyncio
+
+from datetime import datetime, timedelta
 
 
 app = FastAPI()
@@ -91,20 +95,41 @@ async def audio_get(afid: int, db=Depends(get_db_connection)):
 
     return Response(content=data, media_type="audio/mpeg")
 
+@app.get("/api/audioslices/all")
+async def audio_all(db=Depends(get_db_connection)):
+    return dao.AudioSlice.get_all(db)
+
+
+@app.get(path="/api/audioslices/{asid}")
+async def audio_get(asid: int, db=Depends(get_db_connection)):
+    return dao.AudioSlice.get(asid, db)
 
 @app.post(path="/api/audio/insert", response_class=Response)
 async def audio_post(
-    nid: Annotated[str, Form()],
-    timestamp: Annotated[str, Form()],
+    nid: Annotated[int, Form()],
+    timestamp: Annotated[datetime, Form()],
     file: UploadFile = File(...),
     db=Depends(get_db_connection),
+    model=Depends(get_model)
 ):
-    print(nid)
-    print(timestamp)
     print(file.filename)
-    audio_file_id = dao.AudioFile.insert(db, file, nid, timestamp)
+    audio_file_id = await dao.AudioFile.insert(db, file, nid, timestamp)
     print("audio file id: ", audio_file_id)
-    return await audio_file_id
+
+    # Classify file
+    file.file.seek(0)
+    classifier_output = classify_audio_file(file.file, model)
+    slice_insert_tasks = []
+    for classified_slice_name, classified_slice in classifier_output.items():
+        classified_slice['starttime'] = classified_slice.pop('start_time')
+        classified_slice['endtime'] = classified_slice.pop('end_time')
+        slice_insert_tasks.append(asyncio.create_task(dao.AudioSlice.insert(db, audio_file_id, **classified_slice), name=classified_slice_name))
+
+    done, pending = await asyncio.wait(slice_insert_tasks)
+
+    print(done)
+    db.commit()
+    return audio_file_id
 
 
 @app.post(path="/api/mel-spectrogram/", response_class=Response)

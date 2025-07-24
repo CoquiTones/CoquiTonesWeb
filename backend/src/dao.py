@@ -2,7 +2,7 @@ import psycopg2
 from psycopg2 import sql
 from psycopg2.extensions import connection
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timedelta
 from fastapi import HTTPException
 from time import time
 from dbutil import default_HTTP_exception
@@ -142,7 +142,7 @@ class TimestampIndex(DAO):
     table = "timestampindex"
     id_column = "tid"
 
-    async def insert(cls, db: connection, nid: str, timestamp: str):
+    async def insert(cls, db: connection, nid: str, timestamp: datetime):
 
         with db.cursor() as curs:
             try:
@@ -171,8 +171,8 @@ class AudioSlice(DAO):
 
     asid: int
     afid: int
-    starttime: datetime
-    endtime: datetime
+    starttime: timedelta
+    endtime: timedelta
     coqui: bool
     wightmanae: bool
     gryllus: bool
@@ -184,6 +184,34 @@ class AudioSlice(DAO):
 
     table = "audioslice"
     id_column = "asid"
+
+    @classmethod
+    async def insert(cls, db: connection, 
+        afid: int, 
+        starttime: timedelta, 
+        endtime: timedelta, 
+        coqui: bool, 
+        wightmanae: bool, 
+        gryllus: bool, 
+        portoricensis: bool, 
+        unicolor: bool, 
+        hedricki: bool,
+        locustus: bool,
+        richmondi: bool
+        ):
+        with db.cursor() as curs:
+            try:
+                curs.execute(
+                    sql.SQL("""
+                        INSERT INTO audioslice (afid, starttime, endtime, coqui, wightmanae, gryllus, portoricensis, unicolor, hedricki, locustus, richmondi)
+                        VALUES (%(afid)s, %(starttime)s, %(endtime)s, %(coqui)s, %(wightmanae)s, %(gryllus)s, %(portoricensis)s, %(unicolor)s, %(hedricki)s, %(locustus)s, %(richmondi)s)
+                        RETURNING asid
+                    """), locals()
+                    )
+                return curs.fetchone()
+            except psycopg2.Error as e:
+                print("Error executing SQL query:", e)
+                raise default_HTTP_exception(e.pgcode, "inser audio slice query")   
 
 
 @dataclass
@@ -231,7 +259,7 @@ class AudioFile(DAO):
             return [cls(row[0], row[1], None) for row in curs.fetchall()]
 
     @classmethod
-    async def insert(cls, db: connection, file, nid: str, timestamp: str):
+    async def insert(cls, db: connection, file, nid: str, timestamp: datetime):
 
         with db.cursor() as curs:
             try:
