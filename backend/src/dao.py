@@ -149,10 +149,10 @@ class TimestampIndex(DAO):
                 curs.execute(
                     sql.SQL(
                         """
-                            INSERT INTO {} (nid, ttime)
-                            VALUES (%s, %s)
-                            RETURNING tid
-                            """
+                        INSERT INTO {} (nid, ttime)
+                        VALUES (%s, %s)
+                        RETURNING tid
+                        """
                     ).format(sql.Identifier(cls.table)),
                     (nid, timestamp),
                 )
@@ -213,6 +213,18 @@ class AudioSlice(DAO):
                 print("Error executing SQL query:", e)
                 raise default_HTTP_exception(e.pgcode, "inser audio slice query")   
 
+    @classmethod
+    async def get_classified(cls, afid: int, db: connection):
+        with db.cursor() as curs:
+            curs.execute(sql.SQL(
+                """
+                SELECT * FROM audioslice a 
+                WHERE a.afid = %s
+                """
+            ),
+            (afid,)
+            )
+            return list(starmap(cls, curs.fetchall()))
 
 @dataclass
 class WeatherData(DAO):
@@ -281,6 +293,27 @@ class AudioFile(DAO):
             except psycopg2.Error as e:
                 print("Error executing SQL query:", e)
                 raise default_HTTP_exception(e.pgcode, "insert audio file query")
+
+    @classmethod
+    async def is_classified(cls, afid: int, db:connection):
+        try:
+            with db.cursor() as curs:
+                curs.execute(sql.SQL(
+                    """
+                    SELECT EXISTS (
+                        SELECT asid 
+                        FROM audioslice 
+                        WHERE afid = %s
+                        )
+                """
+                ),
+                (afid,)
+                )
+                return curs.fetchone()
+        except psycopg2.Error as e:
+            print("Error executing SQL query:", e)
+            raise default_HTTP_exception(e.pgcode, "verify file is classified query")            
+
 
 class Dashboard:
     """Collection of queries for dashboard endpoints"""

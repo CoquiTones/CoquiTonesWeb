@@ -104,21 +104,8 @@ async def audio_all(db=Depends(get_db_connection)):
 async def audio_get(asid: int, db=Depends(get_db_connection)):
     return dao.AudioSlice.get(asid, db)
 
-@app.post(path="/api/audio/insert", response_class=Response)
-async def audio_post(
-    nid: Annotated[int, Form()],
-    timestamp: Annotated[datetime, Form()],
-    file: UploadFile = File(...),
-    db=Depends(get_db_connection),
-    model=Depends(get_model)
-):
-    print(file.filename)
-    audio_file_id = await dao.AudioFile.insert(db, file, nid, timestamp)
-    print("audio file id: ", audio_file_id)
-
-    # Classify file
-    file.file.seek(0)
-    classifier_output = classify_audio_file(file.file, model)
+async def classify_and_save(audio, audio_file_id, db, model):
+    classifier_output = classify_audio_file(audio, model)
     slice_insert_tasks = []
     for classified_slice_name, classified_slice in classifier_output.items():
         classified_slice['starttime'] = classified_slice.pop('start_time')
@@ -127,9 +114,41 @@ async def audio_post(
 
     done, pending = await asyncio.wait(slice_insert_tasks)
 
-    print(done)
     db.commit()
+    return done
+
+
+@app.post(path="/api/audio/insert", response_class=Response)
+async def audio_post(
+    nid: Annotated[int, Form()],
+    timestamp: Annotated[datetime, Form()],
+    file: UploadFile = File(...),
+    classify: Annotated[bool, Form()] = True,
+    db=Depends(get_db_connection),
+    model=Depends(get_model)
+):
+    audio_file_id = await dao.AudioFile.insert(db, file, nid, timestamp)
+
+    if classify:
+        file.file.seek(0)
+        await classify_and_save(file.file, audio_file_id, db, model)
+
     return audio_file_id
+
+@app.get(path="/api/classify/by-id/{afid}")
+async def classify_by_afid(
+    afid: int,
+    override: Annotated[bool, Form()] = False,
+    db=Depends(get_db_connection),
+    model=Depends(get_model)
+):
+
+
+    if override or await dao.AudioFile.is_classified(afid, db):
+        audio = dao.AudioFile.get(afid, db)
+        await classify_and_save(io.BytesIO(audio.data), afid, db, model)
+    
+    return await dao.AudioSlice.get_classified(afid, db)
 
 
 @app.post(path="/api/mel-spectrogram/", response_class=Response)
