@@ -295,7 +295,7 @@ class AudioFile(DAO):
                 raise default_HTTP_exception(e.pgcode, "insert audio file query")
 
     @classmethod
-    async def is_classified(cls, afid: int, db:connection):
+    async def is_classified(cls, afid: int, db: connection):
         try:
             with db.cursor() as curs:
                 curs.execute(sql.SQL(
@@ -309,10 +309,30 @@ class AudioFile(DAO):
                 ),
                 (afid,)
                 )
-                return curs.fetchone()
+                return curs.fetchone()[0]
         except psycopg2.Error as e:
             print("Error executing SQL query:", e)
             raise default_HTTP_exception(e.pgcode, "verify file is classified query")            
+    
+    @classmethod
+    async def exists(cls, afid: int, db: connection):
+        try:
+            with db.cursor() as curs:
+                curs.execute(sql.SQL(
+                    """
+                    SELECT EXISTS (
+                        SELECT afid 
+                        FROM audiofile 
+                        WHERE afid = %s
+                        )
+                """
+                ),
+                (afid,)
+                )
+                return curs.fetchone()[0]
+        except psycopg2.Error as e:
+            print("Error executing SQL query:", e)
+            raise default_HTTP_exception(e.pgcode, "verify file exists query")           
 
 
 class Dashboard:

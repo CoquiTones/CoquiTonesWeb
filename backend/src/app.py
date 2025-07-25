@@ -143,7 +143,9 @@ async def classify_by_afid(
     model=Depends(get_model)
 ):
 
-
+    if not await dao.AudioFile.exists(afid, db):
+        raise HTTPException(status_code=404, detail="Audio file does not exist")
+        
     if override or await dao.AudioFile.is_classified(afid, db):
         audio = dao.AudioFile.get(afid, db)
         await classify_and_save(io.BytesIO(audio.data), afid, db, model)
