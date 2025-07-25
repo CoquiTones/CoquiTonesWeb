@@ -3,7 +3,7 @@ DROP TABLE IF EXISTS node CASCADE;
 DROP TABLE IF EXISTS timestampindex CASCADE;
 DROP TABLE IF EXISTS audiofile CASCADE;
 DROP TABLE IF EXISTS weatherdata CASCADE;
-DROP TABLE IF EXISTS classifierreport CASCADE;
+DROP TABLE IF EXISTS audioslice CASCADE;
 
 CREATE TYPE node_type AS ENUM ('primary', 'secondary');
 
@@ -25,7 +25,6 @@ CREATE TABLE timestampindex (
 CREATE TABLE audiofile (
     afid        SERIAL PRIMARY KEY,
     tid         INTEGER REFERENCES  timestampindex,
-    nid         INTEGER REFERENCES node,
     data        bytea NOT NULL
 );
 
