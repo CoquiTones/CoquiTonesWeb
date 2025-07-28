@@ -12,7 +12,6 @@ services:
     command: uvicorn --app-dir backend/src app:app --reload --host 0.0.0.0 --port 8080
     environment:
       - DATABASE_URL=postgresql://postgres:secrettest@database:5432/postgres
-    network_mode: host
 
   frontend:
     build:
