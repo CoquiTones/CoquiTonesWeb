@@ -31,7 +31,7 @@ class NodeCRUDTest(unittest.TestCase):
 
         res: dict = response.json()
 
-        self.assertTrue(type(res) is dict, 'returns dict')
+        self.assertIsInstance(res, dict, 'returns dict')
         self.assertEqual(res['nid'], self.nid)
         self.assertEqual(res['ntype'], 'primary')
         self.assertEqual(res['ndescription'], 'hospital')
@@ -41,10 +41,11 @@ class NodeCRUDTest(unittest.TestCase):
     def test_get_all(self):
         url = host_url + f'api/node/all'
         response = requests.get(url)
+        self.assertEqual(response.status_code, 200, 'response OK')
         
         res: list[dict] = response.json()
 
-        self.assertTrue(type(res) is list, 'returns list')
+        self.assertIsInstance(res, list, 'returns list')
         self.assertIn('nid', res[0].keys(), 'objects have nid')
 
 class TimeStampCRUDTest(unittest.TestCase):
@@ -69,13 +70,17 @@ class TimeStampCRUDTest(unittest.TestCase):
         pass # no deletion methods yet
         # TODO: delete operation for timestamp and audio
     
-    def test_timestamp_get_all(self):
+    def test_get_all(self):
         url = host_url + 'api/timestamp/all'
 
         response = requests.get(url)
+        self.assertEqual(response.status_code, 200, 'response OK')
         res = response.json()
         self.assertIsInstance(res, list, 'returns list')
         self.assertIs(type(res[0]['tid']), int, 'dicts have tid')
+
+    def test_get(self):
+        pass
 
 class AudioSlicesCRUDTest(unittest.TestCase):
 
@@ -98,13 +103,17 @@ class AudioSlicesCRUDTest(unittest.TestCase):
         pass # no deletion methods yet
         # TODO: delete operation for audioslices and audio
     
-    def test_audioslices_get_all(self):
+    def test_get_all(self):
         url = host_url + 'api/audioslices/all'
 
         response = requests.get(url)
+        self.assertEqual(response.status_code, 200, 'response OK')
         res = response.json()
         self.assertIsInstance(res, list, 'returns list')
         self.assertIs(type(res[0]['asid']), int, 'dicts have asid')
+
+    def test_get(self):
+        pass
 
 class AudioCRUDTest(unittest.TestCase):
 
@@ -126,13 +135,21 @@ class AudioCRUDTest(unittest.TestCase):
         pass # no deletion methods yet
         # TODO: delete operation for audioslices and audio
     
-    def test_audiofile_get_all(self):
+    def test_get_all(self):
         url = host_url + 'api/audio/all'
 
         response = requests.get(url)
+        self.assertEqual(response.status_code, 200, 'response OK')
         res = response.json()
         self.assertIsInstance(res, list, 'returns list')
         self.assertIs(type(res[0]['afid']), int, 'dicts have afid')
+
+    def test_get(self):
+        url = host_url + f'api/audio/{self.afid}'
+        response = requests.get(url)
+        self.assertEqual(response.status_code, 200, 'response OK')
+        res = response.json()
+        self.assertDictContainsSubset({'nid': 1})
 
 if __name__ == '__main__':
     unittest.main()
