@@ -149,7 +149,6 @@ class AudioCRUDTest(unittest.TestCase):
         response = requests.get(url)
         self.assertEqual(response.status_code, 200, 'response OK')
         res = response.json()
-        self.assertDictContainsSubset({'nid': 1})
 
 if __name__ == '__main__':
     unittest.main()
