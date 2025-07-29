@@ -76,7 +76,63 @@ class TimeStampCRUDTest(unittest.TestCase):
         res = response.json()
         self.assertIsInstance(res, list, 'returns list')
         self.assertIs(type(res[0]['tid']), int, 'dicts have tid')
+
+class AudioSlicesCRUDTest(unittest.TestCase):
+
+    def setUp(self):
+        # There's no direct audio slice creation endpoint, must upload audio file instead
+        url = host_url + 'api/audio/insert'
+
+        with open("./backend/src/test_audio.wav", 'rb') as file:
+            files = {
+                'file': file
+            }
+            response = requests.post(url, files=files, data={
+                "nid": 1,
+                "timestamp": datetime.datetime.now(),
+            })
+            
+            self.afid = int(response.json())
         
+    def tearDown(self):
+        pass # no deletion methods yet
+        # TODO: delete operation for audioslices and audio
+    
+    def test_audioslices_get_all(self):
+        url = host_url + 'api/audioslices/all'
+
+        response = requests.get(url)
+        res = response.json()
+        self.assertIsInstance(res, list, 'returns list')
+        self.assertIs(type(res[0]['asid']), int, 'dicts have asid')
+
+class AudioCRUDTest(unittest.TestCase):
+
+    def setUp(self):
+        url = host_url + 'api/audio/insert'
+
+        with open("./backend/src/test_audio.wav", 'rb') as file:
+            files = {
+                'file': file
+            }
+            response = requests.post(url, files=files, data={
+                "nid": 1,
+                "timestamp": datetime.datetime.now(),
+            })
+            
+            self.afid = int(response.json())
+        
+    def tearDown(self):
+        pass # no deletion methods yet
+        # TODO: delete operation for audioslices and audio
+    
+    def test_audiofile_get_all(self):
+        url = host_url + 'api/audio/all'
+
+        response = requests.get(url)
+        res = response.json()
+        self.assertIsInstance(res, list, 'returns list')
+        self.assertIs(type(res[0]['afid']), int, 'dicts have afid')
 
 if __name__ == '__main__':
     unittest.main()
