@@ -1,5 +1,6 @@
 import unittest
 import requests
+import datetime
 
 host_url = 'http://localhost:8080/'
 
@@ -46,6 +47,35 @@ class NodeCRUDTest(unittest.TestCase):
         self.assertTrue(type(res) is list, 'returns list')
         self.assertIn('nid', res[0].keys(), 'objects have nid')
 
+class TimeStampCRUDTest(unittest.TestCase):
+
+    def setUp(self):
+        # There's no direct timestamp creation endpoint, must upload audio file instead
+        url = host_url + 'api/audio/insert'
+
+        with open("./backend/src/test_audio.wav", 'rb') as file:
+            files = {
+                'file': file
+            }
+            response = requests.post(url, files=files, data={
+                "nid": 1,
+                "timestamp": datetime.datetime.now(),
+                "classify": False
+            })
+            
+            self.afid = int(response.json())
+        
+    def tearDown(self):
+        pass # no deletion methods yet
+        # TODO: delete operation for timestamp and audio
+    
+    def test_timestamp_get_all(self):
+        url = host_url + 'api/timestamp/all'
+
+        response = requests.get(url)
+        res = response.json()
+        self.assertIsInstance(res, list, 'returns list')
+        self.assertIs(type(res[0]['tid']), int, 'dicts have tid')
         
 
 if __name__ == '__main__':
