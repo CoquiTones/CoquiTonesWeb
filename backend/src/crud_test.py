@@ -80,7 +80,21 @@ class TimeStampCRUDTest(unittest.TestCase):
         self.assertIs(type(res[0]['tid']), int, 'dicts have tid')
 
     def test_get(self):
-        pass
+        url = host_url + 'api/timestamp/all'
+
+        response = requests.get(url)
+        self.assertEqual(response.status_code, 200, 'response OK')
+        res = response.json()
+
+        tid = res[0]['tid']
+
+        url = host_url + f'api/timestamp/{tid}'
+
+        response = requests.get(url)
+        self.assertEqual(response.status_code, 200, 'response OK')
+        res = response.json()
+
+        self.assertIsInstance(res, dict)
 
 class AudioSlicesCRUDTest(unittest.TestCase):
 
@@ -113,7 +127,21 @@ class AudioSlicesCRUDTest(unittest.TestCase):
         self.assertIs(type(res[0]['asid']), int, 'dicts have asid')
 
     def test_get(self):
-        pass
+        url = host_url + 'api/audioslices/all'
+
+        response = requests.get(url)
+        self.assertEqual(response.status_code, 200, 'response OK')
+        res = response.json()
+
+        asid = res[0]['asid']
+
+        url = host_url + f'api/timestamp/{asid}'
+
+        response = requests.get(url)
+        self.assertEqual(response.status_code, 200, 'response OK')
+        res = response.json()
+
+        self.assertIsInstance(res, dict)
 
 class AudioCRUDTest(unittest.TestCase):
 
@@ -149,6 +177,35 @@ class AudioCRUDTest(unittest.TestCase):
         response = requests.get(url)
         self.assertEqual(response.status_code, 200, 'response OK')
         res = response.json()
+
+class WeatherDataCRUDTest(unittest.TestCase):
+
+    def test_get_all(self):
+        url = host_url + 'api/weather/all'
+
+        response = requests.get(url)
+        self.assertEqual(response.status_code, 200, 'response OK')
+        res = response.json()
+        self.assertIsInstance(res, list, 'returns list')
+        self.assertIsInstance(res[0]['wdid'], int, 'dicts have wid')
+
+    def test_get(self):
+        url = host_url + 'api/weather/all'
+
+        response = requests.get(url)
+        self.assertEqual(response.status_code, 200, 'response OK')
+        res = response.json()
+
+        wdid = res[0]['wdid']
+
+        url = host_url + f'api/weather/{wdid}'
+
+        response = requests.get(url)
+        self.assertEqual(response.status_code, 200, 'response OK')
+        res = response.json()
+
+        self.assertIsInstance(res, dict)
+
 
 if __name__ == '__main__':
     unittest.main()
