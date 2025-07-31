@@ -238,7 +238,7 @@ class WeatherData(DAO):
     wddid_rain: bool
 
     table = "weatherdata"
-    id_colummn = "wdid"
+    id_column = "wdid"
 
 
 @dataclass
