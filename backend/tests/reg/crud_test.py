@@ -54,7 +54,7 @@ class TimeStampCRUDTest(unittest.TestCase):
         # There's no direct timestamp creation endpoint, must upload audio file instead
         url = host_url + 'api/audio/insert'
 
-        with open("./backend/src/test_audio.wav", 'rb') as file:
+        with open("./backend/tests/reg/test_audio.wav", 'rb') as file:
             files = {
                 'file': file
             }
@@ -102,7 +102,7 @@ class AudioSlicesCRUDTest(unittest.TestCase):
         # There's no direct audio slice creation endpoint, must upload audio file instead
         url = host_url + 'api/audio/insert'
 
-        with open("./backend/src/test_audio.wav", 'rb') as file:
+        with open("./backend/tests/reg/test_audio.wav", 'rb') as file:
             files = {
                 'file': file
             }
@@ -148,7 +148,7 @@ class AudioCRUDTest(unittest.TestCase):
     def setUp(self):
         url = host_url + 'api/audio/insert'
 
-        with open("./backend/src/test_audio.wav", 'rb') as file:
+        with open("./backend/tests/reg/test_audio.wav", 'rb') as file:
             files = {
                 'file': file
             }

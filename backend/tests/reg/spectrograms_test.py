@@ -7,7 +7,7 @@ host_url = 'http://localhost:8080/'
 class SpectrogramTests(unittest.TestCase):
     def test_basic(self):
         url = host_url + 'api/basic-spectrogram/'
-        with open('backend/src/test_audio.wav', 'rb') as file:
+        with open('backend/tests/reg/test_audio.wav', 'rb') as file:
             files = {
                 'file': file
             }
@@ -20,7 +20,7 @@ class SpectrogramTests(unittest.TestCase):
 
     def test_mel(self):
         url = host_url + 'api/mel-spectrogram/'
-        with open('backend/src/test_audio.wav', 'rb') as file:
+        with open('backend/tests/reg/test_audio.wav', 'rb') as file:
             files = {
                 'file': file
             }

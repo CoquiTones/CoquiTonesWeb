@@ -5,7 +5,7 @@ import datetime
 class TestClassifyEndpoint(unittest.TestCase):
 
     def test_audio_insert(self):
-        with open("./backend/src/test_audio.wav", 'rb') as file:
+        with open("./backend/tests/reg/test_audio.wav", 'rb') as file:
             url = 'http://localhost:8080/api/audio/insert'
             files = {
                 'file': file
@@ -18,7 +18,7 @@ class TestClassifyEndpoint(unittest.TestCase):
             self.assertEqual(response.status_code, 200)
 
     def test_classify_no_override(self):
-        with open("./backend/src/test_audio.wav", 'rb') as file:
+        with open("./backend/tests/reg/test_audio.wav", 'rb') as file:
             url = 'http://localhost:8080/api/audio/insert'
             files = {
                 'file': file
@@ -37,7 +37,7 @@ class TestClassifyEndpoint(unittest.TestCase):
             self.assertEqual(response.status_code, 200)
     
     def test_classify_no_classify(self):
-        with open("./backend/src/test_audio.wav", 'rb') as file:
+        with open("./backend/tests/reg/test_audio.wav", 'rb') as file:
             url = 'http://localhost:8080/api/audio/insert'
             files = {
                 'file': file
@@ -57,7 +57,7 @@ class TestClassifyEndpoint(unittest.TestCase):
             self.assertEqual(response.status_code, 200)
     
     def test_classify_override(self):
-        with open("./backend/src/test_audio.wav", 'rb') as file:
+        with open("./backend/tests/reg/test_audio.wav", 'rb') as file:
             url = 'http://localhost:8080/api/audio/insert'
             files = {
                 'file': file
