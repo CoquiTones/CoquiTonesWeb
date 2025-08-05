@@ -3,17 +3,19 @@ import numpy as np
 import librosa
 import concurrent.futures
 import itertools
+import soundfile as sf
+from datetime import timedelta
 from fastapi import HTTPException
 
 species_schema = (
-    'E. wightmanae',
-    'E. gryllus'
-    'E. unicolor',
-    'E. hedricki',
-    'E. locustus',
-    'E. richmondi',
-    'E. coqui',
-    'E. portoricensis'
+    'coqui',
+    'wightmanae',
+    'gryllus',
+    'portoricensis',
+    'unicolor',
+    'hedricki',
+    'locustus',
+    'richmondi',
 )
 SLICE_SECONDS = 10 # Length of input slices for model.
 FFT_HOP_LENGTH = 512 # How many time domain samples per spectrogram frame
@@ -25,22 +27,23 @@ n_model_input_parameters = SAMPLE_RATE // FFT_HOP_LENGTH * SLICE_SECONDS * Y_RES
 # TODO standardize and import this version in train_model notebook
 
 
-def extract_features(file_path, resample_to=SAMPLE_RATE):
+def extract_features(audio_data, sr, resample_to=SAMPLE_RATE):
     """
     Extract spectrogram from audio file using librosa. Resamples to a standardized sample rate.
 
     Args:
-        file_path (str): Path to the audio file.
+        audio_data: Path to the audio file.
+        sr (int): audio_data's sample rate
         resample_to (int): Sample rate to resample to. Defaults to SAMPLE_RATE
 
     Returns:
         np.array: Extracted features.
     """
-    audio, sr = librosa.load(file_path)
-
+    if sr != resample_to:
+        audio_data = librosa.resample(y=audio_data, orig_sr=sr, target_sr=resample_to)
     # MFCC
-    spectrogram = librosa.feature.mfcc(y=audio, sr=sr, hop_length = FFT_HOP_LENGTH)
-    return librosa.resample(y=spectrogram, orig_sr=sr, target_sr=resample_to)
+    return librosa.feature.mfcc(y=audio_data, sr=SAMPLE_RATE, hop_length=FFT_HOP_LENGTH)
+
 
 
 def initialize_predictor():
@@ -51,7 +54,8 @@ def classify_slice(spectrogram, model):
     return model.predict(spectrogram.reshape(1, -1))
 
 def classify_audio_file(f, model):
-    all_samples = extract_features(f)
+    audio_data, sr = sf.read(f)
+    all_samples = extract_features(audio_data, sr)
     n_slices = all_samples.shape[1] // slice_width
     slices = np.reshape(
         all_samples[:, 0: slice_width * n_slices], (n_slices, 20, slice_width))
@@ -64,8 +68,8 @@ def classify_audio_file(f, model):
         f"slice{i}": {
             species_name: bool(prediction) for species_name, prediction in zip(species_schema, slice_classification[0])
         } | {
-            "start_time": start_time,
-            "end_time": start_time + SLICE_SECONDS
+            "start_time": timedelta(seconds=start_time),
+            "end_time": timedelta(seconds=start_time + SLICE_SECONDS)
         }
         for i, (slice_classification, start_time) in enumerate(zip(prob_matrix, itertools.count(0, SLICE_SECONDS)))
     }
