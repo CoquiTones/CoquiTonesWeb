@@ -82,7 +82,7 @@ async def audio_get(afid: int, db=Depends(get_db_connection)):
     audio_file = dao.AudioFile.get(afid, db)
     data = audio_file.data
 
-    return Response(content=data, media_type="audio/mpeg")
+    return Response(content=bytes(data), media_type="audio/mpeg")
 
 @app.get("/api/audioslices/all")
 async def audio_all(db=Depends(get_db_connection)):

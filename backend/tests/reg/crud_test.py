@@ -176,7 +176,6 @@ class AudioCRUDTest(unittest.TestCase):
         url = host_url + f'api/audio/{self.afid}'
         response = requests.get(url)
         self.assertEqual(response.status_code, 200, 'response OK')
-        res = response.json()
 
 class WeatherDataCRUDTest(unittest.TestCase):
 

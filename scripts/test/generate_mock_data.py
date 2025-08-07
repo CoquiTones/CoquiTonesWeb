@@ -6,11 +6,12 @@ import tempfile
 import os
 import datetime
 import psycopg2.extras
+import io
 
 """
 Python Program to populate existing database with mocked data
 """
-MAX_BATCH_SIZE = 1000
+MAX_BATCH_SIZE = 5
 
 
 def get_connection_from_development_config(config_file_path):
@@ -143,23 +144,25 @@ def populate_audio(connection, number_of_inserts):
     number_of_inserts_left = number_of_inserts
 
     with connection.cursor() as cursor:
-        for i in range(necessary_statements):
-            number_of_rows_to_insert = (
-                number_of_inserts_left
-                if (number_of_inserts_left < MAX_BATCH_SIZE)
-                else MAX_BATCH_SIZE
-            )
-            batch_values = [
-                (
-                    random_integer(1, number_of_inserts),
-                    random_binary_data(),
+        with open("backend/tests/reg/test_audio.wav", 'rb') as audio_file:
+            file_bytes = audio_file.read()
+            for i in range(necessary_statements):
+                number_of_rows_to_insert = (
+                    number_of_inserts_left
+                    if (number_of_inserts_left < MAX_BATCH_SIZE)
+                    else MAX_BATCH_SIZE
                 )
-                for i in range(number_of_rows_to_insert)
-            ]
-            psycopg2.extras.execute_batch(
-                cursor, prepared_statement, batch_values, page_size=MAX_BATCH_SIZE
-            )
-            number_of_inserts_left -= number_of_rows_to_insert
+                batch_values = [
+                    (
+                        random_integer(1, number_of_inserts),
+                        file_bytes,
+                    )
+                    for i in range(number_of_rows_to_insert)
+                ]
+                psycopg2.extras.execute_batch(
+                    cursor, prepared_statement, batch_values, page_size=MAX_BATCH_SIZE
+                )
+                number_of_inserts_left -= number_of_rows_to_insert
     
     for afid in range(1, number_of_inserts + 1):
         populate_audioslice(connection, afid, 6)
@@ -236,7 +239,7 @@ def main():
     config_file_path = "backend/src/testdbconfig.json"
     connection = get_connection_from_development_config(config_file_path)
     number_of_nodes = 5
-    number_of_records = 1_000
+    number_of_records = 100
     try:
         prepare_database(connection)
         populate_node(connection, number_of_nodes)
