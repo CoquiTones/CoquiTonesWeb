@@ -45,9 +45,9 @@ def prepare_database(connection):
     with connection.cursor() as cursor:
         cursor.execute("DELETE FROM weatherdata")
         cursor.execute("DELETE FROM audiofile")
+        cursor.execute("DELETE FROM audioslice")
         cursor.execute("DELETE FROM timestampindex")
         cursor.execute("DELETE FROM node")
-        cursor.execute("DELETE FROM audioslice")
         cursor.execute("ALTER SEQUENCE node_nid_seq RESTART WITH 1")
         cursor.execute("ALTER SEQUENCE timestampindex_tid_seq RESTART WITH 1")
         cursor.execute("ALTER SEQUENCE weatherdata_wdid_seq RESTART WITH 1")
@@ -136,9 +136,9 @@ def populate_timestamp(connection, number_of_inserts, number_of_nodes):
     connection.commit()
 
 
-def populate_audio(connection, number_of_nodes, number_of_inserts):
+def populate_audio(connection, number_of_inserts):
 
-    prepared_statement = "INSERT INTO audiofile (tid, nid, data) VALUES (%s, %s, %s)"
+    prepared_statement = "INSERT INTO audiofile (tid, data) VALUES (%s, %s)"
     necessary_statements = (number_of_inserts // MAX_BATCH_SIZE) + 1
     number_of_inserts_left = number_of_inserts
 
@@ -152,7 +152,6 @@ def populate_audio(connection, number_of_nodes, number_of_inserts):
             batch_values = [
                 (
                     random_integer(1, number_of_inserts),
-                    random_integer(1, number_of_nodes),
                     random_binary_data(),
                 )
                 for i in range(number_of_rows_to_insert)
@@ -242,7 +241,7 @@ def main():
         prepare_database(connection)
         populate_node(connection, number_of_nodes)
         populate_timestamp(connection, number_of_records, number_of_nodes)
-        populate_audio(connection, number_of_nodes, number_of_records)
+        populate_audio(connection, number_of_records)
         populate_weatherdata(connection, number_of_nodes, number_of_records)
 
     except psycopg2.Error as e:
