@@ -93,18 +93,23 @@ const AboutUsSection = () => {
                 <AboutUsCard>
                     <AboutUsPFP src={DiegoPFP} />
                     <AboutUsH2>Diego A. Santiago Uriarte</AboutUsH2>
-                    <AboutUsP>5th year Software Engineering Undergraduate interested in playing piano whenever possible</AboutUsP>
+                    <AboutUsP>Software Engineering Graduate</AboutUsP>
                 </AboutUsCard>
                 <AboutUsCard>
                     <AboutUsPFP src={EdwinPFP} />
                     <AboutUsH2>Edwin J. Camuy Medina</AboutUsH2>
-                    <AboutUsP>4th year Software Engineering Undergraduate interested in creating new unorthodox things</AboutUsP>
+                    <AboutUsP>Software Engineering Graduate</AboutUsP>
                 </AboutUsCard>
                 <AboutUsCard>
                     <AboutUsPFP src={RolandoPFP} />
                     <AboutUsH2>Rolando Ríos Bonilla</AboutUsH2>
-                    <AboutUsP>6th year Computer Science & Engineering student interested in anything sports-related and music</AboutUsP>
+                    <AboutUsP>Computer Science and Engineering Graduate</AboutUsP>
                 </AboutUsCard>
+                {/* <AboutUsCard>
+                    <AboutUsPFP src={RolandoPFP} />
+                    <AboutUsH2>Rolando Ríos Bonilla</AboutUsH2>
+                    <AboutUsP>Computer Science and Engineering Graduate</AboutUsP>
+                </AboutUsCard> */}
             </AboutUsWrapper>
         </AboutUsContainer>
     )

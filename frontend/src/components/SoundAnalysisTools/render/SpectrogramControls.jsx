@@ -67,6 +67,14 @@ export default function SpectrogramControls({
           value={type}
           label="Chart Type"
           onChange={(event) => setType(event.target.value)}
+          MenuProps={{
+            PaperProps: {
+              sx: {
+                backgroundColor: "#121212",
+                opacity: 1,
+              }
+            }
+          }}
         >
           <MenuItem value={"mel-spectrogram"}>Mel Spectrogram</MenuItem>
           <MenuItem value={"basic-spectrogram"}>Basic Spectrogram</MenuItem>
@@ -79,6 +87,14 @@ export default function SpectrogramControls({
           value={colorscale}
           label="Color Scale"
           onChange={(event) => setColorscale(event.target.value)}
+          MenuProps={{
+            PaperProps: {
+              sx: {
+                backgroundColor: "#121212",
+                opacity: 1,
+              }
+            }
+          }}
         >
           <MenuItem value={"RdBu"}>RedBlue</MenuItem>
           <MenuItem value={"Portland"}>Portland</MenuItem>
