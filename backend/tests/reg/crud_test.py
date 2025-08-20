@@ -135,7 +135,7 @@ class AudioSlicesCRUDTest(unittest.TestCase):
 
         asid = res[0]['asid']
 
-        url = host_url + f'api/timestamp/{asid}'
+        url = host_url + f'api/audioslices/{asid}'
 
         response = requests.get(url)
         self.assertEqual(response.status_code, 200, 'response OK')
