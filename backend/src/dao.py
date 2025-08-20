@@ -2,7 +2,7 @@ import psycopg2
 from psycopg2 import sql
 from psycopg2.extensions import connection
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timedelta
 from fastapi import HTTPException
 from time import time
 from dbutil import default_HTTP_exception
@@ -142,17 +142,17 @@ class TimestampIndex(DAO):
     table = "timestampindex"
     id_column = "tid"
 
-    async def insert(cls, db: connection, nid: str, timestamp: str):
+    async def insert(cls, db: connection, nid: str, timestamp: datetime):
 
         with db.cursor() as curs:
             try:
                 curs.execute(
                     sql.SQL(
                         """
-                            INSERT INTO {} (nid, ttime)
-                            VALUES (%s, %s)
-                            RETURNING tid
-                            """
+                        INSERT INTO {} (nid, ttime)
+                        VALUES (%s, %s)
+                        RETURNING tid
+                        """
                     ).format(sql.Identifier(cls.table)),
                     (nid, timestamp),
                 )
@@ -166,27 +166,65 @@ class TimestampIndex(DAO):
 
 
 @dataclass
-class ClassifierReport(DAO):
-    """Classifier report DAO"""
+class AudioSlice(DAO):
+    """Audio slice DAO"""
 
-    crid: int
-    tid: int
-    crsamples: int
-    crcoqui: int
-    crantillensis: int
-    crcochranae: int
-    cre_monensis: int
-    crgryllus: int
-    crhedricki: int
-    crlocustus: int
-    crportoricensis: int
-    crrichmondi: int
-    crwightmanae: int
-    crno_hit: int
+    asid: int
+    afid: int
+    starttime: timedelta
+    endtime: timedelta
+    coqui: bool
+    wightmanae: bool
+    gryllus: bool
+    portoricensis: bool
+    unicolor: bool
+    hedricki: bool
+    locustus: bool
+    richmondi: bool
 
-    table = "classifierreport"
-    id_column = "crid"
+    table = "audioslice"
+    id_column = "asid"
 
+    @classmethod
+    async def insert(cls, db: connection, 
+        afid: int, 
+        starttime: timedelta, 
+        endtime: timedelta, 
+        coqui: bool, 
+        wightmanae: bool, 
+        gryllus: bool, 
+        portoricensis: bool, 
+        unicolor: bool, 
+        hedricki: bool,
+        locustus: bool,
+        richmondi: bool
+        ):
+        with db.cursor() as curs:
+            try:
+                curs.execute(
+                    sql.SQL("""
+                        INSERT INTO audioslice (afid, starttime, endtime, coqui, wightmanae, gryllus, portoricensis, unicolor, hedricki, locustus, richmondi)
+                        VALUES (%(afid)s, %(starttime)s, %(endtime)s, %(coqui)s, %(wightmanae)s, %(gryllus)s, %(portoricensis)s, %(unicolor)s, %(hedricki)s, %(locustus)s, %(richmondi)s)
+                        RETURNING asid
+                    """), locals()
+                    )
+                return curs.fetchone()
+            except psycopg2.Error as e:
+                print("Error executing SQL query:", e)
+                raise default_HTTP_exception(e.pgcode, "inser audio slice query")   
+
+    @classmethod
+    async def get_classified(cls, afid: int, db: connection):
+        with db.cursor() as curs:
+            curs.execute(sql.SQL(
+                """
+                SELECT * FROM audioslice a 
+                WHERE a.afid = %s
+                """
+            ),
+            (afid,)
+            )
+            return list(starmap(cls, curs.fetchall()))
 
 @dataclass
 class WeatherData(DAO):
@@ -200,7 +238,7 @@ class WeatherData(DAO):
     wddid_rain: bool
 
     table = "weatherdata"
-    id_colummn = "wdid"
+    id_column = "wdid"
 
 
 @dataclass
@@ -233,7 +271,7 @@ class AudioFile(DAO):
             return [cls(row[0], row[1], None) for row in curs.fetchall()]
 
     @classmethod
-    async def insert(cls, db: connection, file, nid: str, timestamp: str):
+    async def insert(cls, db: connection, file, nid: str, timestamp: datetime):
 
         with db.cursor() as curs:
             try:
@@ -256,6 +294,47 @@ class AudioFile(DAO):
                 print("Error executing SQL query:", e)
                 raise default_HTTP_exception(e.pgcode, "insert audio file query")
 
+    @classmethod
+    async def is_classified(cls, afid: int, db: connection):
+        try:
+            with db.cursor() as curs:
+                curs.execute(sql.SQL(
+                    """
+                    SELECT EXISTS (
+                        SELECT asid 
+                        FROM audioslice 
+                        WHERE afid = %s
+                        )
+                """
+                ),
+                (afid,)
+                )
+                return curs.fetchone()[0]
+        except psycopg2.Error as e:
+            print("Error executing SQL query:", e)
+            raise default_HTTP_exception(e.pgcode, "verify file is classified query")            
+    
+    @classmethod
+    async def exists(cls, afid: int, db: connection):
+        try:
+            with db.cursor() as curs:
+                curs.execute(sql.SQL(
+                    """
+                    SELECT EXISTS (
+                        SELECT afid 
+                        FROM audiofile 
+                        WHERE afid = %s
+                        )
+                """
+                ),
+                (afid,)
+                )
+                return curs.fetchone()[0]
+        except psycopg2.Error as e:
+            print("Error executing SQL query:", e)
+            raise default_HTTP_exception(e.pgcode, "verify file exists query")           
+
+
 class Dashboard:
     """Collection of queries for dashboard endpoints"""
     @staticmethod
@@ -266,28 +345,48 @@ class Dashboard:
                 curs.execute(
                     sql.SQL(
                         """
-                        select sum(crcoqui_antillensis) as total_coqui_antillensis, 
-                            sum(crcoqui_common) as total_common_coqui,
-                            sum(crcoqui_e_monensis) as total_coqui_e_monensis, 
-                            sum(crsamples) as total_samples, 
-                            sum(crno_hit) as total_no_hit, 
-                            date_bin('1 day', ttime at local, CURRENT_TIMESTAMP) as bin
-                        from classifierreport natural inner join timestampindex
-                        where ttime > (CURRENT_TIMESTAMP - interval '7 days')
-                        group by "bin" 
-                        order by "bin"
+                        WITH classifierreport AS (
+                            SELECT afid, 
+                                SUM(coqui::int) AS coqui_hits,
+                                SUM(wightmanae::int) AS wightmanae_hits,
+                                SUM(gryllus::int) AS gryllus_hits,
+                                SUM(portoricensis::int) AS portoricensis_hits,
+                                SUM(unicolor::int) AS unicolor_hits,
+                                SUM(hedricki::int) AS hedricki_hits,
+                                SUM(locustus::int) AS locustus_hits,
+                                SUM(richmondi::int) AS richmondi_hits
+                            FROM audioslice a  
+                            GROUP BY afid 
+                        ) 
+                        SELECT 
+                            sum(coqui_hits) AS total_coqui,
+                            sum(wightmanae_hits) AS total_wightmanae,
+                            sum(gryllus_hits) AS total_gryllus,
+                            sum(portoricensis_hits) AS total_portoricensis,
+                            sum(unicolor_hits) AS total_unicolor,
+                            sum(hedricki_hits) AS total_hedricki,
+                            sum(locustus_hits) AS total_locustus,
+                            sum(richmondi_hits) AS total_richmondi, 
+                            date_bin('1 day', ttime AT LOCAL, CURRENT_TIMESTAMP) as bin
+                        FROM classifierreport NATURAL INNER JOIN timestampindex
+                        WHERE ttime > (CURRENT_TIMESTAMP - '7 days'::INTERVAL)
+                        GROUP BY "bin" 
+                        ORDER BY "bin"
                         """
                     )
                 )
                 db_output = curs.fetchall()
                 column_transposed = list(map(list, zip(*db_output)))
                 return {
-                    "total_coqui_antillensis": column_transposed[0],
-                    "total_common_coqui": column_transposed[1],
-                    "total_coqui_e_monensis": column_transposed[2],
-                    "total_samples": column_transposed[3],
-                    "total_no_hit": column_transposed[4],
-                    "date_bin": column_transposed[5]
+                    "total_coqui": column_transposed[0],
+                    "total_wightmanae": column_transposed[1],
+                    "total_gryllus": column_transposed[2],
+                    "total_portoricensis": column_transposed[3],
+                    "total_unicolor": column_transposed[4],
+                    "total_hedricki": column_transposed[5],
+                    "total_locustus": column_transposed[6],
+                    "total_richmondi": column_transposed[7],
+                    "date_bin": column_transposed[8]
                 }
             except psycopg2.Error as e:
                 print("Error executing SQL query:", e)
@@ -330,42 +429,103 @@ class Dashboard:
         low_temp: float, high_temp: float,
         low_humidity: float, high_humidity: float,
         low_pressure: float, high_pressure: float,
-        low_coqui_common: int, high_coqui_common: int,
-        low_coqui_e_monensis: int, high_coqui_e_monensis: int,
-        low_coqui_antillensis: int, high_coqui_antillensis: int,
+        low_coqui:          int, high_coqui:            int,
+        low_wightmanae:     int, high_wightmanae:       int,
+        low_gryllus:        int, high_gryllus:          int,
+        low_portoricensis:  int, high_portoricensis:    int,
+        low_unicolor:       int, high_unicolor:         int,
+        low_hedricki:       int, high_hedricki:         int,
+        low_locustus:       int, high_locustus:         int,
+        low_richmondi:      int, high_richmondi:        int,        
         description_filter: str,
-        skip: int, limit: int,
+        skip: int, limit: int, 
+        orderby: int,
         db: connection) -> list:
 
         @dataclass
         class ReportTableEntry:
-            ndescription: str
-            ttime: datetime
-            crcoqui_common: int
-            crcoqui_e_monensis: int
-            crcoqui_antillensis: int
-            wdhumidity: float
-            wdtemperature: float
-            wdpressure: float
-            wddid_rain: bool
-            afid: int # Front end should generate URL to audio file by using get audio file endpoint
+            ndescription:   str
+            ttime:          datetime
+            coqui:          int
+            wightmanae:     int
+            gryllus:        int
+            portoricensis:  int
+            unicolor:       int
+            hedricki:       int
+            locustus:       int
+            richmondi:      int
+            wdhumidity:     float
+            wdtemperature:  float
+            wdpressure:     float
+            wddid_rain:     bool
+            afid:           int # Front end should generate URL to audio file by using get audio file endpoint
         
         with db.cursor() as curs:
             try:
                 curs.execute(
                     sql.SQL(
                         """
-                        SELECT n.ndescription, t.ttime, c.crcoqui_common, c.crcoqui_e_monensis, c.crcoqui_antillensis, w.wdhumidity, w.wdtemperature, w.wdpressure, w.wddid_rain, a.afid
-                        FROM timestampindex t NATURAL INNER JOIN classifierreport c NATURAL INNER JOIN weatherdata w NATURAL INNER JOIN audiofile a NATURAL INNER JOIN node n
+                        WITH cr AS (
+                            SELECT afid, 
+                                SUM(coqui::int) AS coqui_hits,
+                                SUM(wightmanae::int) AS wightmanae_hits,
+                                SUM(gryllus::int) AS gryllus_hits,
+                                SUM(portoricensis::int) AS portoricensis_hits,
+                                SUM(unicolor::int) AS unicolor_hits,
+                                SUM(hedricki::int) AS hedricki_hits,
+                                SUM(locustus::int) AS locustus_hits,
+                                SUM(richmondi::int) AS richmondi_hits
+                            FROM audioslice a  
+                            GROUP BY afid 
+                        )
+                        SELECT n.ndescription,
+                                t.ttime, 
+                                c.coqui_hits, 
+                                c.wightmanae_hits, 
+                                c.gryllus_hits, 
+                                c.portoricensis_hits, 
+                                c.unicolor_hits, 
+                                c.hedricki_hits, 
+                                c.locustus_hits, 
+                                c.richmondi_hits, 
+                                w.wdhumidity, w.wdtemperature, w.wdpressure, w.wddid_rain, 
+                                a.afid
+                        FROM timestampindex t NATURAL INNER JOIN cr c NATURAL INNER JOIN weatherdata w NATURAL INNER JOIN audiofile a NATURAL INNER JOIN node n
                         WHERE 
-                        %(lowhum)s <= w.wdhumidity and w.wdhumidity <= %(highhum)s and
-                        %(lowtemp)s <= w.wdtemperature and w.wdtemperature <= %(hightemp)s and
-                        %(lowpress)s <= w.wdpressure and w.wdpressure <= %(highpress)s and
-                        %(lowcommon)s <= c.crcoqui_common and c.crcoqui_common <= %(highcommon)s and
-                        %(lowmonensis)s <= c.crcoqui_e_monensis and c.crcoqui_e_monensis <= %(highmonensis)s and
-                        %(lowantillensis)s <= c.crcoqui_antillensis and c.crcoqui_antillensis <= %(highantillensis)s and
+                        %(lowhum)s <= w.wdhumidity AND w.wdhumidity <= %(highhum)s AND 
+                        %(lowtemp)s <= w.wdtemperature AND w.wdtemperature <= %(hightemp)s AND 
+                        %(lowpress)s <= w.wdpressure AND w.wdpressure <= %(highpress)s AND 
+                        %(lowcoqui)s <= c.coqui_hits AND c.coqui_hits <= %(highcoqui)s and
+                        %(lowwightmanae)s <= c.wightmanae_hits AND c.wightmanae_hits <= %(highwightmanae)s AND
+                        %(lowgryllus)s <= c.gryllus_hits AND c.gryllus_hits <= %(highgryllus)s AND
+                        %(lowportoricensis)s <= c.portoricensis_hits AND c.portoricensis_hits <= %(highportoricensis)s AND
+                        %(lowunicolor)s <= c.unicolor_hits AND c.unicolor_hits <= %(highunicolor)s AND
+                        %(lowhedricki)s <= c.hedricki_hits AND c.hedricki_hits <= %(highhedricki)s AND
+                        %(lowlocustus)s <= c.locustus_hits AND c.locustus_hits <= %(highlocustus)s AND
+                        %(lowrichmondi)s <= c.richmondi_hits AND c.richmondi_hits <= %(highrichmondi)s AND
                         n.ndescription LIKE %(descriptionfilter)s
-                        ORDER BY t.ttime
+                        ORDER BY 
+                            CASE %(orderby)s
+                                WHEN 1 THEN t.ttime
+                                ELSE NULL
+                            END,
+                            CASE %(orderby)s
+                                WHEN 2 THEN c.coqui_hits
+                                WHEN 3 THEN c.wightmanae_hits
+                                WHEN 4 THEN c.gryllus_hits
+                                WHEN 5 THEN c.portoricensis_hits
+                                WHEN 6 THEN c.unicolor_hits
+                                WHEN 7 THEN c.hedricki_hits
+                                WHEN 8 THEN c.locustus_hits
+                                WHEN 9 THEN c.richmondi_hits
+                                ELSE NULL
+                            END,
+                            CASE %(orderby)s
+                                WHEN 10 THEN w.wdhumidity
+                                WHEN 11 THEN w.wdtemperature
+                                WHEN 12 THEN w.wdpressure
+                                ELSE NULL
+                            END
                         OFFSET %(offset)s
                         LIMIT %(limit)s
                         """
@@ -377,15 +537,26 @@ class Dashboard:
                         'hightemp': high_temp,
                         'lowpress': low_pressure,
                         'highpress': high_pressure,
-                        'lowcommon': low_coqui_common,
-                        'highcommon': high_coqui_common,
-                        'lowmonensis': low_coqui_e_monensis,
-                        'highmonensis': high_coqui_e_monensis,
-                        'lowantillensis': low_coqui_antillensis,
-                        'highantillensis': high_coqui_antillensis,
+                        'lowcoqui': low_coqui,
+                        'highcoqui': high_coqui,
+                        'lowwightmanae': low_wightmanae,
+                        'highwightmanae': high_wightmanae,
+                        'lowgryllus': low_gryllus,
+                        'highgryllus': high_gryllus,
+                        'lowportoricensis': low_portoricensis,
+                        'highportoricensis': high_portoricensis,
+                        'lowunicolor': low_unicolor,
+                        'highunicolor': high_unicolor,
+                        'lowhedricki': low_hedricki,
+                        'highhedricki': high_hedricki,
+                        'lowlocustus': low_locustus,
+                        'highlocustus': high_locustus,
+                        'lowrichmondi': low_richmondi,
+                        'highrichmondi': high_richmondi,
                         'descriptionfilter': description_filter,
                         'offset': skip,
-                        'limit': limit
+                        'limit': limit,
+                        'orderby': orderby,
                     }
                 )
 

@@ -6,11 +6,12 @@ import tempfile
 import os
 import datetime
 import psycopg2.extras
+import io
 
 """
 Python Program to populate existing database with mocked data
 """
-MAX_BATCH_SIZE = 1000
+MAX_BATCH_SIZE = 5
 
 
 def get_connection_from_development_config(config_file_path):
@@ -43,15 +44,15 @@ def random_bool():
 def prepare_database(connection):
 
     with connection.cursor() as cursor:
-        cursor.execute("DELETE FROM classifierreport")
         cursor.execute("DELETE FROM weatherdata")
         cursor.execute("DELETE FROM audiofile")
+        cursor.execute("DELETE FROM audioslice")
         cursor.execute("DELETE FROM timestampindex")
         cursor.execute("DELETE FROM node")
         cursor.execute("ALTER SEQUENCE node_nid_seq RESTART WITH 1")
         cursor.execute("ALTER SEQUENCE timestampindex_tid_seq RESTART WITH 1")
         cursor.execute("ALTER SEQUENCE weatherdata_wdid_seq RESTART WITH 1")
-        cursor.execute("ALTER SEQUENCE classifierreport_crid_seq RESTART WITH 1")
+        cursor.execute("ALTER SEQUENCE audioslice_asid_seq RESTART WITH 1")
         cursor.execute("ALTER SEQUENCE audiofile_afid_seq RESTART WITH 1")
 
 
@@ -136,9 +137,41 @@ def populate_timestamp(connection, number_of_inserts, number_of_nodes):
     connection.commit()
 
 
-def populate_audio(connection, number_of_nodes, number_of_inserts):
+def populate_audio(connection, number_of_inserts):
 
-    prepared_statement = "INSERT INTO audiofile (tid, nid, data) VALUES (%s, %s, %s)"
+    prepared_statement = "INSERT INTO audiofile (tid, data) VALUES (%s, %s)"
+    necessary_statements = (number_of_inserts // MAX_BATCH_SIZE) + 1
+    number_of_inserts_left = number_of_inserts
+
+    with connection.cursor() as cursor:
+        with open("backend/tests/reg/test_audio.wav", 'rb') as audio_file:
+            file_bytes = audio_file.read()
+            for i in range(necessary_statements):
+                number_of_rows_to_insert = (
+                    number_of_inserts_left
+                    if (number_of_inserts_left < MAX_BATCH_SIZE)
+                    else MAX_BATCH_SIZE
+                )
+                batch_values = [
+                    (
+                        random_integer(1, number_of_inserts),
+                        file_bytes,
+                    )
+                    for i in range(number_of_rows_to_insert)
+                ]
+                psycopg2.extras.execute_batch(
+                    cursor, prepared_statement, batch_values, page_size=MAX_BATCH_SIZE
+                )
+                number_of_inserts_left -= number_of_rows_to_insert
+    
+    for afid in range(1, number_of_inserts + 1):
+        populate_audioslice(connection, afid, 6)
+
+    connection.commit()
+
+
+def populate_audioslice(connection, audio_file_id, number_of_inserts):
+    prepared_statement = "INSERT INTO audioslice (afid, starttime, endtime, coqui, wightmanae, gryllus, portoricensis, unicolor, hedricki, locustus, richmondi) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)"
     necessary_statements = (number_of_inserts // MAX_BATCH_SIZE) + 1
     number_of_inserts_left = number_of_inserts
 
@@ -151,9 +184,17 @@ def populate_audio(connection, number_of_nodes, number_of_inserts):
             )
             batch_values = [
                 (
-                    random_integer(1, number_of_inserts),
-                    random_integer(1, number_of_nodes),
-                    random_binary_data(),
+                    audio_file_id,  # afid
+                    f'00:00:{random_integer(1, 50):02d}', # start time 
+                    f'00:00:{random_integer(1, 50):02d}', # end time 
+                    random.choice((True, False)), # coqui
+                    random.choice((True, False)), # wightmanae
+                    random.choice((True, False)), # gryllus
+                    random.choice((True, False)), # portoricensis
+                    random.choice((True, False)), # unicolor
+                    random.choice((True, False)), # hedricki
+                    random.choice((True, False)), # locustus
+                    random.choice((True, False)), # richmondi
                 )
                 for i in range(number_of_rows_to_insert)
             ]
@@ -161,40 +202,6 @@ def populate_audio(connection, number_of_nodes, number_of_inserts):
                 cursor, prepared_statement, batch_values, page_size=MAX_BATCH_SIZE
             )
             number_of_inserts_left -= number_of_rows_to_insert
-
-    connection.commit()
-
-
-def populate_classifierreport(connection, number_of_inserts):
-    prepared_statement = "INSERT INTO classifierreport (tid, crsamples, crcoqui_common, crcoqui_e_monensis, crcoqui_antillensis, crno_hit) VALUES (%s,%s,%s,%s,%s,%s)"
-    necessary_statements = (number_of_inserts // MAX_BATCH_SIZE) + 1
-    number_of_inserts_left = number_of_inserts
-
-    with connection.cursor() as cursor:
-        for i in range(necessary_statements):
-            number_of_rows_to_insert = (
-                number_of_inserts_left
-                if (number_of_inserts_left < MAX_BATCH_SIZE)
-                else MAX_BATCH_SIZE
-            )
-            batch_values = [
-                (
-                    random_integer(1, number_of_inserts),  # tid
-                    random_integer(1, 50), # crssamples 
-                    # In theory crsamples should equal the sum of all the following columns
-                    random_integer(1, 50), # crcoqui_common
-                    random_integer(1, 50), # crcoqui_e_monensis
-                    random_integer(1, 50), # crcoqui_antillensis
-                    random_integer(1, 50)  # cr_nohit
-                )
-                for i in range(number_of_rows_to_insert)
-            ]
-            psycopg2.extras.execute_batch(
-                cursor, prepared_statement, batch_values, page_size=MAX_BATCH_SIZE
-            )
-            number_of_inserts_left -= number_of_rows_to_insert
-
-    connection.commit()
 
 
 def populate_weatherdata(connection, number_of_nodes, number_of_inserts):
@@ -232,13 +239,12 @@ def main():
     config_file_path = "backend/src/testdbconfig.json"
     connection = get_connection_from_development_config(config_file_path)
     number_of_nodes = 5
-    number_of_records = 1_000
+    number_of_records = 100
     try:
         prepare_database(connection)
         populate_node(connection, number_of_nodes)
         populate_timestamp(connection, number_of_records, number_of_nodes)
-        populate_audio(connection, number_of_nodes, number_of_records)
-        populate_classifierreport(connection, number_of_records)
+        populate_audio(connection, number_of_records)
         populate_weatherdata(connection, number_of_nodes, number_of_records)
 
     except psycopg2.Error as e:
