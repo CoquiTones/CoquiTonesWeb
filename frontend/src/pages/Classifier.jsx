@@ -83,7 +83,6 @@ const Classifier = () => {
                   p: 2,
                   display: "flex",
                   flexDirection: "column",
-                  height: 240,
                 }}
               >
                 {/* <Typography variant="h3" color="primary" align="center">
@@ -135,28 +134,44 @@ const Classifier = () => {
                               {classifierReport[slice].end_time}s
                             </TableCell>
                             <TableCell key="2" align="center">
-                              {classifierReport[slice].coqui.toString()}
+                              {classifierReport[slice].coqui
+                                ? "detected"
+                                : "not detected"}
                             </TableCell>
                             <TableCell key="3" align="center">
-                              {classifierReport[slice].wightmanae.toString()}
+                              {classifierReport[slice].wightmanae
+                                ? "detected"
+                                : "not detected"}
                             </TableCell>
                             <TableCell key="4" align="center">
-                              {classifierReport[slice].gryllus.toString()}
+                              {classifierReport[slice].gryllus
+                                ? "detected"
+                                : "not detected"}
                             </TableCell>
                             <TableCell key="5" align="center">
-                              {classifierReport[slice].portoricensis.toString()}
+                              {classifierReport[slice].portoricensis
+                                ? "detected"
+                                : "not detected"}
                             </TableCell>
                             <TableCell key="6" align="center">
-                              {classifierReport[slice].unicolor.toString()}
+                              {classifierReport[slice].unicolor
+                                ? "detected"
+                                : "not detected"}
                             </TableCell>
                             <TableCell key="7" align="center">
-                              {classifierReport[slice].hedricki.toString()}
+                              {classifierReport[slice].hedricki
+                                ? "detected"
+                                : "not detected"}
                             </TableCell>
                             <TableCell key="8" align="center">
-                              {classifierReport[slice].locustus.toString()}
+                              {classifierReport[slice].locustus
+                                ? "detected"
+                                : "not detected"}
                             </TableCell>
                             <TableCell key="9" align="center">
-                              {classifierReport[slice].richmondi.toString()}
+                              {classifierReport[slice].richmondi
+                                ? "detected"
+                                : "not detected"}
                             </TableCell>
                           </TableRow>
                         ))}
