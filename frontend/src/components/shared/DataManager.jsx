@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import FileUpload from "./FileUpload";
 import { Typography, Box, Button } from "@mui/material";
-import DataHandler from "../../services/DataHandler";
+import APIHandler from "../../services/APIHandler";
 import IconButton from "@mui/material/IconButton";
 import AddIcon from "@mui/icons-material/Add";
 import TextField from "@mui/material/TextField";
@@ -10,15 +10,7 @@ import DialogActions from "@mui/material/DialogActions";
 import DialogContent from "@mui/material/DialogContent";
 import DialogContentText from "@mui/material/DialogContentText";
 import DialogTitle from "@mui/material/DialogTitle";
-/**
- *
- * TODO:
- * add upload to db functionality for file
- * generate report panel
- * upload report
- *
- *
- */
+
 const DataManager = ({
   audioFile,
   setAudioFile,
@@ -35,8 +27,8 @@ const DataManager = ({
   });
 
   const handleSubmit = () => {
-    const dataHandler = new DataHandler("audio");
-    dataHandler.insertAudio(audioFile, nid, timestamp);
+    const apiHandler = new APIHandler("audio");
+    apiHandler.insertAudio(audioFile, nid, timestamp);
     setOpen(false);
   };
   useEffect(() => {

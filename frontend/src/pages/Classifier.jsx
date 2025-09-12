@@ -20,122 +20,41 @@ import Sidebar from "../components/shared/Sidebar";
 import Navbar from "../components/shared/Navbar";
 import Footer from "../components/shared/Footer";
 import HeroSectionClassifier from "../components/shared/HeroSectionClassifier";
-const Classifier = () => {
-  const initDummyReport = () => {
-    const rows = [
-      {
-        filename: "coqui.WAV",
-        crid: 1,
-        tid: 2,
-        crsamples: 100,
-        crcoqui: 50,
-        crantillensis: 30,
-        crcochranae: 20,
-        cre_monensis: 10,
-        crgryllus: 5,
-        crhedricki: 3,
-        crlocustus: 2,
-        crportoricensis: 1,
-        crrichmondi: 0,
-        crwightmanae: 0,
-        crno_hit: 0,
-      },
-    ];
 
-    return rows;
-  };
+import APIHandler from "../services/APIHandler";
+const Classifier = () => {
+  const SLICE_SECONDS_CONSTANT = 10; //TODO: include this slice constant as part of endpoint response
+
+  const species = [
+    "coqui",
+    "wightmanae",
+    "gryllus",
+    "portoricensis",
+    "unicolor",
+    "hedricki",
+    "locustus",
+    "richmondi",
+  ];
+  const column_headers = ["Time Slice", ...species];
 
   const [isOpen, setIsOpen] = useState(false);
   const toggle = () => {
     setIsOpen(!isOpen);
   };
   const [rawAudioFile, setRawAudioFile] = useState(null);
-
   useEffect(() => {
-    const fetchClassification = async () => {
-      const web_url = import.meta.env.VITE_BACKEND_API_URL;
-      const formData = new FormData();
-      formData.append("file", rawAudioFile);
-
-      try {
-        return await fetch(web_url + "/api/ml/classify", {
-          method: "POST",
-          body: formData,
-        })
-          .then((response) => {
-            if (!response.ok) {
-              throw new Error("Network response was not ok");
-            }
-            return response.json();
-          })
-          .then((data) => {
-            return data;
-          })
-          .catch((error) => {
-            console.error("Error:", error);
-            throw error; // Re-throw the error for further handling
-          });
-      } catch (error) {
-        console.error("Error in Classification : ", error);
-        throw error;
+    const classifyAudiofile = async () => {
+      if (rawAudioFile) {
+        const reportAPIHandler = new APIHandler("report"); // temp handler shit
+        let reports = await reportAPIHandler.fetchClassification(rawAudioFile);
+        console.log("Reports response: ", reports);
+        console.log(Object.keys(reports));
+        setClassifierReport(reports);
       }
     };
-    if (rawAudioFile) {
-      const classification = fetchClassification();
-      console.log(classification);
-    }
+    classifyAudiofile();
   }, [rawAudioFile]);
-  const [report, setReport] = useState(initDummyReport());
-
-  const table = (
-    <TableContainer component={Paper}>
-      <Table sx={{ minWidth: 650 }} aria-label="simple table">
-        <TableHead>
-          <TableRow>
-            <TableCell aligh="center">File Name</TableCell>
-            <TableCell align="center">ID</TableCell>
-            <TableCell align="center">Samples</TableCell>
-            <TableCell align="center">Coqui</TableCell>
-            <TableCell align="center">Antillensis</TableCell>
-            <TableCell>Cochranae</TableCell>
-            <TableCell align="center">Monensis</TableCell>
-            <TableCell align="center">Gryllus</TableCell>
-            <TableCell align="center">Hedricki</TableCell>
-            <TableCell align="center">locustus</TableCell>
-            <TableCell>Portoricensis</TableCell>
-            <TableCell align="center">Richmondi</TableCell>
-            <TableCell align="center">Wighmanae</TableCell>
-            <TableCell align="center">Total Detected</TableCell>
-          </TableRow>
-        </TableHead>
-        <TableBody>
-          {report.map((row) => (
-            <TableRow
-              key={row.filename}
-              sx={{ "&:last-child td, &:last-child th": { border: 0 } }}
-            >
-              <TableCell component="th" scope="row">
-                {row.filename}
-              </TableCell>
-              <TableCell align="center">{row.crid}</TableCell>
-              <TableCell align="center">{row.crsamples}</TableCell>
-              <TableCell align="center">{row.crcoqui}</TableCell>
-              <TableCell align="center">{row.crantillensis}</TableCell>
-              <TableCell align="center">{row.crcochranae}</TableCell>
-              <TableCell align="center">{row.cre_monensis}</TableCell>
-              <TableCell align="center">{row.crgryllus}</TableCell>
-              <TableCell align="center">{row.crhedricki}</TableCell>
-              <TableCell align="center">{row.crlocustus}</TableCell>
-              <TableCell align="center">{row.crportoricensis}</TableCell>
-              <TableCell align="center">{row.crrichmondi}</TableCell>
-              <TableCell align="center">{row.crwightmanae}</TableCell>
-              <TableCell align="center">{row.crno_hit}</TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-    </TableContainer>
-  );
+  const [classifierReport, setClassifierReport] = useState(null);
 
   return (
     <ThemeProvider theme={theme}>
@@ -174,7 +93,7 @@ const Classifier = () => {
                 <FileUpload setAudioFile={setRawAudioFile} />
               </Paper>
 
-              {rawAudioFile && (
+              {classifierReport && (
                 <Paper
                   elevation={4}
                   sx={{
@@ -193,7 +112,57 @@ const Classifier = () => {
                     Classifier Report
                   </Typography>
 
-                  {table}
+                  <TableContainer component={Paper}>
+                    <Table sx={{ minWidth: 650 }} aria-label="simple table">
+                      <TableHead>
+                        <TableRow>
+                          {column_headers.map((column_header) => (
+                            <TableCell align="center">
+                              {column_header}
+                            </TableCell>
+                          ))}
+                        </TableRow>
+                      </TableHead>
+                      <TableBody>
+                        {Object.keys(classifierReport).map((slice) => (
+                          <TableRow
+                            sx={{
+                              "&:last-child td, &:last-child th": { border: 0 },
+                            }}
+                          >
+                            <TableCell key="1" align="center">
+                              {classifierReport[slice].start_time}s to{" "}
+                              {classifierReport[slice].end_time}s
+                            </TableCell>
+                            <TableCell key="2" align="center">
+                              {classifierReport[slice].coqui.toString()}
+                            </TableCell>
+                            <TableCell key="3" align="center">
+                              {classifierReport[slice].wightmanae.toString()}
+                            </TableCell>
+                            <TableCell key="4" align="center">
+                              {classifierReport[slice].gryllus.toString()}
+                            </TableCell>
+                            <TableCell key="5" align="center">
+                              {classifierReport[slice].portoricensis.toString()}
+                            </TableCell>
+                            <TableCell key="6" align="center">
+                              {classifierReport[slice].unicolor.toString()}
+                            </TableCell>
+                            <TableCell key="7" align="center">
+                              {classifierReport[slice].hedricki.toString()}
+                            </TableCell>
+                            <TableCell key="8" align="center">
+                              {classifierReport[slice].locustus.toString()}
+                            </TableCell>
+                            <TableCell key="9" align="center">
+                              {classifierReport[slice].richmondi.toString()}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </TableContainer>
                 </Paper>
               )}
             </Grid>

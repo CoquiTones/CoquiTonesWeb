@@ -6,9 +6,32 @@ class ValidationError extends Error {
     }
 }
 
-export default class DataHandler {
+class BackendError extends Error {
+    constructor(message) {
+        super(message);
+        this.name = "BackendError"
+    }
+}
+
+class APIHandlerError extends Error {
+    constructor(message) {
+        super(message);
+        this.name = "APIHandlerError";
+    }
+}
+
+/**
+ * APIHandler class for managing API calls to backend server
+ * 
+ * @param endpointType
+ * 
+ * allowedEndpointTypes ["node", "timestamp", "report", "weather", "audio"];
+ * 
+ */
+export default class APIHandler {
     allowedEndpointTypes = ["node", "timestamp", "report", "weather", "audio"];
     web_url = import.meta.env.VITE_BACKEND_API_URL;
+
 
     constructor(endpointType) {
         if (this.allowedEndpointTypes.includes(endpointType)) {
@@ -27,8 +50,7 @@ export default class DataHandler {
             const data = await response.json();
             return data;
         } catch (error) {
-            console.error(`Error fetch all ${this.endpointType}s: `, error);
-            throw error;
+            throw new APIHandlerError(`Error fetch all ${this.endpointType}s: `);
         }
     }
 
@@ -60,6 +82,8 @@ export default class DataHandler {
             throw error;
         }
     }
+
+    // TODO: seperate Handler for audio only
     async insertAudio(file, nid, timestamp) {
         let formData = new FormData();
         formData.append("nid", nid);
@@ -83,6 +107,27 @@ export default class DataHandler {
             throw error;
         }
     }
+
+
+    async fetchClassification(rawAudioFile) {
+        const formData = new FormData();
+        formData.append("file", rawAudioFile);
+        try {
+            const response = await fetch(this.web_url + "/api/report/classify", {
+                method: "POST",
+                body: formData,
+            });
+
+            if (!response.ok) {
+                throw new BackendError('Unable to classify audio sample due to network error: ' + response.statusText)
+            }
+            const classifierReportResponse = await response.json()
+            return classifierReportResponse;
+        } catch (error) {
+            console.error("Error fetching Classification from audio file input : ", error);
+            throw new APIHandlerError('Error with fetchClassification in Handler' + error.message);
+        }
+    };
 
 }
 
