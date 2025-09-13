@@ -13,7 +13,7 @@ import Link from "@mui/material/Link";
 import Navbar from "../components/shared/Navbar";
 import Sidebar from "../components/shared/Sidebar";
 import theme from "../components/shared/Theme";
-import APIHandler from "../services/APIHandler";
+import { APIHandlerNetworkMonitor } from "../services/rest/APIHandler/APIHandlerNetworkMonitor";
 import NewNodeDialog from "../components/shared/NewNodeDialog";
 import HeroSectionCDN from "../components/shared/HeroSectionCDN";
 import MapEmbed from "../components/NetworkMonitor/Map";
@@ -31,8 +31,8 @@ const NetworkMonitor = () => {
 
   useEffect(() => {
     const fetchDucks = async () => {
-      const dataHandler = new APIHandler("node");
-      const nodes = await dataHandler.get_all();
+      const dataHandler = new APIHandlerNetworkMonitor();
+      const nodes = await dataHandler.get_all_ducks();
       console.log(nodes);
       setDucks(nodes);
     };

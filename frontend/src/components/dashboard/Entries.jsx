@@ -1,66 +1,21 @@
-import { Fragment } from "react";
+import { Fragment, useEffect, useState } from "react";
 import Link from "@mui/material/Link";
 import Table from "@mui/material/Table";
 import TableBody from "@mui/material/TableBody";
 import TableCell from "@mui/material/TableCell";
 import TableHead from "@mui/material/TableHead";
 import TableRow from "@mui/material/TableRow";
+
 import Title from "./Title";
-
-// Generate Order Data
-function createData(id, date, name, shipTo, paymentMethod, amount) {
-  return { id, date, name, shipTo, paymentMethod, amount };
-}
-
-const rows = [
-  createData(
-    0,
-    "16 February, 2024",
-    "1",
-    "Bosque Susua, Yauco",
-    "Temp: 77 F, Humidity: 70 RH%, Pressure: 1000 hPa",
-    "5MB"
-  ),
-  createData(
-    1,
-    "16 February, 2024",
-    "1",
-    "Bosque Susua, Yauco",
-    "Temp: 77 F, Humidity: 70 RH%, Pressure: 1000 hPa",
-    "5MB"
-  ),
-  createData(
-    2,
-    "16 February, 2024",
-    "3",
-    "Bosque Susua, Yauco",
-    "Temp: 77 F, Humidity: 70 RH%, Pressure: 1000 hPa",
-    "5MB"
-  ),
-
-  createData(
-    3,
-    "16 February, 2024",
-    "2",
-    "Bosque Susua, Yauco",
-    "Temp: 77 F, Humidity: 70 RH%, Pressure: 1000 hPa",
-    "5MB"
-  ),
-  createData(
-    4,
-    "15 February, 2024",
-    "2",
-    "Bosque Susua, Yauco",
-    "Temp: 77 F, Humidity: 70 RH%, Pressure: 1000 hPa",
-    "5MB"
-  ),
-];
-
-function preventDefault(event) {
-  event.preventDefault();
-}
-
+import { APIHandlerDashboard } from "../../services/rest/APIHandler/APIHandlerDashboard";
 export default function RecentEntries() {
+  const [recentReports, setRecentReports] = useState(null);
+  useEffect(() => {
+    const getRecentReports = async () => {
+      const dashboardAPIHandler = new APIHandlerDashboard();
+      let recentReportsAPIResponse = dashboardAPIHandler.get_recent_reports();
+    };
+  }, []);
   return (
     <Fragment>
       <Title>Recent Database Entries </Title>

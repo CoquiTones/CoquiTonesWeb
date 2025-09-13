@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import FileUpload from "./FileUpload";
 import { Typography, Box, Button } from "@mui/material";
-import APIHandler from "../../services/APIHandler";
+import APIHandlerBase from "../../services/rest/APIHandler/APIHandlerBase";
 import IconButton from "@mui/material/IconButton";
 import AddIcon from "@mui/icons-material/Add";
 import TextField from "@mui/material/TextField";
@@ -27,7 +27,7 @@ const DataManager = ({
   });
 
   const handleSubmit = () => {
-    const apiHandler = new APIHandler("audio");
+    const apiHandler = new APIHandlerBase("audio");
     apiHandler.insertAudio(audioFile, nid, timestamp);
     setOpen(false);
   };

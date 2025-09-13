@@ -21,7 +21,8 @@ import Navbar from "../components/shared/Navbar";
 import Footer from "../components/shared/Footer";
 import HeroSectionClassifier from "../components/shared/HeroSectionClassifier";
 
-import APIHandler from "../services/APIHandler";
+import { APIHandlerrClassifier } from "../services/rest/APIHandler/APIHandlerClassifier";
+import ClassifierReport from "../services/rest/ResponseORM/ClassifierReport";
 const Classifier = () => {
   const SLICE_SECONDS_CONSTANT = 10; //TODO: include this slice constant as part of endpoint response
 
@@ -45,11 +46,12 @@ const Classifier = () => {
   useEffect(() => {
     const classifyAudiofile = async () => {
       if (rawAudioFile) {
-        const reportAPIHandler = new APIHandler("report"); // temp handler shit
-        let reports = await reportAPIHandler.fetchClassification(rawAudioFile);
-        console.log("Reports response: ", reports);
-        console.log(Object.keys(reports));
-        setClassifierReport(reports);
+        const reportAPIHandler = new APIHandlerrClassifier("report"); // temp handler shit
+        let APIResponseJsonData = await reportAPIHandler.fetchClassification(
+          rawAudioFile
+        );
+        let classifierReport = new ClassifierReport(APIResponseJsonData);
+        setClassifierReport(classifierReport);
       }
     };
     classifyAudiofile();
@@ -108,7 +110,7 @@ const Classifier = () => {
                     align="center"
                     gutterBottom
                   >
-                    Classifier Report
+                    Classifier Report for {rawAudioFile.name}
                   </Typography>
 
                   <TableContainer component={Paper}>
@@ -123,55 +125,40 @@ const Classifier = () => {
                         </TableRow>
                       </TableHead>
                       <TableBody>
-                        {Object.keys(classifierReport).map((slice) => (
+                        {classifierReport.getSlices().map((slice) => (
                           <TableRow
                             sx={{
                               "&:last-child td, &:last-child th": { border: 0 },
                             }}
                           >
                             <TableCell key="1" align="center">
-                              {classifierReport[slice].start_time}s to{" "}
-                              {classifierReport[slice].end_time}s
+                              {slice.start_time}s to {slice.end_time}s
                             </TableCell>
                             <TableCell key="2" align="center">
-                              {classifierReport[slice].coqui
-                                ? "detected"
-                                : "not detected"}
+                              {slice.coqui ? "detected" : "not detected"}
                             </TableCell>
                             <TableCell key="3" align="center">
-                              {classifierReport[slice].wightmanae
-                                ? "detected"
-                                : "not detected"}
+                              {slice.wightmanae ? "detected" : "not detected"}
                             </TableCell>
                             <TableCell key="4" align="center">
-                              {classifierReport[slice].gryllus
-                                ? "detected"
-                                : "not detected"}
+                              {slice.gryllus ? "detected" : "not detected"}
                             </TableCell>
                             <TableCell key="5" align="center">
-                              {classifierReport[slice].portoricensis
+                              {slice.portoricensis
                                 ? "detected"
                                 : "not detected"}
                             </TableCell>
                             <TableCell key="6" align="center">
-                              {classifierReport[slice].unicolor
-                                ? "detected"
-                                : "not detected"}
+                              {slice.unicolor ? "detected" : "not detected"}
                             </TableCell>
                             <TableCell key="7" align="center">
-                              {classifierReport[slice].hedricki
-                                ? "detected"
-                                : "not detected"}
+                              {slice.hedricki ? "detected" : "not detected"}
                             </TableCell>
                             <TableCell key="8" align="center">
-                              {classifierReport[slice].locustus
-                                ? "detected"
-                                : "not detected"}
+                              {slice.locustus ? "detected" : "not detected"}
                             </TableCell>
                             <TableCell key="9" align="center">
-                              {classifierReport[slice].richmondi
-                                ? "detected"
-                                : "not detected"}
+                              {slice.richmondi ? "detected" : "not detected"}
                             </TableCell>
                           </TableRow>
                         ))}
