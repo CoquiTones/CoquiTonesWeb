@@ -8,13 +8,18 @@ import TableRow from "@mui/material/TableRow";
 
 import Title from "./Title";
 import { APIHandlerDashboard } from "../../services/rest/APIHandler/APIHandlerDashboard";
+
 export default function RecentEntries() {
   const [recentReports, setRecentReports] = useState(null);
+  const columnHeaders = ["Date", ""];
   useEffect(() => {
     const getRecentReports = async () => {
       const dashboardAPIHandler = new APIHandlerDashboard();
-      let recentReportsAPIResponse = dashboardAPIHandler.get_recent_reports();
+      let recent_reports = dashboardAPIHandler.get_recent_reports();
+      setRecentReports(recent_reports);
     };
+
+    getRecentReports();
   }, []);
   return (
     <Fragment>
@@ -30,18 +35,19 @@ export default function RecentEntries() {
           </TableRow>
         </TableHead>
         <TableBody>
-          {rows.map((row) => (
-            <TableRow key={row.id}>
-              <TableCell align="center">{row.date}</TableCell>
-              <TableCell align="center">{row.name}</TableCell>
-              <TableCell align="center">{row.shipTo}</TableCell>
-              <TableCell align="center">{row.paymentMethod}</TableCell>
-              <TableCell align="center">{row.amount}</TableCell>
-            </TableRow>
-          ))}
+          {recentReports &&
+            recentReports.map((entry) => (
+              <TableRow key={entry.id}>
+                <TableCell align="center">{entry.date}</TableCell>
+                <TableCell align="center">{entry.name}</TableCell>
+                <TableCell align="center">{entry.shipTo}</TableCell>
+                <TableCell align="center">{entry.paymentMethod}</TableCell>
+                <TableCell align="center">{entry.amount}</TableCell>
+              </TableRow>
+            ))}
         </TableBody>
       </Table>
-      <Link color="primary" href="#" onClick={preventDefault} sx={{ mt: 3 }}>
+      <Link color="primary" href="#" sx={{ mt: 3 }}>
         See all Entries
       </Link>
     </Fragment>

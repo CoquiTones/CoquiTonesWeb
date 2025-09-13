@@ -21,7 +21,7 @@ import Navbar from "../components/shared/Navbar";
 import Footer from "../components/shared/Footer";
 import HeroSectionClassifier from "../components/shared/HeroSectionClassifier";
 
-import { APIHandlerrClassifier } from "../services/rest/APIHandler/APIHandlerClassifier";
+import { APIHandlerClassifier } from "../services/rest/APIHandler/APIHandlerClassifier";
 import ClassifierReport from "../services/rest/ResponseORM/ClassifierReport";
 const Classifier = () => {
   const SLICE_SECONDS_CONSTANT = 10; //TODO: include this slice constant as part of endpoint response
@@ -46,12 +46,9 @@ const Classifier = () => {
   useEffect(() => {
     const classifyAudiofile = async () => {
       if (rawAudioFile) {
-        const reportAPIHandler = new APIHandlerrClassifier("report"); // temp handler shit
-        let APIResponseJsonData = await reportAPIHandler.fetchClassification(
-          rawAudioFile
-        );
-        let classifierReport = new ClassifierReport(APIResponseJsonData);
-        setClassifierReport(classifierReport);
+        const reportAPIHandler = new APIHandlerClassifier("report"); // temp handler shit
+        let report = await reportAPIHandler.fetchClassification(rawAudioFile);
+        setClassifierReport(report);
       }
     };
     classifyAudiofile();

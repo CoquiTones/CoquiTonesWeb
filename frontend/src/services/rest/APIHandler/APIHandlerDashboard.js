@@ -1,3 +1,6 @@
+import { NodeHealthCheck } from "../ResponseORM/NodeHealthCheck";
+import { RecentReports } from "../ResponseORM/RecentEntriesResponse";
+import { WeekSpeciesSummary } from "../ResponseORM/WeekSpeciesSummary";
 import APIHandlerBase from "./APIHandlerBase";
 import { APIHandlerError, BackendError } from "./Errors";
 
@@ -14,9 +17,9 @@ export class APIHandlerDashboard extends APIHandlerBase {
             }
 
             const latestWeekSpeciesSummaryApiResponse = await response.json();
-            return latestWeekSpeciesSummaryApiResponse;
+            console.log(latestWeekSpeciesSummaryApiResponse)
+            return new WeekSpeciesSummary(latestWeekSpeciesSummaryApiResponse);
         } catch (error) {
-            console.error("Error fetching latest week species summary");
             throw new APIHandlerError('Error with latest week summary in Handler: ' + error.message)
         }
     }
@@ -32,9 +35,9 @@ export class APIHandlerDashboard extends APIHandlerBase {
             }
 
             const nodeHealthCheckApiResponse = await response.json();
-            return nodeHealthCheckApiResponse;
+            console.log(nodeHealthCheckApiResponse)
+            return new NodeHealthCheck(nodeHealthCheckApiResponse);
         } catch (error) {
-            console.error("Error fetching latest node health check");
             throw new APIHandlerError('Error with node health check in Handler: ' + error.message)
         }
     }
@@ -50,9 +53,9 @@ export class APIHandlerDashboard extends APIHandlerBase {
             }
 
             const recentReportsApiResponse = await response.json();
-            return recentReportsApiResponse;
+            console.log("RECENT REPORTS", recentReportsApiResponse)
+            return new RecentReports(recentReportsApiResponse);
         } catch (error) {
-            console.error("Error fetching latest recent reports");
             throw new APIHandlerError('Error with recent reports in Handler: ' + error.message)
         }
     }

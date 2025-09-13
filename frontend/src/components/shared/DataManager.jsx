@@ -1,7 +1,5 @@
 import React, { useEffect, useState } from "react";
-import FileUpload from "./FileUpload";
 import { Typography, Box, Button } from "@mui/material";
-import APIHandlerBase from "../../services/rest/APIHandler/APIHandlerBase";
 import IconButton from "@mui/material/IconButton";
 import AddIcon from "@mui/icons-material/Add";
 import TextField from "@mui/material/TextField";
@@ -10,6 +8,9 @@ import DialogActions from "@mui/material/DialogActions";
 import DialogContent from "@mui/material/DialogContent";
 import DialogContentText from "@mui/material/DialogContentText";
 import DialogTitle from "@mui/material/DialogTitle";
+
+import FileUpload from "./FileUpload";
+import { APIHandlerSpectralAnalysis } from "../../services/rest/APIHandler/APIHandlerSpectralAnalysis";
 
 const DataManager = ({
   audioFile,
@@ -27,7 +28,7 @@ const DataManager = ({
   });
 
   const handleSubmit = () => {
-    const apiHandler = new APIHandlerBase("audio");
+    const apiHandler = new APIHandlerSpectralAnalysis();
     apiHandler.insertAudio(audioFile, nid, timestamp);
     setOpen(false);
   };

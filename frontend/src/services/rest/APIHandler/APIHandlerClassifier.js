@@ -1,7 +1,7 @@
 import APIHandlerBase from "./APIHandlerBase";
 import { APIHandlerError, BackendError } from "./Errors";
-
-export class APIHandlerrClassifier extends APIHandlerBase {
+import ClassifierReport from "../ResponseORM/ClassifierReport";
+export class APIHandlerClassifier extends APIHandlerBase {
 
     async fetchClassification(rawAudioFile) {
         const formData = new FormData();
@@ -16,7 +16,8 @@ export class APIHandlerrClassifier extends APIHandlerBase {
                 throw new BackendError('Unable to classify audio sample due to network error: ' + response.statusText)
             }
             const classifierReportResponse = await response.json()
-            return classifierReportResponse;
+            const report = ClassifierReport(classifierReportResponse);
+            return report;
         } catch (error) {
             console.error("Error fetching Classification from audio file input : ", error);
             throw new APIHandlerError('Error with fetchClassification in Handler: ' + error.message);
