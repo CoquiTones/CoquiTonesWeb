@@ -7,8 +7,14 @@ DROP TABLE IF EXISTS audioslice CASCADE;
 
 CREATE TYPE node_type AS ENUM ('primary', 'secondary');
 
+CREATE TABLE appuser (
+    auid        SERIAL PRIMARY KEY,
+    pwhash      VARCHAR(100) NOT NULL,
+)
+
 CREATE TABLE node (
     nid         SERIAL PRIMARY KEY,
+    ownerid     INTEGER REFERENCES appuser
     ntype       node_type NOT NULL,
     nlatitude   REAL NOT NULL,
     nlongitude  REAL NOT NULL,
