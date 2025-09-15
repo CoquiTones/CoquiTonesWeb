@@ -33,20 +33,35 @@
 export class RecentReports {
     constructor(APIResponseObject) {
         // this  is proabably a list that needs to map to this 
-        this.ndescription = APIResponseObject.ndescription;
-        this.ttime = APIResponseObject.ttime;
-        this.coqui = APIResponseObject.coqui;
-        this.wightmanae = APIResponseObject.wightmanae;
-        this.gryllus = APIResponseObject.gryllus;
-        this.portoricensis = APIResponseObject.portoricensis;
-        this.unicolor = APIResponseObject.unicolor;
-        this.hedricki = APIResponseObject.hedricki;
-        this.locustus = APIResponseObject.locustus;
-        this.richmondi = APIResponseObject.richmondi;
-        this.wdhumidity = APIResponseObject.wdhumidity;
-        this.wdpressure = APIResponseObject.wdpressure;
-        this.wdtemperature = APIResponseObject.wdtemperature;
-        this.wddid_rain = APIResponseObject.wddid_rain;
-        this.afid = APIResponseObject.afid;
+        this.recentReports = APIResponseObject.map((report) => (
+            new Report(report)
+        ));
     }
+
+    map(callback) {
+        return this.recentReports.map(callback);
+    }
+}
+
+class Report {
+    constructor(APIResponseObjectReport) {
+
+        this.ndescription = APIResponseObjectReport.ndescription;
+        this.ttime = APIResponseObjectReport.ttime;
+        this.coqui = APIResponseObjectReport.coqui;
+        this.wightmanae = APIResponseObjectReport.wightmanae;
+        this.gryllus = APIResponseObjectReport.gryllus;
+        this.portoricensis = APIResponseObjectReport.portoricensis;
+        this.unicolor = APIResponseObjectReport.unicolor;
+        this.hedricki = APIResponseObjectReport.hedricki;
+        this.locustus = APIResponseObjectReport.locustus;
+        this.richmondi = APIResponseObjectReport.richmondi;
+        this.wdhumidity = APIResponseObjectReport.wdhumidity;
+        this.wdpressure = APIResponseObjectReport.wdpressure;
+        this.wdtemperature = APIResponseObjectReport.wdtemperature;
+        this.wddid_rain = APIResponseObjectReport.wddid_rain;
+        this.afid = APIResponseObjectReport.afid;
+    }
+
+
 }

@@ -6,7 +6,7 @@ export class APIHandlerSpectralAnalysis extends APIHandlerBase {
         let formData = new FormData();
         formData.append("nid", nid);
         formData.append("file", file);
-        formData.append("timestamp", timestamp)
+        formData.append("timestamp", new Date().toISOString())
         console.log(`${this.web_url}/api/audio/insert`);
         try {
             const response = await fetch(`${this.web_url}/api/audio/insert`, {

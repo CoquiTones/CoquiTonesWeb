@@ -184,7 +184,7 @@ async def node_health_check(db=Depends(get_db_connection)):
     return dao.Dashboard.node_health_check(db)
 
 
-@app.get(path="/api/dashboard/recent-reports/")
+@app.get(path="/api/dashboard/recent-reports")
 async def recent_reports(
     low_temp: float = float("-inf"),
     high_temp: float = float("inf"),

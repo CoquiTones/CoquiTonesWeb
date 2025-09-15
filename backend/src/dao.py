@@ -427,6 +427,7 @@ class Dashboard:
                     )
                     NATURAL INNER JOIN node n
                     ORDER by n.ntype 
+                    LIMIT 1
                     """
                     )
                 )
@@ -588,7 +589,7 @@ class Dashboard:
                     },
                 )
 
-                return {"reports": list(starmap(ReportTableEntry, curs.fetchall()))}
+                return list(starmap(ReportTableEntry, curs.fetchall()))
 
             except psycopg2.Error as e:
                 print("Error executing SQL query:", e)

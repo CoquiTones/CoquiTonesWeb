@@ -122,7 +122,7 @@ const Classifier = () => {
                         </TableRow>
                       </TableHead>
                       <TableBody>
-                        {classifierReport.getSlices().map((slice) => (
+                        {classifierReport.map((slice) => (
                           <TableRow
                             sx={{
                               "&:last-child td, &:last-child th": { border: 0 },

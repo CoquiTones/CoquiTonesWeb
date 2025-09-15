@@ -19,31 +19,23 @@ import HeroSectionCDN from "../components/shared/HeroSectionCDN";
 import MapEmbed from "../components/NetworkMonitor/Map";
 import { Typography } from "@mui/material";
 const NetworkMonitor = () => {
-  const getDate = () => {
-    const today = new Date();
-    const month = today.getMonth() + 1;
-    const year = today.getFullYear();
-    const date = today.getDate();
-    return `${month}/${date}/${year}`;
-  };
-
-  const [ducks, setDucks] = useState([]);
+  const [nodes, setNodes] = useState([]);
 
   useEffect(() => {
-    const fetchDucks = async () => {
+    const fetchNodes = async () => {
       const dataHandler = new APIHandlerNetworkMonitor();
-      const nodes = await dataHandler.get_all_ducks();
+      const nodes = await dataHandler.get_all_nodes();
       console.log(nodes);
-      setDucks(nodes);
+      setNodes(nodes);
     };
 
-    fetchDucks();
+    fetchNodes();
   }, []);
 
   const calcultaCols = () => {
-    return Math.ceil(Math.sqrt(ducks.length));
+    return Math.ceil(Math.sqrt(nodes.length));
   };
-  const numCols = useMemo(() => calcultaCols(), [ducks]);
+  const numCols = useMemo(() => calcultaCols(), [nodes]);
 
   const [isOpen, setIsOpen] = useState(false);
   const toggle = () => {
@@ -64,7 +56,7 @@ const NetworkMonitor = () => {
           Duck Network
         </Typography>
         <NewNodeDialog
-          setDucks={setDucks}
+          setDucks={setNodes}
           style={{
             display: "flex",
             justifyContent: "flex-end",
@@ -72,7 +64,7 @@ const NetworkMonitor = () => {
           }}
         />
         <NodeWrapper>
-          {ducks.length === 0 ? (
+          {nodes.length === 0 ? (
             <Typography
               sx={{ display: "flex", justifyContent: "center" }}
               color="primary"
@@ -82,13 +74,13 @@ const NetworkMonitor = () => {
               No Ducks to display
             </Typography>
           ) : (
-            ducks.map((duck) => (
-              <NodeCard item key={duck.nid}>
-                <NodeTitle>Duck ID: {duck.nid}</NodeTitle>
-                <NodeInfo>Type: {duck.ntype}</NodeInfo>
-                <NodeInfo>Description: {duck.ndescription}</NodeInfo>
-                <NodeInfo>Latitude: {duck.nlatitude}</NodeInfo>
-                <NodeInfo>Longitude: {duck.nlongitude}</NodeInfo>
+            nodes.map((node) => (
+              <NodeCard item key={node.nid}>
+                <NodeTitle>Duck ID: {node.nid}</NodeTitle>
+                <NodeInfo>Type: {node.ntype}</NodeInfo>
+                <NodeInfo>Description: {node.ndescription}</NodeInfo>
+                <NodeInfo>Latitude: {node.nlatitude}</NodeInfo>
+                <NodeInfo>Longitude: {node.nlongitude}</NodeInfo>
                 <Link href="#" variant="button" style={{ marginTop: "16px" }}>
                   View Details
                 </Link>
@@ -111,7 +103,7 @@ const NetworkMonitor = () => {
           <div style={{ height: "100%" }}>
             {" "}
             {/* Ensure map container fills parent's height */}
-            <MapEmbed ducks={ducks} />
+            <MapEmbed ducks={nodes} />
           </div>
         </Paper>
       </Grid>

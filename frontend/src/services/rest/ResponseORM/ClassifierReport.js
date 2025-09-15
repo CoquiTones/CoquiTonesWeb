@@ -28,8 +28,8 @@ export default class ClassifierReport {
             new SliceReport(APIResponseJsonData[slice])
         ))
     }
-    getSlices() {
-        return this.slices;
+    map(callback) {
+        return this.slices.map(callback);
     }
 }
 

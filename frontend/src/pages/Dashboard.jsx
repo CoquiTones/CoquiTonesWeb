@@ -8,9 +8,9 @@ import Container from "@mui/material/Container";
 import Grid from "@mui/material/Grid2";
 import Paper from "@mui/material/Paper";
 
-import Chart from "../components/dashboard/Graph";
-import Heartbeats from "../components/dashboard/LastMessage";
-import RecentEntries from "../components/dashboard/Entries";
+import Chart from "../components/dashboard/WeekLineChart";
+import LatestNodeHeartbeat from "../components/dashboard/NodeHeartbeat";
+import RecentEntries from "../components/dashboard/RecentEntries";
 import Navbar from "../components/shared/Navbar";
 import Footer from "../components/shared/Footer";
 import theme from "../components/shared/Theme";
@@ -27,7 +27,7 @@ export default function Dashboard() {
       <Sidebar isOpen={isOpen} toggle={toggle} />
       <Navbar toggle={toggle} />
       {
-        <Box sx={{ display: "flex" }}>
+        <Box sx={{ display: "flex", width: "100%" }}>
           <CssBaseline />
           <Box
             component="main"
@@ -37,12 +37,10 @@ export default function Dashboard() {
                   ? theme.palette.grey[100]
                   : theme.palette.grey[900],
               flexGrow: 1,
-              height: "100vh",
-              overflow: "auto",
             }}
           >
             <Toolbar />
-            <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
+            <Container sx={{ mt: 4, mb: 4, width: "100%" }}>
               <Grid container spacing={3}>
                 <Grid size={{ xs: 12, md: 8, lg: 9 }}>
                   <Paper
@@ -50,7 +48,7 @@ export default function Dashboard() {
                       p: 2,
                       display: "flex",
                       flexDirection: "column",
-                      height: 240,
+                      height: 500,
                     }}
                   >
                     <Chart />
@@ -63,16 +61,20 @@ export default function Dashboard() {
                       p: 2,
                       display: "flex",
                       flexDirection: "column",
-                      height: 240,
+                      height: 500,
                     }}
                   >
-                    <Heartbeats />
+                    <LatestNodeHeartbeat />
                   </Paper>
                 </Grid>
 
-                <Grid size={{ xs: 12 }}>
+                <Grid size={{ xs: 12, md: 12, lg: 12 }}>
                   <Paper
-                    sx={{ p: 2, display: "flex", flexDirection: "column" }}
+                    sx={{
+                      p: 2,
+                      flexDirection: "column",
+                      width: "100%",
+                    }}
                   >
                     <RecentEntries />
                   </Paper>
