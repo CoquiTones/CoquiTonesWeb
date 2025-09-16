@@ -33,6 +33,7 @@ CREATE TABLE timestampindex (
 
 CREATE TABLE audiofile (
     afid        SERIAL PRIMARY KEY,
+    auid        INTEGER REFERENCES  appuser,
     tid         INTEGER REFERENCES  timestampindex,
     data        bytea NOT NULL
 );
