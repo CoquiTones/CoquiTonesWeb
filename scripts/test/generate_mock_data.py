@@ -118,7 +118,7 @@ def populate_node(connection, number_of_inserts):
             batch_values = [
                 (
                     random_node_type(),
-                    "1", # ownerid
+                    1, # owner id
                     random_float(*latitude_range),  # asterisk means unpacking
                     random_float(*longitude_range),
                     random_string(description_length),
@@ -160,7 +160,7 @@ def populate_timestamp(connection, number_of_inserts, number_of_nodes):
 
 def populate_audio(connection, number_of_inserts):
 
-    prepared_statement = "INSERT INTO audiofile (tid, data) VALUES (%s, %s)"
+    prepared_statement = "INSERT INTO audiofile (auid, tid, data) VALUES (%s, %s, %s)"
     necessary_statements = (number_of_inserts // MAX_BATCH_SIZE) + 1
     number_of_inserts_left = number_of_inserts
 
@@ -175,6 +175,7 @@ def populate_audio(connection, number_of_inserts):
                 )
                 batch_values = [
                     (
+                        1, # owner id
                         random_integer(1, number_of_inserts),
                         file_bytes,
                     )
