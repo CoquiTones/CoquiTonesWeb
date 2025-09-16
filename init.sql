@@ -12,7 +12,7 @@ CREATE TABLE appuser (
     username    VARCHAR(30) NOT NULL,
     salt        bytea NOT NULL,
     pwhash      bytea NOT NULL,
-)
+);
 
 CREATE TABLE node (
     nid         SERIAL PRIMARY KEY,
