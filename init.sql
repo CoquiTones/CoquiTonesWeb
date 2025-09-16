@@ -10,6 +10,7 @@ CREATE TYPE node_type AS ENUM ('primary', 'secondary');
 CREATE TABLE appuser (
     auid        SERIAL PRIMARY KEY,
     username    VARCHAR(30) NOT NULL,
+    salt        VARCHAR(100) NOT NULL,
     pwhash      VARCHAR(100) NOT NULL,
 )
 
