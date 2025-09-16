@@ -55,6 +55,7 @@ def prepare_database(connection):
         cursor.execute("DELETE FROM node")
         cursor.execute("DELETE FROM appuser")
         cursor.execute("ALTER SEQUENCE node_nid_seq RESTART WITH 1")
+        cursor.execute("ALTER SEQUENCE appuser_auid_seq RESTART WITH 1")
         cursor.execute("ALTER SEQUENCE timestampindex_tid_seq RESTART WITH 1")
         cursor.execute("ALTER SEQUENCE weatherdata_wdid_seq RESTART WITH 1")
         cursor.execute("ALTER SEQUENCE audioslice_asid_seq RESTART WITH 1")
