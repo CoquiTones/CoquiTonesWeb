@@ -16,7 +16,7 @@ CREATE TABLE appuser (
 
 CREATE TABLE node (
     nid         SERIAL PRIMARY KEY,
-    ownerid     INTEGER REFERENCES appuser
+    ownerid     INTEGER REFERENCES appuser,
     ntype       node_type NOT NULL,
     nlatitude   REAL NOT NULL,
     nlongitude  REAL NOT NULL,
