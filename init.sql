@@ -1,4 +1,5 @@
 DROP TYPE IF EXISTS node_type CASCADE;
+DROP TABLE IF EXISTS appuser CASCADE;
 DROP TABLE IF EXISTS node CASCADE;
 DROP TABLE IF EXISTS timestampindex CASCADE;
 DROP TABLE IF EXISTS audiofile CASCADE;
@@ -9,12 +10,14 @@ CREATE TYPE node_type AS ENUM ('primary', 'secondary');
 
 CREATE TABLE appuser (
     auid        SERIAL PRIMARY KEY,
-    pwhash      VARCHAR(100) NOT NULL,
-)
+    username    VARCHAR(30) NOT NULL,
+    salt        bytea NOT NULL,
+    pwhash      bytea NOT NULL
+);
 
 CREATE TABLE node (
     nid         SERIAL PRIMARY KEY,
-    ownerid     INTEGER REFERENCES appuser
+    ownerid     INTEGER REFERENCES appuser,
     ntype       node_type NOT NULL,
     nlatitude   REAL NOT NULL,
     nlongitude  REAL NOT NULL,
@@ -30,6 +33,7 @@ CREATE TABLE timestampindex (
 
 CREATE TABLE audiofile (
     afid        SERIAL PRIMARY KEY,
+    auid        INTEGER REFERENCES  appuser,
     tid         INTEGER REFERENCES  timestampindex,
     data        bytea NOT NULL
 );
@@ -57,10 +61,3 @@ CREATE TABLE weatherdata (
     wdpressure      REAL,
     wddid_rain      bool
 );
-
-INSERT INTO node (ntype, nlatitude, nlongitude, ndescription)
-VALUES 
-    ('primary',18.0814,-66.9038,'Bosque Susua'),
-    ('primary',18.1504,-66.9869,'Bosque Estatal Maricao'),
-    ('secondary',18.4103,-66.0944,'Bosque San Patricio'),
-    ('primary',18.2201,-66.5283,'Bosque Los Tres Picachos');
