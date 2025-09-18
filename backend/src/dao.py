@@ -21,7 +21,7 @@ class DAO:
 
     @classmethod
     def get_all(cls, owner: int, db: connection) -> list:
-        """Get all entities in a list."""
+        """Get all owned entities in a list."""
         with db.cursor() as curs:
             try:
                 curs.execute(
@@ -47,25 +47,33 @@ SELECT * FROM {my_table} NATURAL INNER JOIN owner_matches
             return [cls(*row) for row in curs.fetchall()]
 
     @classmethod
-    def get(cls, id: int, db: connection):
-        """Get one entity by its ID."""
+    def get(cls, owner: int, id: int, db: connection):
+        """Get one owned entity by its ID."""
         with db.cursor() as curs:
             try:
                 curs.execute(
                     sql.SQL(
                     """
-SELECT * FROM {}
+WITH owner_matches as (
+    SELECT {my_id} FROM {owner_table}
+    WHERE ownerid = %s
+)
+SELECT * FROM {} NATURAL INNER JOIN owner_matches 
 WHERE {} = %s
                     """
                     ).format(cls.table, cls.id_column),
-                    (id,),
+                    (owner, id,),
                 )
             except psycopg2.Error as e:
                 print("Error executing SQL query:", e)
                 raise default_HTTP_exception(e.pgcode, "get query") # type: ignore
 
+            entity = curs.fetchone()
             # Unpack the tuple into constructor
-            return cls(*curs.fetchone())
+            if entity is not None: 
+                return cls(*entity)
+            else:
+                return None
 
     @classmethod
     def delete(cls, id: int, db: connection) -> int | None:
