@@ -58,10 +58,13 @@ WITH owner_matches as (
     SELECT {my_id} FROM {owner_table}
     WHERE ownerid = %s
 )
-SELECT * FROM {} NATURAL INNER JOIN owner_matches 
-WHERE {} = %s
+SELECT * FROM {my_table} NATURAL INNER JOIN owner_matches 
+WHERE {my_id} = %s
                     """
-                    ).format(cls.table, cls.id_column),
+                    ).format(
+                        my_table=cls.table, 
+                        my_id=cls.id_column,
+                        owner_table=cls.owner_table),
                     (owner, id,),
                 )
             except psycopg2.Error as e:
@@ -76,7 +79,7 @@ WHERE {} = %s
                 return None
 
     @classmethod
-    def delete(cls, id: int, db: connection) -> int | None:
+    def delete(cls, owner: int, id: int, db: connection) -> int | None:
         """
         deletes element by id
 
@@ -94,12 +97,20 @@ WHERE {} = %s
             try:
                 curs.execute(
                     sql.SQL(
-                        """
-                    DELETE FROM {}
-                    WHERE {} = %s
-                    RETURNING {}
                     """
-                    ).format(cls.table, cls.id_column, cls.id_column),
+WITH owner_matches as (
+    SELECT {my_id} FROM {owner_table}
+    WHERE ownerid = %s
+)
+DELETE FROM {my_table} NATURAL INNER JOIN owner_matches
+WHERE {my_id} = %s
+RETURNING {my_id}
+                    """
+                    ).format(
+                        my_table=cls.table, 
+                        my_id=cls.id_column, 
+                        owner_table=cls.owner_table                        
+                        ),
                     (id,),
                 )
             except psycopg2.Error as e:
@@ -205,6 +216,7 @@ class TimestampIndex(DAO):
 
     table = sql.Identifier("timestampindex")
     id_column = sql.Identifier("tid")
+    owner_table = sql.SQL("timestampindex NATURAL INNER JOIN node")
 
     @classmethod
     async def insert(cls, db: connection, nid: int, timestamp: datetime):
@@ -253,6 +265,7 @@ class AudioSlice(DAO):
 
     table = sql.Identifier("audioslice")
     id_column = sql.Identifier("asid")
+    owner_table = sql.SQL("audioslice NATURAL INNER JOIN audiofile")
 
     @classmethod
     async def insert(cls, db: connection, 
@@ -308,6 +321,7 @@ class WeatherData(DAO):
 
     table = sql.Identifier("weatherdata")
     id_column = sql.Identifier("wdid")
+    owner_table = sql.SQL("weatherdata NATURAL INNER JOIN timestampindex NATURAL INNER JOIN node")
 
 
 @dataclass
@@ -321,6 +335,7 @@ class AudioFile(DAO):
 
     table = sql.Identifier("audiofile")
     id_column = sql.Identifier("afid")
+    owner_table = sql.SQL("audiofile")
 
     @classmethod
     def get_all(cls, owner: int, db: connection) -> list:
@@ -415,7 +430,7 @@ class AudioFile(DAO):
 class Dashboard:
     """Collection of queries for dashboard endpoints"""
     @staticmethod
-    def week_species_summary(db: connection) -> dict[str, list]:
+    def week_species_summary(owner: int, db: connection) -> dict[str, list]:
         """Returns time series with sums of classifier hits of each species from all nodes, binned into days"""
         with db.cursor() as curs:
             try:
@@ -472,7 +487,7 @@ class Dashboard:
 
     
     @staticmethod
-    def node_health_check(db: connection) -> list:
+    def node_health_check(owner: int, db: connection) -> list:
         """Returns the time of the last message from each node along with the type of node"""
         @dataclass
 
@@ -490,9 +505,10 @@ class Dashboard:
                         GROUP by  nid
                     )
                     NATURAL INNER JOIN node n
+                    WHERE n.ownerid = %s
                     ORDER by n.ntype 
                     """
-                ))
+                ), (owner,))
 
                 return list(starmap(NodeReport, curs.fetchall()))
                 

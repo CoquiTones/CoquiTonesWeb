@@ -176,8 +176,8 @@ async def node_insert(
 
 
 @app.delete(path="/api/node/delete")
-async def node_delete(nid: int, db=Depends(get_db_connection)):
-    return dao.Node.delete(nid, db)
+async def node_delete(nid: int, current_user: Annotated[LightWeightUser, Depends(get_current_user)], db=Depends(get_db_connection)):
+    return dao.Node.delete(current_user.auid, nid, db)
 
 
 @app.post(path="/api/ml/classify")
@@ -187,11 +187,11 @@ async def classify(file: UploadFile = File(...), model=Depends(get_model)):
 
 @app.get(path="/api/dashboard/week-species-summary")
 async def week_species_summary(current_user: Annotated[LightWeightUser, Depends(get_current_user)], db=Depends(get_db_connection)):
-    return dao.Dashboard.week_species_summary(db)
+    return dao.Dashboard.week_species_summary(current_user.auid, db)
 
 @app.get(path="/api/dashboard/node-health-check")
 async def node_health_check(current_user: Annotated[LightWeightUser, Depends(get_current_user)], db=Depends(get_db_connection)):
-    return dao.Dashboard.node_health_check(db)
+    return dao.Dashboard.node_health_check(current_user.auid, db)
 
 @app.get(path="/api/dashboard/recent-reports/")
 async def recent_reports(
