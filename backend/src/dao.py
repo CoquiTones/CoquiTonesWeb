@@ -152,6 +152,7 @@ class Node(DAO):
 
     table = sql.Identifier("node")
     id_column = sql.Identifier("nid")
+    owner_table = sql.SQL("node")
 
     @classmethod
     def insert(
