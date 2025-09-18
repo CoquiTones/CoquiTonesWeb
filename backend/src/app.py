@@ -5,15 +5,17 @@ from fastapi.responses import HTMLResponse, Response
 from dbutil import get_db_connection
 from mlutil import get_model, classify_audio_file
 from Spectrogram import sendMelSpectrogram, sendBasicSpectrogram
-import json
-import psycopg2
-import dao as dao
+from routers.security import get_current_user, LightWeightUser
+from routers.security import router as security_router
+import dao
 import os
 import io
 import asyncio
+import dotenv
 
 from datetime import datetime, timedelta
 
+dotenv.load_dotenv(dotenv_path="backend/src/.env")
 
 app = FastAPI()
 origins = [
@@ -41,6 +43,8 @@ app.mount(
     staticfiles.StaticFiles(directory=os.path.join(frontend_dist, "assets")),
     name="assets",
 )
+
+app.include_router(security_router)
 
 
 @app.get("/api/node/all")
@@ -82,15 +86,15 @@ async def audio_get(afid: int, db=Depends(get_db_connection)):
     audio_file = dao.AudioFile.get(afid, db)
     data = audio_file.data
 
-    return Response(content=bytes(data), media_type="audio/mpeg")
+    return Response(content=bytes(data), media_type="audio/mpeg") # type: ignore
 
 @app.get("/api/audioslices/all")
-async def audio_all(db=Depends(get_db_connection)):
+async def audio_slice_all(db=Depends(get_db_connection)):
     return dao.AudioSlice.get_all(db)
 
 
 @app.get(path="/api/audioslices/{asid}")
-async def audio_get(asid: int, db=Depends(get_db_connection)):
+async def audio_slice_get(asid: int, db=Depends(get_db_connection)):
     return dao.AudioSlice.get(asid, db)
 
 async def classify_and_save(audio, audio_file_id, db, model):
@@ -99,7 +103,7 @@ async def classify_and_save(audio, audio_file_id, db, model):
     for classified_slice_name, classified_slice in classifier_output.items():
         classified_slice['starttime'] = classified_slice.pop('start_time')
         classified_slice['endtime'] = classified_slice.pop('end_time')
-        slice_insert_tasks.append(asyncio.create_task(dao.AudioSlice.insert(db, audio_file_id, **classified_slice), name=classified_slice_name))
+        slice_insert_tasks.append(asyncio.create_task(dao.AudioSlice.insert(db, audio_file_id, **classified_slice), name=classified_slice_name)) # type: ignore
 
     done, pending = await asyncio.wait(slice_insert_tasks)
 
@@ -137,7 +141,7 @@ async def classify_by_afid(
         
     if override or await dao.AudioFile.is_classified(afid, db):
         audio = dao.AudioFile.get(afid, db)
-        await classify_and_save(io.BytesIO(audio.data), afid, db, model)
+        await classify_and_save(io.BytesIO(audio.data), afid, db, model) # type: ignore
     
     return await dao.AudioSlice.get_classified(afid, db)
 
@@ -157,12 +161,14 @@ async def basic_spectrogram_get(file: UploadFile = File(...)):
 @app.post(path="/api/node/insert")
 async def node_insert(
     ntype: Annotated[str, Form()],
-    nlatitude: Annotated[str, Form()],
-    nlongitude: Annotated[str, Form()],
+    nlatitude: Annotated[float, Form()],
+    nlongitude: Annotated[float, Form()],
     ndescription: Annotated[str, Form()],
+    current_user: Annotated[LightWeightUser, Depends(get_current_user)],
     db=Depends(get_db_connection),
 ):
-    newNode = dao.Node.insert(db, ntype, nlatitude, nlongitude, ndescription)
+    ownerid = current_user.auid
+    newNode = dao.Node.insert(db, ownerid, ntype, nlatitude, nlongitude, ndescription)
     print(newNode)
     return newNode
 

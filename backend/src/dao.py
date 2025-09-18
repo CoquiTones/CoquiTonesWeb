@@ -13,6 +13,9 @@ node_type = str
 
 
 class DAO:
+    table: str
+    id_column: str
+
     @classmethod
     def get_all(cls, db: connection) -> list:
         """Get all entities in a list."""
@@ -27,7 +30,7 @@ class DAO:
                 )
             except psycopg2.Error as e:
                 print("Error executing SQL query:", e)
-                raise default_HTTP_exception(e.pgcode, "get all query")
+                raise default_HTTP_exception(e.pgcode, "get all query") # type: ignore
 
             # Unpack the tuples into constructor
             return [cls(*row) for row in curs.fetchall()]
@@ -48,13 +51,13 @@ class DAO:
                 )
             except psycopg2.Error as e:
                 print("Error executing SQL query:", e)
-                raise default_HTTP_exception(e.pgcode, "get query")
+                raise default_HTTP_exception(e.pgcode, "get query") # type: ignore
 
             # Unpack the tuple into constructor
             return cls(*curs.fetchone())
 
     @classmethod
-    def delete(cls, id: int, db: connection):
+    def delete(cls, id: int, db: connection) -> int | None:
         """
         deletes element by id
 
@@ -66,7 +69,7 @@ class DAO:
             HTTPException
 
         Returns:
-            id of deleted node
+            id of deleted entity
         """
         with db.cursor() as curs:
             try:
@@ -75,24 +78,58 @@ class DAO:
                         """
                     DELETE FROM {}
                     WHERE {} = %s
+                    RETURNING {}
                     """
-                    ).format(sql.Identifier(cls.table), sql.Identifier(cls.id_column)),
-                    (id),
+                    ).format(sql.Identifier(cls.table), sql.Identifier(cls.id_column), sql.Identifier(cls.id_column)),
+                    (id,),
                 )
             except psycopg2.Error as e:
                 print("Error executing SQL query:", e)
-                raise default_HTTP_exception(e.pgcode, "delete query")
+                raise default_HTTP_exception(e.pgcode, "delete query") # type: ignore
+            db_response = curs.fetchone()
+            
+            if db_response is not None:
+                return db_response[0]
 
-            # Unpack the tuple into constructor
 
-            return "success"
+@dataclass
+class User(DAO):
+    """App user DAO"""
 
+    auid: int
+    username: str
+    salt: bytes
+    pwhash: bytes
+
+    @staticmethod
+    async def get_by_username(db: connection, username: str):
+
+        with db.cursor() as curs:
+            try:
+                curs.execute(
+                    sql.SQL(
+                        """
+                        SELECT auid, username, salt, pwhash FROM appuser
+                        WHERE username = %s
+                        """
+                    ), (username,)
+                )
+                db_response = curs.fetchone()
+                if db_response is not None:
+                    user = User(*db_response)
+                    return user
+                else:
+                    return None
+            except psycopg2.Error as e:
+                print("Error executing SQL query:", e)
+                raise default_HTTP_exception(e.pgcode, "insert timestamp query") # type: ignore
 
 @dataclass
 class Node(DAO):
     """Node DAO"""
 
     nid: int
+    ownerid: int
     ntype: node_type
     nlatitude: float
     nlongitude: float
@@ -105,9 +142,10 @@ class Node(DAO):
     def insert(
         cls,
         db: connection,
+        ownerid: int,
         ntype: str,
-        nlatitude: str,
-        nlongitude: str,
+        nlatitude: float,
+        nlongitude: float,
         ndescription: str,
     ):
         with db.cursor() as curs:
@@ -124,11 +162,13 @@ class Node(DAO):
                 )
 
                 db.commit()
-                nid = curs.fetchone()[0]
-                return cls(nid, ntype, nlatitude, nlongitude, ndescription)
+                db_response = curs.fetchone()
+                if db_response is not None:
+                    nid = db_response[0]
+                    return cls(nid, ownerid, ntype, nlatitude, nlongitude, ndescription)
             except psycopg2.Error as e:
                 print("Error executing SQL query:", e)
-                raise default_HTTP_exception(e.pgcode, "insert node query")
+                raise default_HTTP_exception(e.pgcode, "insert node query") #type: ignore
 
 
 @dataclass
@@ -142,7 +182,8 @@ class TimestampIndex(DAO):
     table = "timestampindex"
     id_column = "tid"
 
-    async def insert(cls, db: connection, nid: str, timestamp: datetime):
+    @classmethod
+    async def insert(cls, db: connection, nid: int, timestamp: datetime):
 
         with db.cursor() as curs:
             try:
@@ -158,11 +199,15 @@ class TimestampIndex(DAO):
                 )
 
                 db.commit()
-                tid = curs.fetchone()[0]
-                return tid
+                db_response = curs.fetchone()
+                if db_response is not None:
+                    tid = db_response[0]
+                    return tid
+                else:
+                    return None
             except psycopg2.Error as e:
                 print("Error executing SQL query:", e)
-                raise default_HTTP_exception(e.pgcode, "insert timestamp query")
+                raise default_HTTP_exception(e.pgcode, "insert timestamp query") # type: ignore
 
 
 @dataclass
@@ -211,7 +256,7 @@ class AudioSlice(DAO):
                 return curs.fetchone()
             except psycopg2.Error as e:
                 print("Error executing SQL query:", e)
-                raise default_HTTP_exception(e.pgcode, "inser audio slice query")   
+                raise default_HTTP_exception(e.pgcode, "inser audio slice query") # type: ignore
 
     @classmethod
     async def get_classified(cls, afid: int, db: connection):
@@ -247,7 +292,7 @@ class AudioFile(DAO):
 
     afid: int
     tid: int
-    data: bytes
+    data: bytes | None
 
     table = "audiofile"
     id_column = "afid"
@@ -265,17 +310,17 @@ class AudioFile(DAO):
                 )
             except psycopg2.Error as e:
                 print("Error executing SQL query:", e)
-                raise default_HTTP_exception(e.pgcode, "get audio file query")
+                raise default_HTTP_exception(e.pgcode, "get audio file query") # type: ignore
 
             # Not pulling the audio data.
             return [cls(row[0], row[1], None) for row in curs.fetchall()]
 
     @classmethod
-    async def insert(cls, db: connection, file, nid: str, timestamp: datetime):
+    async def insert(cls, db: connection, file, nid: int, timestamp: datetime):
 
         with db.cursor() as curs:
             try:
-                tid = await TimestampIndex.insert(TimestampIndex, db, nid, timestamp)
+                tid = await TimestampIndex.insert(db, nid, timestamp)
                 data = await file.read()
                 curs.execute(
                     sql.SQL(
@@ -288,11 +333,15 @@ class AudioFile(DAO):
                     (tid, data),
                 )
                 db.commit()
-                afid = curs.fetchone()[0]
-                return str(afid)
+                db_response = curs.fetchone()
+                if db_response is not None:
+                    afid = db_response[0]
+                    return afid
+                else:
+                    return None
             except psycopg2.Error as e:
                 print("Error executing SQL query:", e)
-                raise default_HTTP_exception(e.pgcode, "insert audio file query")
+                raise default_HTTP_exception(e.pgcode, "insert audio file query") # type: ignore
 
     @classmethod
     async def is_classified(cls, afid: int, db: connection):
@@ -309,10 +358,12 @@ class AudioFile(DAO):
                 ),
                 (afid,)
                 )
-                return curs.fetchone()[0]
+                db_response = curs.fetchone()
+                if db_response is not None:
+                    return db_response[0]
         except psycopg2.Error as e:
             print("Error executing SQL query:", e)
-            raise default_HTTP_exception(e.pgcode, "verify file is classified query")            
+            raise default_HTTP_exception(e.pgcode, "verify file is classified query") # type: ignore
     
     @classmethod
     async def exists(cls, afid: int, db: connection):
@@ -329,10 +380,10 @@ class AudioFile(DAO):
                 ),
                 (afid,)
                 )
-                return curs.fetchone()[0]
+                return curs.fetchone()[0] # type: ignore 
         except psycopg2.Error as e:
             print("Error executing SQL query:", e)
-            raise default_HTTP_exception(e.pgcode, "verify file exists query")           
+            raise default_HTTP_exception(e.pgcode, "verify file exists query") # type: ignore       
 
 
 class Dashboard:
@@ -390,7 +441,7 @@ class Dashboard:
                 }
             except psycopg2.Error as e:
                 print("Error executing SQL query:", e)
-                raise default_HTTP_exception(e.pgcode, "dashboard species weekly summary query")
+                raise default_HTTP_exception(e.pgcode, "dashboard species weekly summary query") # type: ignore
 
 
     
@@ -421,7 +472,7 @@ class Dashboard:
                 
             except psycopg2.Error as e:
                 print("Error executing SQL query:", e)
-                raise default_HTTP_exception(e.pgcode, "dashboard node health check query")
+                raise default_HTTP_exception(e.pgcode, "dashboard node health check query") # type: ignore
        
         
     @staticmethod
@@ -564,6 +615,6 @@ class Dashboard:
 
             except psycopg2.Error as e:
                 print("Error executing SQL query:", e)
-                raise default_HTTP_exception(e.pgcode, "dashboard recent reports query")
+                raise default_HTTP_exception(e.pgcode, "dashboard recent reports query") # type: ignore
 
 
