@@ -70,11 +70,7 @@ async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)]) -> Lig
     user = LightWeightUser(username=username, auid=auid)
 
     if not user:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid authentication credentials",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
+        raise credentials_exception
     return user
 
 def validate_username(username: str) -> bool:
