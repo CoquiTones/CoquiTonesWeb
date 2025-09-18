@@ -48,8 +48,8 @@ app.include_router(security_router)
 
 
 @app.get("/api/node/all")
-async def node_all(db=Depends(get_db_connection)):
-    return dao.Node.get_all(db)
+async def node_all(current_user: Annotated[LightWeightUser, Depends(get_current_user)], db=Depends(get_db_connection)):
+    return dao.Node.get_all(current_user.auid, db)
 
 
 @app.get("/api/node/{nid}")
