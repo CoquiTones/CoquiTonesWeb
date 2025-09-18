@@ -13,20 +13,31 @@ node_type = str
 
 
 class DAO:
-    table: str
-    id_column: str
+    table: sql.Identifier       # name of the table that contains this type's data
+    id_column: sql.Identifier   # name of the column that contains the type's id
+    owner_table: sql.SQL        # SQL statement that produces table with column ownerid and id column for this type
+                                # Example for timestampindex: timestampindex NATURAL INNER JOIN node
+                                # timestampindex contains the id column, then node has an ownerid column.
 
     @classmethod
-    def get_all(cls, db: connection) -> list:
+    def get_all(cls, owner: int, db: connection) -> list:
         """Get all entities in a list."""
         with db.cursor() as curs:
             try:
                 curs.execute(
                     sql.SQL(
-                        """
-                    SELECT * FROM {}
                     """
-                    ).format(sql.Identifier(cls.table))
+WITH owner_matches as (
+    SELECT {my_id} FROM {owner_table}
+    WHERE ownerid = %s
+)
+SELECT * FROM {my_table} NATURAL INNER JOIN owner_matches
+                    """
+                    ).format(
+                     my_id = cls.id_column,
+                     my_table = cls.table,
+                     owner_table = cls.owner_table  
+                    ), (owner,)
                 )
             except psycopg2.Error as e:
                 print("Error executing SQL query:", e)
@@ -42,11 +53,11 @@ class DAO:
             try:
                 curs.execute(
                     sql.SQL(
-                        """
-                    SELECT * FROM {}
-                    WHERE {} = %s
                     """
-                    ).format(sql.Identifier(cls.table), sql.Identifier(cls.id_column)),
+SELECT * FROM {}
+WHERE {} = %s
+                    """
+                    ).format(cls.table, cls.id_column),
                     (id,),
                 )
             except psycopg2.Error as e:
@@ -80,7 +91,7 @@ class DAO:
                     WHERE {} = %s
                     RETURNING {}
                     """
-                    ).format(sql.Identifier(cls.table), sql.Identifier(cls.id_column), sql.Identifier(cls.id_column)),
+                    ).format(cls.table, cls.id_column, cls.id_column),
                     (id,),
                 )
             except psycopg2.Error as e:
@@ -100,6 +111,10 @@ class User(DAO):
     username: str
     salt: bytes
     pwhash: bytes
+
+    table = sql.Identifier("appuser")
+    id_column = sql.Identifier("auid")
+    owner_table = sql.SQL("(SELECT auid, auid as ownerid FROM appuser)")
 
     @staticmethod
     async def get_by_username(db: connection, username: str):
@@ -135,8 +150,8 @@ class Node(DAO):
     nlongitude: float
     ndescription: str
 
-    table = "node"
-    id_column = "nid"
+    table = sql.Identifier("node")
+    id_column = sql.Identifier("nid")
 
     @classmethod
     def insert(
@@ -157,7 +172,7 @@ class Node(DAO):
                             VALUES (%s, %s, %s, %s)
                             RETURNING nid
                             """
-                    ).format(sql.Identifier(cls.table)),
+                    ).format(cls.table),
                     (ntype, nlatitude, nlongitude, ndescription),
                 )
 
@@ -179,8 +194,8 @@ class TimestampIndex(DAO):
     nid: int
     ttime: datetime
 
-    table = "timestampindex"
-    id_column = "tid"
+    table = sql.Identifier("timestampindex")
+    id_column = sql.Identifier("tid")
 
     @classmethod
     async def insert(cls, db: connection, nid: int, timestamp: datetime):
@@ -194,7 +209,7 @@ class TimestampIndex(DAO):
                         VALUES (%s, %s)
                         RETURNING tid
                         """
-                    ).format(sql.Identifier(cls.table)),
+                    ).format(cls.table),
                     (nid, timestamp),
                 )
 
@@ -227,8 +242,8 @@ class AudioSlice(DAO):
     locustus: bool
     richmondi: bool
 
-    table = "audioslice"
-    id_column = "asid"
+    table = sql.Identifier("audioslice")
+    id_column = sql.Identifier("asid")
 
     @classmethod
     async def insert(cls, db: connection, 
@@ -282,8 +297,8 @@ class WeatherData(DAO):
     wdpressure: float
     wddid_rain: bool
 
-    table = "weatherdata"
-    id_column = "wdid"
+    table = sql.Identifier("weatherdata")
+    id_column = sql.Identifier("wdid")
 
 
 @dataclass
@@ -292,28 +307,30 @@ class AudioFile(DAO):
 
     afid: int
     tid: int
+    ownerid: int
     data: bytes | None
 
-    table = "audiofile"
-    id_column = "afid"
+    table = sql.Identifier("audiofile")
+    id_column = sql.Identifier("afid")
 
     @classmethod
-    def get_all(cls, db: connection) -> list:
+    def get_all(cls, owner: int, db: connection) -> list:
         """Get IDs of audio files, but not audio"""
         with db.cursor() as curs:
             try:
                 curs.execute(
                     """
-                    SELECT afid, tid
+                    SELECT afid, tid, ownerid
                     FROM audiofile
-                    """
+                    WHERE ownerid = %s
+                    """, (owner,)
                 )
             except psycopg2.Error as e:
                 print("Error executing SQL query:", e)
                 raise default_HTTP_exception(e.pgcode, "get audio file query") # type: ignore
 
             # Not pulling the audio data.
-            return [cls(row[0], row[1], None) for row in curs.fetchall()]
+            return [cls(row[0], row[1], row[2], None) for row in curs.fetchall()]
 
     @classmethod
     async def insert(cls, db: connection, file, nid: int, timestamp: datetime):
@@ -329,7 +346,7 @@ class AudioFile(DAO):
                             VALUES (%s, %s)
                             RETURNING afid
                             """
-                    ).format(sql.Identifier(cls.table)),
+                    ).format(cls.table),
                     (tid, data),
                 )
                 db.commit()
