@@ -18,8 +18,10 @@ from datetime import datetime, timedelta
 app = FastAPI()
 origins = [
     "http://localhost:5173",
+    "https://localhost:5173",
     "localhost:5173",
     "http://localhost:8080",
+    "https://localhost:8080",
     "localhost:8080",
     "http://0.0.0.0:8080",
     os.getenv("WEB_URL"),
@@ -62,6 +64,7 @@ async def timestamp_all(db=Depends(get_db_connection)):
 async def timestamp_get(tid: int, db=Depends(get_db_connection)):
     return dao.TimestampIndex.get(tid, db)
 
+
 @app.get("/api/weather/all")
 async def weather_all(db=Depends(get_db_connection)):
     return dao.WeatherData.get_all(db)
@@ -84,6 +87,7 @@ async def audio_get(afid: int, db=Depends(get_db_connection)):
 
     return Response(content=bytes(data), media_type="audio/mpeg")
 
+
 @app.get("/api/audioslices/all")
 async def audio_all(db=Depends(get_db_connection)):
     return dao.AudioSlice.get_all(db)
@@ -93,13 +97,19 @@ async def audio_all(db=Depends(get_db_connection)):
 async def audio_get(asid: int, db=Depends(get_db_connection)):
     return dao.AudioSlice.get(asid, db)
 
+
 async def classify_and_save(audio, audio_file_id, db, model):
     classifier_output = classify_audio_file(audio, model)
     slice_insert_tasks = []
     for classified_slice_name, classified_slice in classifier_output.items():
-        classified_slice['starttime'] = classified_slice.pop('start_time')
-        classified_slice['endtime'] = classified_slice.pop('end_time')
-        slice_insert_tasks.append(asyncio.create_task(dao.AudioSlice.insert(db, audio_file_id, **classified_slice), name=classified_slice_name))
+        classified_slice["starttime"] = classified_slice.pop("start_time")
+        classified_slice["endtime"] = classified_slice.pop("end_time")
+        slice_insert_tasks.append(
+            asyncio.create_task(
+                dao.AudioSlice.insert(db, audio_file_id, **classified_slice),
+                name=classified_slice_name,
+            )
+        )
 
     done, pending = await asyncio.wait(slice_insert_tasks)
 
@@ -114,7 +124,7 @@ async def audio_post(
     file: UploadFile = File(...),
     classify: Annotated[bool, Form()] = True,
     db=Depends(get_db_connection),
-    model=Depends(get_model)
+    model=Depends(get_model),
 ):
     audio_file_id = await dao.AudioFile.insert(db, file, nid, timestamp)
 
@@ -124,21 +134,22 @@ async def audio_post(
 
     return audio_file_id
 
+
 @app.get(path="/api/classify/by-id/{afid}")
 async def classify_by_afid(
     afid: int,
     override: Annotated[bool, Form()] = False,
     db=Depends(get_db_connection),
-    model=Depends(get_model)
+    model=Depends(get_model),
 ):
 
     if not await dao.AudioFile.exists(afid, db):
         raise HTTPException(status_code=404, detail="Audio file does not exist")
-        
+
     if override or await dao.AudioFile.is_classified(afid, db):
         audio = dao.AudioFile.get(afid, db)
         await classify_and_save(io.BytesIO(audio.data), afid, db, model)
-    
+
     return await dao.AudioSlice.get_classified(afid, db)
 
 
@@ -177,32 +188,51 @@ async def classify(file: UploadFile = File(...), model=Depends(get_model)):
     r = classify_audio_file(file.file, model)
     return r
 
+
 @app.get(path="/api/dashboard/week-species-summary")
 async def week_species_summary(db=Depends(get_db_connection)):
     return dao.Dashboard.week_species_summary(db)
+
 
 @app.get(path="/api/dashboard/node-health-check")
 async def node_health_check(db=Depends(get_db_connection)):
     return dao.Dashboard.node_health_check(db)
 
+
 @app.get(path="/api/dashboard/recent-reports/")
 async def recent_reports(
-    low_temp: float = float('-inf'), high_temp: float = float('inf'),
-    low_humidity: float = float('-inf'), high_humidity: float = float('inf'),
-    low_pressure: float = float('-inf'), high_pressure: float = float('inf'),
-    low_coqui:          int = 0, high_coqui:            int = 1 << 31 - 1, # int max for PostgresSQL integer data type
-    low_wightmanae:     int = 0, high_wightmanae:       int = 1 << 31 - 1,
-    low_gryllus:        int = 0, high_gryllus:          int = 1 << 31 - 1,
-    low_portoricensis:  int = 0, high_portoricensis:    int = 1 << 31 - 1,
-    low_unicolor:       int = 0, high_unicolor:         int = 1 << 31 - 1,
-    low_hedricki:       int = 0, high_hedricki:         int = 1 << 31 - 1,
-    low_locustus:       int = 0, high_locustus:         int = 1 << 31 - 1,
-    low_richmondi:      int = 0, high_richmondi:        int = 1 << 31 - 1,   
-    description_filter: str = '%',
-    skip: int = 0, limit: int = 10, 
-    orderby: int = 1, # This could be changed to an enum, but passing through the query might be weird.
-    db=Depends(get_db_connection)):
-    return dao.Dashboard.recent_reports(**locals()) # pass all keyword args as unpacked dictionary
+    low_temp: float = float("-inf"),
+    high_temp: float = float("inf"),
+    low_humidity: float = float("-inf"),
+    high_humidity: float = float("inf"),
+    low_pressure: float = float("-inf"),
+    high_pressure: float = float("inf"),
+    low_coqui: int = 0,
+    high_coqui: int = 1 << 31 - 1,  # int max for PostgresSQL integer data type
+    low_wightmanae: int = 0,
+    high_wightmanae: int = 1 << 31 - 1,
+    low_gryllus: int = 0,
+    high_gryllus: int = 1 << 31 - 1,
+    low_portoricensis: int = 0,
+    high_portoricensis: int = 1 << 31 - 1,
+    low_unicolor: int = 0,
+    high_unicolor: int = 1 << 31 - 1,
+    low_hedricki: int = 0,
+    high_hedricki: int = 1 << 31 - 1,
+    low_locustus: int = 0,
+    high_locustus: int = 1 << 31 - 1,
+    low_richmondi: int = 0,
+    high_richmondi: int = 1 << 31 - 1,
+    description_filter: str = "%",
+    skip: int = 0,
+    limit: int = 10,
+    orderby: int = 1,  # This could be changed to an enum, but passing through the query might be weird.
+    db=Depends(get_db_connection),
+):
+    return dao.Dashboard.recent_reports(
+        **locals()
+    )  # pass all keyword args as unpacked dictionary
+
 
 @app.get("/{full_path:path}", response_class=HTMLResponse)
 async def serve_frontend():
