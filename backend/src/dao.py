@@ -411,7 +411,7 @@ RETURNING afid
             raise default_HTTP_exception(e.pgcode, "verify file is classified query") # type: ignore
     
     @classmethod
-    async def exists(cls, afid: int, db: connection):
+    async def exists(cls, afid: int, owner: int, db: connection):
         try:
             with db.cursor() as curs:
                 curs.execute(sql.SQL(
@@ -419,11 +419,11 @@ RETURNING afid
                     SELECT EXISTS (
                         SELECT afid 
                         FROM audiofile 
-                        WHERE afid = %s
+                        WHERE afid = %s AND ownerid = %s
                         )
                 """
                 ),
-                (afid,)
+                (afid, owner)
                 )
                 return curs.fetchone()[0] # type: ignore 
         except psycopg2.Error as e:
