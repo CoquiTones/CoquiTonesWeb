@@ -160,7 +160,7 @@ def populate_timestamp(connection, number_of_inserts, number_of_nodes):
 
 def populate_audio(connection, number_of_inserts):
 
-    prepared_statement = "INSERT INTO audiofile (auid, tid, data) VALUES (%s, %s, %s)"
+    prepared_statement = "INSERT INTO audiofile (ownerid, tid, data) VALUES (%s, %s, %s)"
     necessary_statements = (number_of_inserts // MAX_BATCH_SIZE) + 1
     number_of_inserts_left = number_of_inserts
 

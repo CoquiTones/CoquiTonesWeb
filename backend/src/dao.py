@@ -13,48 +13,73 @@ node_type = str
 
 
 class DAO:
+    table: sql.Identifier       # name of the table that contains this type's data
+    id_column: sql.Identifier   # name of the column that contains the type's id
+    owner_table: sql.SQL        # SQL statement that produces table with column ownerid and id column for this type
+                                # Example for timestampindex: timestampindex NATURAL INNER JOIN node
+                                # timestampindex contains the id column, then node has an ownerid column.
+
     @classmethod
-    def get_all(cls, db: connection) -> list:
-        """Get all entities in a list."""
+    def get_all(cls, owner: int, db: connection) -> list:
+        """Get all owned entities in a list."""
         with db.cursor() as curs:
             try:
                 curs.execute(
                     sql.SQL(
-                        """
-                    SELECT * FROM {}
                     """
-                    ).format(sql.Identifier(cls.table))
+WITH owner_matches as (
+    SELECT {my_id} FROM {owner_table}
+    WHERE ownerid = %s
+)
+SELECT * FROM {my_table} NATURAL INNER JOIN owner_matches
+                    """
+                    ).format(
+                     my_id = cls.id_column,
+                     my_table = cls.table,
+                     owner_table = cls.owner_table  
+                    ), (owner,)
                 )
             except psycopg2.Error as e:
                 print("Error executing SQL query:", e)
-                raise default_HTTP_exception(e.pgcode, "get all query")
+                raise default_HTTP_exception(e.pgcode, "get all query") # type: ignore
 
             # Unpack the tuples into constructor
             return [cls(*row) for row in curs.fetchall()]
 
     @classmethod
-    def get(cls, id: int, db: connection):
-        """Get one entity by its ID."""
+    def get(cls, owner: int, id: int, db: connection):
+        """Get one owned entity by its ID."""
         with db.cursor() as curs:
             try:
                 curs.execute(
                     sql.SQL(
-                        """
-                    SELECT * FROM {}
-                    WHERE {} = %s
                     """
-                    ).format(sql.Identifier(cls.table), sql.Identifier(cls.id_column)),
-                    (id,),
+WITH owner_matches as (
+    SELECT {my_id} FROM {owner_table}
+    WHERE ownerid = %s
+)
+SELECT * FROM {my_table} NATURAL INNER JOIN owner_matches 
+WHERE {my_id} = %s
+                    """
+                    ).format(
+                        my_table=cls.table, 
+                        my_id=cls.id_column,
+                        owner_table=cls.owner_table),
+                    (owner, id,),
                 )
             except psycopg2.Error as e:
                 print("Error executing SQL query:", e)
-                raise default_HTTP_exception(e.pgcode, "get query")
+                raise default_HTTP_exception(e.pgcode, "get query") # type: ignore
 
+            entity = curs.fetchone()
             # Unpack the tuple into constructor
-            return cls(*curs.fetchone())
+            if entity is not None: 
+                return cls(*entity)
+            else:
+                return None
 
     @classmethod
-    def delete(cls, id: int, db: connection):
+    def delete(cls, owner: int, id: int, db: connection) -> int | None:
         """
         deletes element by id
 
@@ -66,48 +91,96 @@ class DAO:
             HTTPException
 
         Returns:
-            id of deleted node
+            id of deleted entity
         """
         with db.cursor() as curs:
             try:
                 curs.execute(
                     sql.SQL(
-                        """
-                    DELETE FROM {}
-                    WHERE {} = %s
                     """
-                    ).format(sql.Identifier(cls.table), sql.Identifier(cls.id_column)),
-                    (id),
+WITH owner_matches as (
+    SELECT {my_id} FROM {owner_table}
+    WHERE ownerid = %s
+)
+DELETE FROM {my_table} NATURAL INNER JOIN owner_matches
+WHERE {my_id} = %s
+RETURNING {my_id}
+                    """
+                    ).format(
+                        my_table=cls.table, 
+                        my_id=cls.id_column, 
+                        owner_table=cls.owner_table                        
+                        ),
+                    (id,),
                 )
             except psycopg2.Error as e:
                 print("Error executing SQL query:", e)
-                raise default_HTTP_exception(e.pgcode, "delete query")
+                raise default_HTTP_exception(e.pgcode, "delete query") # type: ignore
+            db_response = curs.fetchone()
+            
+            if db_response is not None:
+                return db_response[0]
 
-            # Unpack the tuple into constructor
 
-            return "success"
+@dataclass
+class User(DAO):
+    """App user DAO"""
 
+    auid: int
+    username: str
+    salt: bytes
+    pwhash: bytes
+
+    table = sql.Identifier("appuser")
+    id_column = sql.Identifier("auid")
+    owner_table = sql.SQL("(SELECT auid, auid as ownerid FROM appuser)")
+
+    @staticmethod
+    async def get_by_username(db: connection, username: str):
+
+        with db.cursor() as curs:
+            try:
+                curs.execute(
+                    sql.SQL(
+                        """
+                        SELECT auid, username, salt, pwhash FROM appuser
+                        WHERE username = %s
+                        """
+                    ), (username,)
+                )
+                db_response = curs.fetchone()
+                if db_response is not None:
+                    user = User(*db_response)
+                    return user
+                else:
+                    return None
+            except psycopg2.Error as e:
+                print("Error executing SQL query:", e)
+                raise default_HTTP_exception(e.pgcode, "insert timestamp query") # type: ignore
 
 @dataclass
 class Node(DAO):
     """Node DAO"""
 
     nid: int
+    ownerid: int
     ntype: node_type
     nlatitude: float
     nlongitude: float
     ndescription: str
 
-    table = "node"
-    id_column = "nid"
+    table = sql.Identifier("node")
+    id_column = sql.Identifier("nid")
+    owner_table = sql.SQL("node")
 
     @classmethod
     def insert(
         cls,
         db: connection,
+        ownerid: int,
         ntype: str,
-        nlatitude: str,
-        nlongitude: str,
+        nlatitude: float,
+        nlongitude: float,
         ndescription: str,
     ):
         with db.cursor() as curs:
@@ -119,16 +192,18 @@ class Node(DAO):
                             VALUES (%s, %s, %s, %s)
                             RETURNING nid
                             """
-                    ).format(sql.Identifier(cls.table)),
+                    ).format(cls.table),
                     (ntype, nlatitude, nlongitude, ndescription),
                 )
 
                 db.commit()
-                nid = curs.fetchone()[0]
-                return cls(nid, ntype, nlatitude, nlongitude, ndescription)
+                db_response = curs.fetchone()
+                if db_response is not None:
+                    nid = db_response[0]
+                    return cls(nid, ownerid, ntype, nlatitude, nlongitude, ndescription)
             except psycopg2.Error as e:
                 print("Error executing SQL query:", e)
-                raise default_HTTP_exception(e.pgcode, "insert node query")
+                raise default_HTTP_exception(e.pgcode, "insert node query") #type: ignore
 
 
 @dataclass
@@ -139,10 +214,12 @@ class TimestampIndex(DAO):
     nid: int
     ttime: datetime
 
-    table = "timestampindex"
-    id_column = "tid"
+    table = sql.Identifier("timestampindex")
+    id_column = sql.Identifier("tid")
+    owner_table = sql.SQL("timestampindex NATURAL INNER JOIN node")
 
-    async def insert(cls, db: connection, nid: str, timestamp: datetime):
+    @classmethod
+    async def insert(cls, db: connection, nid: int, timestamp: datetime):
 
         with db.cursor() as curs:
             try:
@@ -153,16 +230,20 @@ class TimestampIndex(DAO):
                         VALUES (%s, %s)
                         RETURNING tid
                         """
-                    ).format(sql.Identifier(cls.table)),
+                    ).format(cls.table),
                     (nid, timestamp),
                 )
 
                 db.commit()
-                tid = curs.fetchone()[0]
-                return tid
+                db_response = curs.fetchone()
+                if db_response is not None:
+                    tid = db_response[0]
+                    return tid
+                else:
+                    return None
             except psycopg2.Error as e:
                 print("Error executing SQL query:", e)
-                raise default_HTTP_exception(e.pgcode, "insert timestamp query")
+                raise default_HTTP_exception(e.pgcode, "insert timestamp query") # type: ignore
 
 
 @dataclass
@@ -182,8 +263,9 @@ class AudioSlice(DAO):
     locustus: bool
     richmondi: bool
 
-    table = "audioslice"
-    id_column = "asid"
+    table = sql.Identifier("audioslice")
+    id_column = sql.Identifier("asid")
+    owner_table = sql.SQL("audioslice NATURAL INNER JOIN audiofile")
 
     @classmethod
     async def insert(cls, db: connection, 
@@ -211,7 +293,7 @@ class AudioSlice(DAO):
                 return curs.fetchone()
             except psycopg2.Error as e:
                 print("Error executing SQL query:", e)
-                raise default_HTTP_exception(e.pgcode, "inser audio slice query")   
+                raise default_HTTP_exception(e.pgcode, "inser audio slice query") # type: ignore
 
     @classmethod
     async def get_classified(cls, afid: int, db: connection):
@@ -237,8 +319,9 @@ class WeatherData(DAO):
     wdpressure: float
     wddid_rain: bool
 
-    table = "weatherdata"
-    id_column = "wdid"
+    table = sql.Identifier("weatherdata")
+    id_column = sql.Identifier("wdid")
+    owner_table = sql.SQL("weatherdata NATURAL INNER JOIN timestampindex NATURAL INNER JOIN node")
 
 
 @dataclass
@@ -247,35 +330,38 @@ class AudioFile(DAO):
 
     afid: int
     tid: int
-    data: bytes
+    ownerid: int
+    data: bytes | None
 
-    table = "audiofile"
-    id_column = "afid"
+    table = sql.Identifier("audiofile")
+    id_column = sql.Identifier("afid")
+    owner_table = sql.SQL("audiofile")
 
     @classmethod
-    def get_all(cls, db: connection) -> list:
+    def get_all(cls, owner: int, db: connection) -> list:
         """Get IDs of audio files, but not audio"""
         with db.cursor() as curs:
             try:
                 curs.execute(
                     """
-                    SELECT afid, tid
+                    SELECT afid, tid, ownerid
                     FROM audiofile
-                    """
+                    WHERE ownerid = %s
+                    """, (owner,)
                 )
             except psycopg2.Error as e:
                 print("Error executing SQL query:", e)
-                raise default_HTTP_exception(e.pgcode, "get audio file query")
+                raise default_HTTP_exception(e.pgcode, "get audio file query") # type: ignore
 
             # Not pulling the audio data.
-            return [cls(row[0], row[1], None) for row in curs.fetchall()]
+            return [cls(row[0], row[1], row[2], None) for row in curs.fetchall()]
 
     @classmethod
-    async def insert(cls, db: connection, file, nid: str, timestamp: datetime):
+    async def insert(cls, db: connection, file, nid: int, timestamp: datetime):
 
         with db.cursor() as curs:
             try:
-                tid = await TimestampIndex.insert(TimestampIndex, db, nid, timestamp)
+                tid = await TimestampIndex.insert(db, nid, timestamp)
                 data = await file.read()
                 curs.execute(
                     sql.SQL(
@@ -284,15 +370,19 @@ class AudioFile(DAO):
                             VALUES (%s, %s)
                             RETURNING afid
                             """
-                    ).format(sql.Identifier(cls.table)),
+                    ).format(cls.table),
                     (tid, data),
                 )
                 db.commit()
-                afid = curs.fetchone()[0]
-                return str(afid)
+                db_response = curs.fetchone()
+                if db_response is not None:
+                    afid = db_response[0]
+                    return afid
+                else:
+                    return None
             except psycopg2.Error as e:
                 print("Error executing SQL query:", e)
-                raise default_HTTP_exception(e.pgcode, "insert audio file query")
+                raise default_HTTP_exception(e.pgcode, "insert audio file query") # type: ignore
 
     @classmethod
     async def is_classified(cls, afid: int, db: connection):
@@ -309,10 +399,12 @@ class AudioFile(DAO):
                 ),
                 (afid,)
                 )
-                return curs.fetchone()[0]
+                db_response = curs.fetchone()
+                if db_response is not None:
+                    return db_response[0]
         except psycopg2.Error as e:
             print("Error executing SQL query:", e)
-            raise default_HTTP_exception(e.pgcode, "verify file is classified query")            
+            raise default_HTTP_exception(e.pgcode, "verify file is classified query") # type: ignore
     
     @classmethod
     async def exists(cls, afid: int, db: connection):
@@ -329,51 +421,55 @@ class AudioFile(DAO):
                 ),
                 (afid,)
                 )
-                return curs.fetchone()[0]
+                return curs.fetchone()[0] # type: ignore 
         except psycopg2.Error as e:
             print("Error executing SQL query:", e)
-            raise default_HTTP_exception(e.pgcode, "verify file exists query")           
+            raise default_HTTP_exception(e.pgcode, "verify file exists query") # type: ignore       
 
 
 class Dashboard:
     """Collection of queries for dashboard endpoints"""
     @staticmethod
-    def week_species_summary(db: connection) -> dict[str, list]:
+    def week_species_summary(owner: int, db: connection) -> dict[str, list]:
         """Returns time series with sums of classifier hits of each species from all nodes, binned into days"""
         with db.cursor() as curs:
             try:
                 curs.execute(
                     sql.SQL(
                         """
-                        WITH classifierreport AS (
-                            SELECT afid, 
-                                SUM(coqui::int) AS coqui_hits,
-                                SUM(wightmanae::int) AS wightmanae_hits,
-                                SUM(gryllus::int) AS gryllus_hits,
-                                SUM(portoricensis::int) AS portoricensis_hits,
-                                SUM(unicolor::int) AS unicolor_hits,
-                                SUM(hedricki::int) AS hedricki_hits,
-                                SUM(locustus::int) AS locustus_hits,
-                                SUM(richmondi::int) AS richmondi_hits
-                            FROM audioslice a  
-                            GROUP BY afid 
-                        ) 
-                        SELECT 
-                            sum(coqui_hits) AS total_coqui,
-                            sum(wightmanae_hits) AS total_wightmanae,
-                            sum(gryllus_hits) AS total_gryllus,
-                            sum(portoricensis_hits) AS total_portoricensis,
-                            sum(unicolor_hits) AS total_unicolor,
-                            sum(hedricki_hits) AS total_hedricki,
-                            sum(locustus_hits) AS total_locustus,
-                            sum(richmondi_hits) AS total_richmondi, 
-                            date_bin('1 day', ttime AT LOCAL, CURRENT_TIMESTAMP) as bin
-                        FROM classifierreport NATURAL INNER JOIN timestampindex
-                        WHERE ttime > (CURRENT_TIMESTAMP - '7 days'::INTERVAL)
-                        GROUP BY "bin" 
-                        ORDER BY "bin"
+WITH owner_matches AS (
+    SELECT asid FROM audioslice NATURAL INNER JOIN audiofile
+    WHERE ownerid = %s
+),
+classifierreport AS (
+    SELECT afid, 
+        SUM(coqui::int) AS coqui_hits,
+        SUM(wightmanae::int) AS wightmanae_hits,
+        SUM(gryllus::int) AS gryllus_hits,
+        SUM(portoricensis::int) AS portoricensis_hits,
+        SUM(unicolor::int) AS unicolor_hits,
+        SUM(hedricki::int) AS hedricki_hits,
+        SUM(locustus::int) AS locustus_hits,
+        SUM(richmondi::int) AS richmondi_hits
+    FROM audioslice a NATURAL INNER JOIN owner_matches
+    GROUP BY afid 
+)
+SELECT 
+    sum(coqui_hits) AS total_coqui,
+    sum(wightmanae_hits) AS total_wightmanae,
+    sum(gryllus_hits) AS total_gryllus,
+    sum(portoricensis_hits) AS total_portoricensis,
+    sum(unicolor_hits) AS total_unicolor,
+    sum(hedricki_hits) AS total_hedricki,
+    sum(locustus_hits) AS total_locustus,
+    sum(richmondi_hits) AS total_richmondi, 
+    date_bin('1 day', ttime AT LOCAL, CURRENT_TIMESTAMP) as bin
+FROM classifierreport NATURAL INNER JOIN timestampindex
+WHERE ttime > (CURRENT_TIMESTAMP - '7 days'::INTERVAL)
+GROUP BY "bin" 
+ORDER BY "bin"
                         """
-                    )
+                    ), (owner,)
                 )
                 db_output = curs.fetchall()
                 column_transposed = list(map(list, zip(*db_output)))
@@ -390,12 +486,12 @@ class Dashboard:
                 }
             except psycopg2.Error as e:
                 print("Error executing SQL query:", e)
-                raise default_HTTP_exception(e.pgcode, "dashboard species weekly summary query")
+                raise default_HTTP_exception(e.pgcode, "dashboard species weekly summary query") # type: ignore
 
 
     
     @staticmethod
-    def node_health_check(db: connection) -> list:
+    def node_health_check(owner: int, db: connection) -> list:
         """Returns the time of the last message from each node along with the type of node"""
         @dataclass
 
@@ -408,24 +504,26 @@ class Dashboard:
             try:
                 curs.execute(sql.SQL(
                     """
-                    SELECT latest_time, n.ndescription, n.ntype FROM  (
-                        SELECT max(ttime) as latest_time, nid FROM timestampindex
-                        GROUP by  nid
-                    )
-                    NATURAL INNER JOIN node n
-                    ORDER by n.ntype 
+SELECT latest_time, n.ndescription, n.ntype FROM  (
+    SELECT max(ttime) as latest_time, nid FROM timestampindex
+    GROUP by  nid
+)
+NATURAL INNER JOIN node n
+WHERE n.ownerid = %s
+ORDER by n.ntype 
                     """
-                ))
+                ), (owner,))
 
                 return list(starmap(NodeReport, curs.fetchall()))
                 
             except psycopg2.Error as e:
                 print("Error executing SQL query:", e)
-                raise default_HTTP_exception(e.pgcode, "dashboard node health check query")
+                raise default_HTTP_exception(e.pgcode, "dashboard node health check query") # type: ignore
        
         
     @staticmethod
     def recent_reports(
+        current_user,
         low_temp: float, high_temp: float,
         low_humidity: float, high_humidity: float,
         low_pressure: float, high_pressure: float,
@@ -465,72 +563,78 @@ class Dashboard:
                 curs.execute(
                     sql.SQL(
                         """
-                        WITH cr AS (
-                            SELECT afid, 
-                                SUM(coqui::int) AS coqui_hits,
-                                SUM(wightmanae::int) AS wightmanae_hits,
-                                SUM(gryllus::int) AS gryllus_hits,
-                                SUM(portoricensis::int) AS portoricensis_hits,
-                                SUM(unicolor::int) AS unicolor_hits,
-                                SUM(hedricki::int) AS hedricki_hits,
-                                SUM(locustus::int) AS locustus_hits,
-                                SUM(richmondi::int) AS richmondi_hits
-                            FROM audioslice a  
-                            GROUP BY afid 
-                        )
-                        SELECT n.ndescription,
-                                t.ttime, 
-                                c.coqui_hits, 
-                                c.wightmanae_hits, 
-                                c.gryllus_hits, 
-                                c.portoricensis_hits, 
-                                c.unicolor_hits, 
-                                c.hedricki_hits, 
-                                c.locustus_hits, 
-                                c.richmondi_hits, 
-                                w.wdhumidity, w.wdtemperature, w.wdpressure, w.wddid_rain, 
-                                a.afid
-                        FROM timestampindex t NATURAL INNER JOIN cr c NATURAL INNER JOIN weatherdata w NATURAL INNER JOIN audiofile a NATURAL INNER JOIN node n
-                        WHERE 
-                        %(lowhum)s <= w.wdhumidity AND w.wdhumidity <= %(highhum)s AND 
-                        %(lowtemp)s <= w.wdtemperature AND w.wdtemperature <= %(hightemp)s AND 
-                        %(lowpress)s <= w.wdpressure AND w.wdpressure <= %(highpress)s AND 
-                        %(lowcoqui)s <= c.coqui_hits AND c.coqui_hits <= %(highcoqui)s and
-                        %(lowwightmanae)s <= c.wightmanae_hits AND c.wightmanae_hits <= %(highwightmanae)s AND
-                        %(lowgryllus)s <= c.gryllus_hits AND c.gryllus_hits <= %(highgryllus)s AND
-                        %(lowportoricensis)s <= c.portoricensis_hits AND c.portoricensis_hits <= %(highportoricensis)s AND
-                        %(lowunicolor)s <= c.unicolor_hits AND c.unicolor_hits <= %(highunicolor)s AND
-                        %(lowhedricki)s <= c.hedricki_hits AND c.hedricki_hits <= %(highhedricki)s AND
-                        %(lowlocustus)s <= c.locustus_hits AND c.locustus_hits <= %(highlocustus)s AND
-                        %(lowrichmondi)s <= c.richmondi_hits AND c.richmondi_hits <= %(highrichmondi)s AND
-                        n.ndescription LIKE %(descriptionfilter)s
-                        ORDER BY 
-                            CASE %(orderby)s
-                                WHEN 1 THEN t.ttime
-                                ELSE NULL
-                            END,
-                            CASE %(orderby)s
-                                WHEN 2 THEN c.coqui_hits
-                                WHEN 3 THEN c.wightmanae_hits
-                                WHEN 4 THEN c.gryllus_hits
-                                WHEN 5 THEN c.portoricensis_hits
-                                WHEN 6 THEN c.unicolor_hits
-                                WHEN 7 THEN c.hedricki_hits
-                                WHEN 8 THEN c.locustus_hits
-                                WHEN 9 THEN c.richmondi_hits
-                                ELSE NULL
-                            END,
-                            CASE %(orderby)s
-                                WHEN 10 THEN w.wdhumidity
-                                WHEN 11 THEN w.wdtemperature
-                                WHEN 12 THEN w.wdpressure
-                                ELSE NULL
-                            END
-                        OFFSET %(offset)s
-                        LIMIT %(limit)s
+WITH
+owner_matches AS (
+    SELECT asid FROM audioslice NATURAL INNER JOIN audiofile
+    WHERE ownerid = %(owner)s
+),
+cr AS (
+    SELECT afid, 
+        SUM(coqui::int) AS coqui_hits,
+        SUM(wightmanae::int) AS wightmanae_hits,
+        SUM(gryllus::int) AS gryllus_hits,
+        SUM(portoricensis::int) AS portoricensis_hits,
+        SUM(unicolor::int) AS unicolor_hits,
+        SUM(hedricki::int) AS hedricki_hits,
+        SUM(locustus::int) AS locustus_hits,
+        SUM(richmondi::int) AS richmondi_hits
+    FROM audioslice a NATURAL INNER JOIN owner_matches
+    GROUP BY afid 
+)
+SELECT n.ndescription,
+        t.ttime, 
+        c.coqui_hits, 
+        c.wightmanae_hits, 
+        c.gryllus_hits, 
+        c.portoricensis_hits, 
+        c.unicolor_hits, 
+        c.hedricki_hits, 
+        c.locustus_hits, 
+        c.richmondi_hits, 
+        w.wdhumidity, w.wdtemperature, w.wdpressure, w.wddid_rain, 
+        a.afid
+FROM timestampindex t NATURAL INNER JOIN cr c NATURAL INNER JOIN weatherdata w NATURAL INNER JOIN audiofile a NATURAL INNER JOIN node n
+WHERE 
+%(lowhum)s <= w.wdhumidity AND w.wdhumidity <= %(highhum)s AND 
+%(lowtemp)s <= w.wdtemperature AND w.wdtemperature <= %(hightemp)s AND 
+%(lowpress)s <= w.wdpressure AND w.wdpressure <= %(highpress)s AND 
+%(lowcoqui)s <= c.coqui_hits AND c.coqui_hits <= %(highcoqui)s and
+%(lowwightmanae)s <= c.wightmanae_hits AND c.wightmanae_hits <= %(highwightmanae)s AND
+%(lowgryllus)s <= c.gryllus_hits AND c.gryllus_hits <= %(highgryllus)s AND
+%(lowportoricensis)s <= c.portoricensis_hits AND c.portoricensis_hits <= %(highportoricensis)s AND
+%(lowunicolor)s <= c.unicolor_hits AND c.unicolor_hits <= %(highunicolor)s AND
+%(lowhedricki)s <= c.hedricki_hits AND c.hedricki_hits <= %(highhedricki)s AND
+%(lowlocustus)s <= c.locustus_hits AND c.locustus_hits <= %(highlocustus)s AND
+%(lowrichmondi)s <= c.richmondi_hits AND c.richmondi_hits <= %(highrichmondi)s AND
+n.ndescription LIKE %(descriptionfilter)s
+ORDER BY 
+    CASE %(orderby)s
+        WHEN 1 THEN t.ttime
+        ELSE NULL
+    END,
+    CASE %(orderby)s
+        WHEN 2 THEN c.coqui_hits
+        WHEN 3 THEN c.wightmanae_hits
+        WHEN 4 THEN c.gryllus_hits
+        WHEN 5 THEN c.portoricensis_hits
+        WHEN 6 THEN c.unicolor_hits
+        WHEN 7 THEN c.hedricki_hits
+        WHEN 8 THEN c.locustus_hits
+        WHEN 9 THEN c.richmondi_hits
+        ELSE NULL
+    END,
+    CASE %(orderby)s
+        WHEN 10 THEN w.wdhumidity
+        WHEN 11 THEN w.wdtemperature
+        WHEN 12 THEN w.wdpressure
+        ELSE NULL
+    END
+OFFSET %(offset)s
+LIMIT %(limit)s
                         """
                     ),
                     {
+                        'owner': current_user.auid,
                         'lowhum': low_humidity,
                         'highhum': high_humidity,
                         'lowtemp': low_temp,
@@ -564,6 +668,6 @@ class Dashboard:
 
             except psycopg2.Error as e:
                 print("Error executing SQL query:", e)
-                raise default_HTTP_exception(e.pgcode, "dashboard recent reports query")
+                raise default_HTTP_exception(e.pgcode, "dashboard recent reports query") # type: ignore
 
 

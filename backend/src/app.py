@@ -5,15 +5,17 @@ from fastapi.responses import HTMLResponse, Response
 from dbutil import get_db_connection
 from mlutil import get_model, classify_audio_file
 from Spectrogram import sendMelSpectrogram, sendBasicSpectrogram
-import json
-import psycopg2
-import dao as dao
+from routers.security import get_current_user, LightWeightUser
+from routers.security import router as security_router
+import dao
 import os
 import io
 import asyncio
+import dotenv
 
 from datetime import datetime, timedelta
 
+dotenv.load_dotenv(dotenv_path="backend/src/.env")
 
 app = FastAPI()
 origins = [
@@ -42,56 +44,60 @@ app.mount(
     name="assets",
 )
 
+app.include_router(security_router)
+
 
 @app.get("/api/node/all")
-async def node_all(db=Depends(get_db_connection)):
-    return dao.Node.get_all(db)
+async def node_all(current_user: Annotated[LightWeightUser, Depends(get_current_user)], db=Depends(get_db_connection)):
+    return dao.Node.get_all(current_user.auid, db)
 
 
 @app.get("/api/node/{nid}")
-async def node_get(nid: int, db=Depends(get_db_connection)):
-    return dao.Node.get(nid, db)
+async def node_get(current_user: Annotated[LightWeightUser, Depends(get_current_user)], nid: int, db=Depends(get_db_connection)):
+    return dao.Node.get(current_user.auid, nid, db)
 
 
 @app.get("/api/timestamp/all")
-async def timestamp_all(db=Depends(get_db_connection)):
-    return dao.TimestampIndex.get_all(db)
+async def timestamp_all(current_user: Annotated[LightWeightUser, Depends(get_current_user)], db=Depends(get_db_connection)):
+    return dao.TimestampIndex.get_all(current_user.auid, db)
 
 
 @app.get("/api/timestamp/{tid}")
-async def timestamp_get(tid: int, db=Depends(get_db_connection)):
-    return dao.TimestampIndex.get(tid, db)
+async def timestamp_get(tid: int, current_user: Annotated[LightWeightUser, Depends(get_current_user)], db=Depends(get_db_connection)):
+    return dao.TimestampIndex.get(current_user.auid, tid, db)
 
 @app.get("/api/weather/all")
-async def weather_all(db=Depends(get_db_connection)):
-    return dao.WeatherData.get_all(db)
+async def weather_all(current_user: Annotated[LightWeightUser, Depends(get_current_user)], db=Depends(get_db_connection)):
+    return dao.WeatherData.get_all(current_user.auid, db)
 
 
 @app.get("/api/weather/{wdid}")
-async def weather_get(wdid: int, db=Depends(get_db_connection)):
-    return dao.WeatherData.get(wdid, db)
+async def weather_get(wdid: int, current_user: Annotated[LightWeightUser, Depends(get_current_user)], db=Depends(get_db_connection)):
+    return dao.WeatherData.get(current_user.auid, wdid, db)
 
 
 @app.get("/api/audio/all")
-async def audio_all(db=Depends(get_db_connection)):
-    return dao.AudioFile.get_all(db)
+async def audio_all(current_user: Annotated[LightWeightUser, Depends(get_current_user)], db=Depends(get_db_connection)):
+    return dao.AudioFile.get_all(current_user.auid, db)
 
 
 @app.get(path="/api/audio/{afid}", response_class=Response)
-async def audio_get(afid: int, db=Depends(get_db_connection)):
-    audio_file = dao.AudioFile.get(afid, db)
+async def audio_get(afid: int, current_user: Annotated[LightWeightUser, Depends(get_current_user)], db=Depends(get_db_connection)):
+    audio_file = dao.AudioFile.get(current_user.auid, afid, db)
+    if audio_file is None:
+        raise HTTPException(status_code=404, detail="Audio file not found")
     data = audio_file.data
 
-    return Response(content=bytes(data), media_type="audio/mpeg")
+    return Response(content=bytes(data), media_type="audio/mpeg") # type: ignore
 
 @app.get("/api/audioslices/all")
-async def audio_all(db=Depends(get_db_connection)):
-    return dao.AudioSlice.get_all(db)
+async def audio_slice_all(current_user: Annotated[LightWeightUser, Depends(get_current_user)], db=Depends(get_db_connection)):
+    return dao.AudioSlice.get_all(current_user.auid, db)
 
 
 @app.get(path="/api/audioslices/{asid}")
-async def audio_get(asid: int, db=Depends(get_db_connection)):
-    return dao.AudioSlice.get(asid, db)
+async def audio_slice_get(asid: int, current_user: Annotated[LightWeightUser, Depends(get_current_user)], db=Depends(get_db_connection)):
+    return dao.AudioSlice.get(current_user.auid, asid, db)
 
 async def classify_and_save(audio, audio_file_id, db, model):
     classifier_output = classify_audio_file(audio, model)
@@ -99,7 +105,7 @@ async def classify_and_save(audio, audio_file_id, db, model):
     for classified_slice_name, classified_slice in classifier_output.items():
         classified_slice['starttime'] = classified_slice.pop('start_time')
         classified_slice['endtime'] = classified_slice.pop('end_time')
-        slice_insert_tasks.append(asyncio.create_task(dao.AudioSlice.insert(db, audio_file_id, **classified_slice), name=classified_slice_name))
+        slice_insert_tasks.append(asyncio.create_task(dao.AudioSlice.insert(db, audio_file_id, **classified_slice), name=classified_slice_name)) # type: ignore
 
     done, pending = await asyncio.wait(slice_insert_tasks)
 
@@ -127,6 +133,7 @@ async def audio_post(
 @app.get(path="/api/classify/by-id/{afid}")
 async def classify_by_afid(
     afid: int,
+    current_user: Annotated[LightWeightUser, Depends(get_current_user)], 
     override: Annotated[bool, Form()] = False,
     db=Depends(get_db_connection),
     model=Depends(get_model)
@@ -136,9 +143,8 @@ async def classify_by_afid(
         raise HTTPException(status_code=404, detail="Audio file does not exist")
         
     if override or await dao.AudioFile.is_classified(afid, db):
-        audio = dao.AudioFile.get(afid, db)
-        await classify_and_save(io.BytesIO(audio.data), afid, db, model)
-    
+        audio = dao.AudioFile.get(current_user.auid, afid, db)
+        await classify_and_save(io.BytesIO(audio.data), afid, db, model) # type: ignore
     return await dao.AudioSlice.get_classified(afid, db)
 
 
@@ -157,19 +163,21 @@ async def basic_spectrogram_get(file: UploadFile = File(...)):
 @app.post(path="/api/node/insert")
 async def node_insert(
     ntype: Annotated[str, Form()],
-    nlatitude: Annotated[str, Form()],
-    nlongitude: Annotated[str, Form()],
+    nlatitude: Annotated[float, Form()],
+    nlongitude: Annotated[float, Form()],
     ndescription: Annotated[str, Form()],
+    current_user: Annotated[LightWeightUser, Depends(get_current_user)],
     db=Depends(get_db_connection),
 ):
-    newNode = dao.Node.insert(db, ntype, nlatitude, nlongitude, ndescription)
+    ownerid = current_user.auid
+    newNode = dao.Node.insert(db, ownerid, ntype, nlatitude, nlongitude, ndescription)
     print(newNode)
     return newNode
 
 
 @app.delete(path="/api/node/delete")
-async def node_delete(nid: int, db=Depends(get_db_connection)):
-    return dao.Node.delete(nid, db)
+async def node_delete(nid: int, current_user: Annotated[LightWeightUser, Depends(get_current_user)], db=Depends(get_db_connection)):
+    return dao.Node.delete(current_user.auid, nid, db)
 
 
 @app.post(path="/api/ml/classify")
@@ -178,15 +186,16 @@ async def classify(file: UploadFile = File(...), model=Depends(get_model)):
     return r
 
 @app.get(path="/api/dashboard/week-species-summary")
-async def week_species_summary(db=Depends(get_db_connection)):
-    return dao.Dashboard.week_species_summary(db)
+async def week_species_summary(current_user: Annotated[LightWeightUser, Depends(get_current_user)], db=Depends(get_db_connection)):
+    return dao.Dashboard.week_species_summary(current_user.auid, db)
 
 @app.get(path="/api/dashboard/node-health-check")
-async def node_health_check(db=Depends(get_db_connection)):
-    return dao.Dashboard.node_health_check(db)
+async def node_health_check(current_user: Annotated[LightWeightUser, Depends(get_current_user)], db=Depends(get_db_connection)):
+    return dao.Dashboard.node_health_check(current_user.auid, db)
 
 @app.get(path="/api/dashboard/recent-reports/")
 async def recent_reports(
+    current_user: Annotated[LightWeightUser, Depends(get_current_user)], 
     low_temp: float = float('-inf'), high_temp: float = float('inf'),
     low_humidity: float = float('-inf'), high_humidity: float = float('inf'),
     low_pressure: float = float('-inf'), high_pressure: float = float('inf'),
