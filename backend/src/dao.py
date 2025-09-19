@@ -20,7 +20,7 @@ class DAO:
                                 # timestampindex contains the id column, then node has an ownerid column.
 
     @classmethod
-    def get_all(cls, owner: int, db: connection) -> list:
+    async def get_all(cls, owner: int, db: connection) -> list:
         """Get all owned entities in a list."""
         with db.cursor() as curs:
             try:
@@ -47,7 +47,7 @@ SELECT * FROM {my_table} NATURAL INNER JOIN owner_matches
             return [cls(*row) for row in curs.fetchall()]
 
     @classmethod
-    def get(cls, owner: int, id: int, db: connection):
+    async def get(cls, owner: int, id: int, db: connection):
         """Get one owned entity by its ID."""
         with db.cursor() as curs:
             try:
@@ -338,7 +338,7 @@ class AudioFile(DAO):
     owner_table = sql.SQL("audiofile")
 
     @classmethod
-    def get_all(cls, owner: int, db: connection) -> list:
+    async def get_all(cls, owner: int, db: connection) -> list:
         """Get IDs of audio files, but not audio"""
         with db.cursor() as curs:
             try:
@@ -357,8 +357,9 @@ class AudioFile(DAO):
             return [cls(row[0], row[1], row[2], None) for row in curs.fetchall()]
 
     @classmethod
-    async def insert(cls, db: connection, file, nid: int, timestamp: datetime):
+    async def insert(cls, db: connection, owner: int, file, nid: int, timestamp: datetime):
 
+        await Node.get(owner, nid, db)
         with db.cursor() as curs:
             try:
                 tid = await TimestampIndex.insert(db, nid, timestamp)
@@ -366,12 +367,12 @@ class AudioFile(DAO):
                 curs.execute(
                     sql.SQL(
                         """
-                            INSERT INTO {} (tid, data)
-                            VALUES (%s, %s)
-                            RETURNING afid
-                            """
+INSERT INTO {} (tid, ownerid, data)
+VALUES (%s, %s, %s)
+RETURNING afid
+                        """
                     ).format(cls.table),
-                    (tid, data),
+                    (tid, owner, data),
                 )
                 db.commit()
                 db_response = curs.fetchone()
