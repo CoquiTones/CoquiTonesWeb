@@ -1,28 +1,24 @@
 import APIHandlerBase from "./APIHandlerBase";
-
+import { BackendError, APIHandlerError } from "./Errors";
 export class APIHandlerSpectralAnalysis extends APIHandlerBase {
 
-    async insertAudio(file, nid, timestamp) {
-        let formData = new FormData();
-        formData.append("nid", nid);
-        formData.append("file", file);
-        formData.append("timestamp", new Date().toISOString())
-        console.log(`${this.web_url}/api/audio/insert`);
+    async insertAudio(insertAudioRequest) {
+
         try {
+
             const response = await fetch(`${this.web_url}/api/audio/insert`, {
                 method: "POST",
-                body: formData,
+                body: insertAudioRequest.toFormData(),
             });
 
             if (!response.ok) {
-                throw new Error(`Unable to insert audio in db`);
+                throw new BackendError(`Unable to insert audio in db`);
             }
 
             const audioId = await response.json();
             return audioId;
         } catch (error) {
-            console.error('Error:', error);
-            throw error;
+            throw APIHandlerError(error.message);
         }
     }
 }

@@ -1,15 +1,13 @@
 import APIHandlerBase from "./APIHandlerBase";
 import { APIHandlerError, BackendError } from "./Errors";
-import ClassifierReport from "../ResponseORM/ClassifierReport";
+import ClassifierReport from "../ResponseORM/Classifier/ClassifierReport";
 export class APIHandlerClassifier extends APIHandlerBase {
 
-    async fetchClassification(rawAudioFile) {
-        const formData = new FormData();
-        formData.append("file", rawAudioFile);
+    async fetchClassification(classifyAudioRequest) {
         try {
             const response = await fetch(this.web_url + "/api/classifier/classify", {
                 method: "POST",
-                body: formData,
+                body: classifyAudioRequest.toFormData(),
             });
 
             if (!response.ok) {

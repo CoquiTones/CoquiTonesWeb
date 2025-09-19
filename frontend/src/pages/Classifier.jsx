@@ -22,10 +22,8 @@ import Footer from "../components/shared/Footer";
 import HeroSectionClassifier from "../components/shared/HeroSectionClassifier";
 
 import { APIHandlerClassifier } from "../services/rest/APIHandler/APIHandlerClassifier";
-import ClassifierReport from "../services/rest/ResponseORM/ClassifierReport";
+import { ClassifyAudioRequest } from "../services/rest/RequestORM/Classifier/ClassifyAudioRequest";
 const Classifier = () => {
-  const SLICE_SECONDS_CONSTANT = 10; //TODO: include this slice constant as part of endpoint response
-
   const species = [
     "coqui",
     "wightmanae",
@@ -46,8 +44,11 @@ const Classifier = () => {
   useEffect(() => {
     const classifyAudiofile = async () => {
       if (rawAudioFile) {
-        const reportAPIHandler = new APIHandlerClassifier("report"); // temp handler shit
-        let report = await reportAPIHandler.fetchClassification(rawAudioFile);
+        const reportAPIHandler = new APIHandlerClassifier();
+        const classifyAudioFileRequest = new ClassifyAudioRequest(rawAudioFile);
+        let report = await reportAPIHandler.fetchClassification(
+          classifyAudioFileRequest
+        );
         setClassifierReport(report);
       }
     };

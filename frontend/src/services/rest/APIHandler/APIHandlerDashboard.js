@@ -1,6 +1,6 @@
-import { NodeHealthCheck } from "../ResponseORM/NodeHealthCheck";
-import { RecentReports } from "../ResponseORM/RecentEntriesResponse";
-import { WeekSpeciesSummary } from "../ResponseORM/WeekSpeciesSummary";
+import { NodeHealthCheck } from "../ResponseORM/Dashboard/NodeHealthCheck";
+import { RecentReports } from "../ResponseORM/Dashboard/RecentEntriesResponse";
+import { WeekSpeciesSummary } from "../ResponseORM/Dashboard/WeekSpeciesSummary";
 import APIHandlerBase from "./APIHandlerBase";
 import { APIHandlerError, BackendError } from "./Errors";
 
@@ -17,6 +17,7 @@ export class APIHandlerDashboard extends APIHandlerBase {
             }
 
             const latestWeekSpeciesSummaryApiResponse = await response.json();
+            console.log("linechart data", latestWeekSpeciesSummaryApiResponse)
             return new WeekSpeciesSummary(latestWeekSpeciesSummaryApiResponse);
         } catch (error) {
             throw new APIHandlerError('Error with latest week summary in Handler: ' + error.message)
@@ -34,6 +35,7 @@ export class APIHandlerDashboard extends APIHandlerBase {
             }
 
             const nodeHealthCheckApiResponse = await response.json();
+            console.log(nodeHealthCheckApiResponse)
             return new NodeHealthCheck(nodeHealthCheckApiResponse);
         } catch (error) {
             throw new APIHandlerError('Error with node health check in Handler: ' + error.message)

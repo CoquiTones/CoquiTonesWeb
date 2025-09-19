@@ -31,31 +31,35 @@ export class WeekSpeciesSummary {
         let series = [
             {
                 data: this.total_coqui,
-                label: "coqui"
+                label: "Coqui"
             },
             {
                 data: this.total_wightmanae,
-                label: "wightmanae"
+                label: "Wightmanae"
+            },
+            {
+                data: this.total_gryllus,
+                label: "Gryllus"
             },
             {
                 data: this.total_portoricensis,
-                label: "portoricensis"
+                label: "Portoricensis"
             },
             {
                 data: this.total_unicolor,
-                label: "unicolor"
+                label: "Unicolor"
             },
             {
                 data: this.total_hedricki,
-                label: "hedricki"
+                label: "Hedricki"
             },
             {
                 data: this.total_locustus,
-                label: "locustus"
+                label: "Locustus"
             },
             {
                 data: this.total_richmondi,
-                label: "richmondi"
+                label: "Richmondi"
             }
         ]
 
