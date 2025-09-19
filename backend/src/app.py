@@ -20,8 +20,10 @@ dotenv.load_dotenv(dotenv_path="backend/src/.env")
 app = FastAPI()
 origins = [
     "http://localhost:5173",
+    "https://localhost:5173",
     "localhost:5173",
     "http://localhost:8080",
+    "https://localhost:8080",
     "localhost:8080",
     "http://0.0.0.0:8080",
     os.getenv("WEB_URL"),
@@ -121,7 +123,7 @@ async def audio_post(
     file: UploadFile = File(...),
     classify: Annotated[bool, Form()] = True,
     db=Depends(get_db_connection),
-    model=Depends(get_model)
+    model=Depends(get_model),
 ):
     audio_file_id = await dao.AudioFile.insert(db, current_user.auid, file, nid, timestamp)
 
@@ -131,13 +133,14 @@ async def audio_post(
 
     return audio_file_id
 
+
 @app.get(path="/api/classify/by-id/{afid}")
 async def classify_by_afid(
     afid: int,
     current_user: Annotated[LightWeightUser, Depends(get_current_user)], 
     override: Annotated[bool, Form()] = False,
     db=Depends(get_db_connection),
-    model=Depends(get_model)
+    model=Depends(get_model),
 ):
 
     if not await dao.AudioFile.exists(afid, current_user.auid, db):
@@ -189,6 +192,7 @@ async def node_delete(nid: int, current_user: Annotated[LightWeightUser, Depends
 async def classify(file: UploadFile = File(...), model=Depends(get_model)):
     r = classify_audio_file(file.file, model)
     return r
+
 
 @app.get(path="/api/dashboard/week-species-summary")
 async def week_species_summary(current_user: Annotated[LightWeightUser, Depends(get_current_user)], db=Depends(get_db_connection)):
