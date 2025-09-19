@@ -358,8 +358,11 @@ class AudioFile(DAO):
 
     @classmethod
     async def insert(cls, db: connection, owner: int, file, nid: int, timestamp: datetime):
-
-        await Node.get(owner, nid, db)
+        # First check that the node being referenced belongs to the owner of this new audio file
+        node = await Node.get(owner, nid, db)
+        if node is None or node.ownerid != owner:
+            return None
+        
         with db.cursor() as curs:
             try:
                 tid = await TimestampIndex.insert(db, nid, timestamp)
