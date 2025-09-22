@@ -188,12 +188,12 @@ class Node(DAO):
                 curs.execute(
                     sql.SQL(
                         """
-                            INSERT INTO {} (ntype, nlatitude, nlongitude, ndescription)
-                            VALUES (%s, %s, %s, %s)
+                            INSERT INTO {} (ownerid, ntype, nlatitude, nlongitude, ndescription)
+                            VALUES (%s, %s, %s, %s, %s)
                             RETURNING nid
                             """
                     ).format(cls.table),
-                    (ntype, nlatitude, nlongitude, ndescription),
+                    (ownerid, ntype, nlatitude, nlongitude, ndescription),
                 )
 
                 db.commit()
