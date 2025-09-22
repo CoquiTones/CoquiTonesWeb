@@ -12,6 +12,7 @@ import os
 import io
 import asyncio
 import dotenv
+import ssl
 
 from datetime import datetime, timedelta
 
@@ -19,13 +20,11 @@ dotenv.load_dotenv(dotenv_path="backend/src/.env")
 
 app = FastAPI()
 origins = [
-    "http://localhost:5173",
     "https://localhost:5173",
     "localhost:5173",
-    "http://localhost:8080",
     "https://localhost:8080",
     "localhost:8080",
-    "http://0.0.0.0:8080",
+    "https://0.0.0.0:8080",
     os.getenv("WEB_URL"),
 ]
 app.add_middleware(
@@ -110,12 +109,12 @@ async def classify_and_save(audio, audio_file_id, db, model):
         slice_insert_tasks.append(asyncio.create_task(dao.AudioSlice.insert(db, audio_file_id, **classified_slice), name=classified_slice_name)) # type: ignore
 
     done, pending = await asyncio.wait(slice_insert_tasks)
-
+    results = map(lambda task: task.result(), done)
     db.commit()
-    return done
+    return results
 
 
-@app.post(path="/api/audio/insert", response_class=Response)
+@app.post(path="/api/audio/insert")
 async def audio_post(
     nid: Annotated[int, Form()],
     timestamp: Annotated[datetime, Form()],
@@ -183,7 +182,7 @@ async def node_insert(
     return newNode
 
 
-@app.delete(path="/api/node/delete")
+@app.delete(path="/api/node/delete/{nid}")
 async def node_delete(nid: int, current_user: Annotated[LightWeightUser, Depends(get_current_user)], db=Depends(get_db_connection)):
     return dao.Node.delete(current_user.auid, nid, db)
 

@@ -2,7 +2,12 @@
 __pycache__/
 *.pkl
 .venv/
+
+# Secret
 *.env
+localhost.crt
+localhost.key
+.gitignore
 
 # VSCode
 .vscode/
@@ -24,3 +29,4 @@ machine_learning/.ipynb_checkpoints/*
 .envrc
 *.nix
 .direnv/
+

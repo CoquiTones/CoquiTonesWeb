@@ -100,10 +100,10 @@ WHERE {my_id} = %s
                     """
 WITH owner_matches as (
     SELECT {my_id} FROM {owner_table}
-    WHERE ownerid = %s
+    WHERE ownerid = %(owner_id)s
 )
-DELETE FROM {my_table} NATURAL INNER JOIN owner_matches
-WHERE {my_id} = %s
+DELETE FROM {my_table}
+WHERE {my_id} = %(my_id)s AND ownerid = %(owner_id)s
 RETURNING {my_id}
                     """
                     ).format(
@@ -111,7 +111,10 @@ RETURNING {my_id}
                         my_id=cls.id_column, 
                         owner_table=cls.owner_table                        
                         ),
-                    (id,),
+                    {
+                        "my_id": id,
+                        "owner_id": owner
+                    },
                 )
             except psycopg2.Error as e:
                 print("Error executing SQL query:", e)

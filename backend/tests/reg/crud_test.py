@@ -2,23 +2,10 @@ import unittest
 import requests
 import datetime
 from requests_oauthlib import OAuth2Session
+from tests.reg.util import *
 
-host_url = 'http://localhost:8080/'
-
-def login():
-    url = host_url + 'api/token'
-    response = requests.post(
-        url=url,
-        data={
-            "grant_type": "password",
-            "username": "testuser",
-            "password": "testuserpw"
-        }
-    )
-
-    oauth = OAuth2Session(client_id="testuser", token=response.json()['access_token'])
-
-    return oauth
+host_url = 'https://localhost:8080/'
+certfile = "./localhost.crt"
 
 class NodeCRUDTest(unittest.TestCase):
 
@@ -27,11 +14,12 @@ class NodeCRUDTest(unittest.TestCase):
         url = host_url + 'api/node/insert'
 
         response = self.session.post(url, data={
-            "ntype": "primary",
-            "nlatitude": 20.8879728,
-            "nlongitude": -76.2718481,
-            "ndescription": "hospital"
-        })
+                "ntype": "primary",
+                "nlatitude": 20.8879728,
+                "nlongitude": -76.2718481,
+                "ndescription": "hospital"
+            }
+        )
         self.nid = int(response.json()['nid'])
 
     def tearDown(self):
@@ -210,6 +198,7 @@ class WeatherDataCRUDTest(unittest.TestCase):
         self.assertIsInstance(res[0]['wdid'], int, 'dicts have wid')
 
     def test_get(self):
+        self.session = login()
         url = host_url + 'api/weather/all'
 
         response = self.session.get(url)
