@@ -9,7 +9,7 @@ services:
       - 127.0.0.1:8080:8080
     depends_on:
       - database
-    command: uvicorn --app-dir backend/src app:app --reload --host 0.0.0.0 --port 8080
+    command: uvicorn --app-dir backend/src app:app --reload --host 0.0.0.0 --port 8080 --ssl-keyfile ./localhost.key --ssl-certfile ./localhost.crt
     environment:
       - DATABASE_URL=postgresql://postgres:secrettest@database:5432/postgres
 
