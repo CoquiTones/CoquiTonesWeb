@@ -15,6 +15,8 @@ frontend/dist/
 frontend/node_modules/
 
 # Data
+machine_learning/dataset
+machine_learning/processed
 ML/RAW.csv
 machine_learning/processed/processed.csv
 .ipynb_checkpoints/*
