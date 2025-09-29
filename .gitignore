@@ -24,3 +24,5 @@ machine_learning/.ipynb_checkpoints/*
 .envrc
 *.nix
 .direnv/
+localhost.key
+localhost.crt
