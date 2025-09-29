@@ -18,8 +18,10 @@ from datetime import datetime, timedelta
 app = FastAPI()
 origins = [
     "http://localhost:5173",
+    "https://localhost:5173",
     "localhost:5173",
     "http://localhost:8080",
+    "https://localhost:8080",
     "localhost:8080",
     "http://0.0.0.0:8080",
     os.getenv("WEB_URL"),
