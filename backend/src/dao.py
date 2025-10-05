@@ -427,7 +427,6 @@ class Dashboard:
                     )
                     NATURAL INNER JOIN node n
                     ORDER by n.ntype 
-                    LIMIT 1
                     """
                     )
                 )

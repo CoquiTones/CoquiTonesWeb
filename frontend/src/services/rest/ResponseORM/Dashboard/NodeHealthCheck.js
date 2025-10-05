@@ -3,9 +3,19 @@
  */
 export class NodeHealthCheck {
     constructor(APIresponse) {
+        this.nodeReports = APIresponse.map((report) => (new NodeReport(report)))
+    }
 
-        this.latest_time = APIresponse[0].latest_time;
-        this.ndescription = APIresponse[0].ndescription;
-        this.ntype = APIresponse[0].ntype;
+    map(callback) {
+        return this.nodeReports.map(callback);
+    }
+}
+
+class NodeReport {
+    constructor(APIReponseReport) {
+        this.latest_time = APIReponseReport.latest_time;
+        this.node_description = APIReponseReport.ndescription;
+        this.node_type = APIReponseReport.ntype;
+
     }
 }

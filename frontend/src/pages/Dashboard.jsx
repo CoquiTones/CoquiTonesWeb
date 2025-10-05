@@ -42,7 +42,7 @@ export default function Dashboard() {
             <Toolbar />
             <Container sx={{ mt: 4, mb: 4, width: "100%" }}>
               <Grid container spacing={3}>
-                <Grid size={{ xs: 12, md: 8, lg: 9 }}>
+                <Grid size={{ xs: 12, md: 8, lg: 7 }}>
                   <Paper
                     sx={{
                       p: 2,
@@ -55,7 +55,7 @@ export default function Dashboard() {
                   </Paper>
                 </Grid>
 
-                <Grid size={{ xs: 12, md: 4, lg: 3 }}>
+                <Grid size={{ xs: 12, md: 4, lg: 5 }}>
                   <Paper
                     sx={{
                       p: 2,

@@ -1,14 +1,21 @@
 import React, { useEffect, useState } from "react";
-import { Fragment } from "react";
-import Link from "@mui/material/Link";
 import { Box } from "@mui/material";
-import Typography from "@mui/material/Typography";
-import Title from "./Title";
-import { APIHandlerDashboard } from "../../services/rest/APIHandler/APIHandlerDashboard";
 
+import { APIHandlerDashboard } from "../../services/rest/APIHandler/APIHandlerDashboard";
+import Table from "@mui/material/Table";
+import TableBody from "@mui/material/TableBody";
+import TableCell from "@mui/material/TableCell";
+import TableHead from "@mui/material/TableHead";
+import TableRow from "@mui/material/TableRow";
+import Title from "./Title";
+import { NodeHealthCheck } from "../../services/rest/ResponseORM/Dashboard/NodeHealthCheck";
 export default function LatestNodeHeartbeat() {
   const [heartbeatInfo, setHeartbeatInfo] = useState(null);
-
+  const columnHeaders = [
+    "Latest Time",
+    "Node Type",
+    "Node Description"
+  ]
   useEffect(() => {
     const fetchHeartbeatInfo = async () => {
       const apiHandler = new APIHandlerDashboard();
@@ -34,24 +41,38 @@ export default function LatestNodeHeartbeat() {
     );
   }
   return (
-    <Fragment>
-      <Title>Latest Message</Title>
-      <Typography component="p" variant="h4">
-        From Node {heartbeatInfo.ndescription}
-      </Typography>
-      <Typography
-        component="p"
-        variant="h6"
-        color="text.s]"
-        sx={{ flex: 1, my: 3 }}
-      >
-        From {new Date(heartbeatInfo.latest_time).toUTCString()}
-      </Typography>
-      <div>
-        <Link color="primary" href="#">
-          View Message
-        </Link>
-      </div>
-    </Fragment>
+    <Box
+      sx={{ overflowX: "auto" }} >
+      <Title>
+        Node Health Check
+      </Title>
+      <Table>
+        <TableHead>
+          <TableRow>
+            {columnHeaders.map((header) => (
+              <TableCell key={header} align="center" sx={{ padding: "16px" }}>
+                {header}
+              </TableCell>
+            ))}
+          </TableRow>
+        </TableHead>
+        <TableBody>
+          {heartbeatInfo.map((node_report) => (
+            <TableRow key={node_report.node_description}>
+              <TableCell align="center">
+                {new Date(node_report.latest_time).toUTCString()}
+              </TableCell>
+              <TableCell align="center">
+                {node_report.node_type}
+              </TableCell>
+              <TableCell align="center">
+                {node_report.node_description}
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </Box>
+
   );
 }
