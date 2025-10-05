@@ -8,13 +8,17 @@ import TableCell from "@mui/material/TableCell";
 import TableHead from "@mui/material/TableHead";
 import TableRow from "@mui/material/TableRow";
 import Title from "./Title";
-import { NodeHealthCheck } from "../../services/rest/ResponseORM/Dashboard/NodeHealthCheck";
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import DangerousIcon from '@mui/icons-material/Dangerous';
+import { styled } from '@mui/material/styles';
 export default function LatestNodeHeartbeat() {
   const [heartbeatInfo, setHeartbeatInfo] = useState(null);
+  const MAX_ALLOWED_TIME_BEFORE_DECLARED_UNRESPONSIVE = 48
   const columnHeaders = [
     "Latest Time",
     "Node Type",
-    "Node Description"
+    "Node Description",
+    "Responsive"
   ]
   useEffect(() => {
     const fetchHeartbeatInfo = async () => {
@@ -24,7 +28,24 @@ export default function LatestNodeHeartbeat() {
     };
     fetchHeartbeatInfo();
   }, []);
+  const isResponsive = (node_info) => {
+    const node_info_latest_time = new Date(node_info.latest_time).getTime() / 1000 / 60 / 60;
+    const now = new Date().getTime() / 1000 / 60 / 60;
 
+    if (Math.abs(node_info_latest_time - now) > MAX_ALLOWED_TIME_BEFORE_DECLARED_UNRESPONSIVE) {
+      return <RedUnresponsiveMark />;
+    }
+
+    return <GreenCheckmark />;
+  }
+
+  const GreenCheckmark = styled(CheckCircleIcon)({
+    color: '#03f910',
+  });
+
+  const RedUnresponsiveMark = styled(DangerousIcon)({
+    color: "red"
+  })
   // Show message if no  message available
   if (!heartbeatInfo) {
     return (
@@ -67,6 +88,9 @@ export default function LatestNodeHeartbeat() {
               </TableCell>
               <TableCell align="center">
                 {node_report.node_description}
+              </TableCell>
+              <TableCell align="center">
+                {isResponsive(node_report)}
               </TableCell>
             </TableRow>
           ))}
