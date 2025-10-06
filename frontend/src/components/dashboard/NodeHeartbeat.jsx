@@ -11,9 +11,10 @@ import Title from "./Title";
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import DangerousIcon from '@mui/icons-material/Dangerous';
 import { styled } from '@mui/material/styles';
+
 export default function LatestNodeHeartbeat() {
   const [heartbeatInfo, setHeartbeatInfo] = useState(null);
-  const MAX_ALLOWED_TIME_BEFORE_DECLARED_UNRESPONSIVE = 48
+  const MAX_ALLOWED_TIME_IN_HOURS_BEFORE_DECLARED_UNRESPONSIVE = 48 // hours
   const columnHeaders = [
     "Latest Time",
     "Node Type",
@@ -32,7 +33,7 @@ export default function LatestNodeHeartbeat() {
     const node_info_latest_time = new Date(node_info.latest_time).getTime() / 1000 / 60 / 60;
     const now = new Date().getTime() / 1000 / 60 / 60;
 
-    if (Math.abs(node_info_latest_time - now) > MAX_ALLOWED_TIME_BEFORE_DECLARED_UNRESPONSIVE) {
+    if (Math.abs(node_info_latest_time - now) > MAX_ALLOWED_TIME_IN_HOURS_BEFORE_DECLARED_UNRESPONSIVE) {
       return <RedUnresponsiveMark />;
     }
 
