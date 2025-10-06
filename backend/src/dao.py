@@ -3,8 +3,6 @@ from psycopg2 import sql
 from psycopg2.extensions import connection
 from dataclasses import dataclass
 from datetime import datetime, timedelta
-from fastapi import HTTPException
-from time import time
 from dbutil import default_HTTP_exception
 
 from itertools import starmap
@@ -159,7 +157,30 @@ class User(DAO):
                     return None
             except psycopg2.Error as e:
                 print("Error executing SQL query:", e)
-                raise default_HTTP_exception(e.pgcode, "insert timestamp query") # type: ignore
+                raise default_HTTP_exception(e.pgcode, "Get user query") # type: ignore
+            
+    @staticmethod
+    async def insert(db: connection, username: str, pwhash: bytes, salt: bytes) -> int | None:
+        with db.cursor() as curs:
+            try:
+                curs.execute(
+                    sql.SQL(
+"""
+INSERT INTO appuser (username, pwhash, salt)
+VALUES (%s, %s, %s)
+RETURNING auid
+"""), (username, pwhash, salt)
+                )
+                curs.connection.commit()
+                db_response = curs.fetchone()
+                if db_response is None:
+                    raise ValueError
+                return db_response[0]
+            except psycopg2.Error as e:
+                if isinstance(e, psycopg2.errors.UniqueViolation):
+                    return None
+                print("Error executing SQL query:", e)
+                raise default_HTTP_exception(e.pgcode, "Insert user query") # type: ignore
 
 @dataclass
 class Node(DAO):

@@ -3,9 +3,10 @@ from typing import Annotated
 from datetime import datetime, timedelta, timezone
 
 import jwt
-from fastapi import Depends, FastAPI, HTTPException, status, APIRouter
+from fastapi import status
+from fastapi import Depends, HTTPException, status, APIRouter, Form
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
-from pydantic import BaseModel
+from pydantic import BaseModel, SecretStr
 from jwt.exceptions import InvalidTokenError
 
 from dbutil import get_db_connection
@@ -35,8 +36,8 @@ class LightWeightUser(BaseModel):
     auid: int
 
 
-def hash_password(password: str, salt: bytes) -> bytes:
-    return hashlib.scrypt(bytes(password, "utf8"), salt=salt, n=16384, r=8, p=1)
+def hash_password(password: SecretStr, salt: bytes) -> bytes:
+    return hashlib.scrypt(bytes(password.get_secret_value(), "utf8"), salt=salt, n=16384, r=8, p=1)
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="api/token")
 
@@ -77,7 +78,7 @@ def validate_username(username: str) -> bool:
     #TODO
     return True
 
-async def authenticate_user(submitted_username: str, submitted_password: str, db) -> dao.User | None:
+async def authenticate_user(submitted_username: str, submitted_password: SecretStr, db) -> dao.User | None:
     if not validate_username(submitted_username):
         return None
     # Get user referenced by that name
@@ -99,7 +100,7 @@ async def login_for_access_token(
     db=Depends(get_db_connection)
 ) -> Token:
     
-    user = await authenticate_user(form_data.username, form_data.password, db)
+    user = await authenticate_user(form_data.username, SecretStr(form_data.password), db)
     if not user:
         raise HTTPException(status_code=400, detail="Incorrect username or password")
     
@@ -117,4 +118,17 @@ async def read_users_me(
     current_user: Annotated[LightWeightUser, Depends(get_current_user)],
 ):
     return current_user
+
+@router.post("/api/createuser/")
+async def create_user(
+    username: Annotated[str, Form()],
+    password: Annotated[SecretStr, Form()],
+    db=Depends(get_db_connection)
+):
+    if len(username) > 30:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Username too long")
+    salt = os.urandom(16)
+    pwhash = hash_password(password, salt)
+    if await dao.User.insert(db, username, pwhash, salt) is None:
+        raise HTTPException(status.HTTP_409_CONFLICT, "Username taken")
 

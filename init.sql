@@ -12,7 +12,8 @@ CREATE TABLE appuser (
     auid        SERIAL PRIMARY KEY,
     username    VARCHAR(30) NOT NULL,
     salt        bytea NOT NULL,
-    pwhash      bytea NOT NULL
+    pwhash      bytea NOT NULL,
+    UNIQUE (username)
 );
 
 CREATE TABLE node (
