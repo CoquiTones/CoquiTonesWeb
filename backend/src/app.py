@@ -1,3 +1,4 @@
+from contextlib import asynccontextmanager
 from typing import Annotated
 from fastapi import FastAPI, File, UploadFile, staticfiles, Depends, HTTPException, Form
 from fastapi.middleware.cors import CORSMiddleware
@@ -5,8 +6,7 @@ from fastapi.responses import HTMLResponse, Response
 from dbutil import get_db_connection
 from mlutil import get_model, classify_audio_file
 from Spectrogram import sendMelSpectrogram, sendBasicSpectrogram
-import json
-import psycopg2
+import mqtt
 import dao as dao
 import os
 import io
@@ -15,7 +15,15 @@ import asyncio
 from datetime import datetime, timedelta
 
 
-app = FastAPI()
+# Define our lifespan so we can start the mqtt client together with the server
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # MQTT client startup
+    mqtt.start()
+    yield
+    mqtt.end()
+
+app = FastAPI(lifespan=lifespan)
 origins = [
     "http://localhost:5173",
     "https://localhost:5173",
@@ -126,7 +134,7 @@ async def audio_post(
     db=Depends(get_db_connection),
     model=Depends(get_model),
 ):
-    audio_file_id = await dao.AudioFile.insert(db, file, nid, timestamp)
+    audio_file_id = await dao.AudioFile.insert_and_timestamp(db, file, nid, timestamp)
 
     if classify:
         file.file.seek(0)
