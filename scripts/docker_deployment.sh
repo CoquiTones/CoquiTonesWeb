@@ -21,7 +21,7 @@ tail_logs() {
     do
         docker logs -f "$name" > "${LOG_DIR}/${name}.log" 2>&1 &
     done
-    docker compose logs -f frontend
+    docker compose logs -f
 }
 
 # === Cleanup handler ===
