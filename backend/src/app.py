@@ -153,18 +153,6 @@ async def classify_by_afid(
     return await dao.AudioSlice.get_classified(afid, db)
 
 
-@app.post(path="/api/mel-spectrogram/", response_class=Response)
-async def mel_spectrogram_get(file: UploadFile = File(...)):
-    specData = sendMelSpectrogram(file.file)
-    return specData
-
-
-@app.post(path="/api/basic-spectrogram/", response_class=Response)
-async def basic_spectrogram_get(file: UploadFile = File(...)):
-    specData = sendBasicSpectrogram(file.file)
-    return specData
-
-
 @app.post(path="/api/node/insert")
 async def node_insert(
     ntype: Annotated[str, Form()],
@@ -174,7 +162,6 @@ async def node_insert(
     db=Depends(get_db_connection),
 ):
     newNode = dao.Node.insert(db, ntype, nlatitude, nlongitude, ndescription)
-    print(newNode)
     return newNode
 
 
@@ -183,10 +170,10 @@ async def node_delete(nid: int, db=Depends(get_db_connection)):
     return dao.Node.delete(nid, db)
 
 
-@app.post(path="/api/ml/classify")
+@app.post(path="/api/classifier/classify")
 async def classify(file: UploadFile = File(...), model=Depends(get_model)):
-    r = classify_audio_file(file.file, model)
-    return r
+    report = classify_audio_file(file.file, model)
+    return report
 
 
 @app.get(path="/api/dashboard/week-species-summary")
@@ -199,7 +186,7 @@ async def node_health_check(db=Depends(get_db_connection)):
     return dao.Dashboard.node_health_check(db)
 
 
-@app.get(path="/api/dashboard/recent-reports/")
+@app.get(path="/api/dashboard/recent-reports")
 async def recent_reports(
     low_temp: float = float("-inf"),
     high_temp: float = float("inf"),
