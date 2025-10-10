@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import Cookies from 'js-cookie';
 import { 
     Modal, 
     Box, 
@@ -10,6 +11,9 @@ import {
     styled 
 } from '@mui/material';
 import logo from "../assets/images/logo512.png";
+import { APIHandlerAuthentication } from '../../services/rest/APIHandler/APIHandlerAuthentication';
+import { AuthenticateUserRequest } from '../../services/rest/RequestORM/Authentication/CheckUserRequest';
+
 
 const ModalContainer = styled(Box)(({ theme }) => ({
     position: 'absolute',
@@ -31,14 +35,25 @@ const ModalContainer = styled(Box)(({ theme }) => ({
     }
 }));
 
-const SignInModal = ({ open, handleClose }) => {
-    const [email, setEmail] = useState('');
+const SignInModal = ({ open, setOpen }) => {
+    const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
 
     const handleSignIn = async () => {
     try {
-      // Implement authentication logic here
-      // You can use Toolpad Core's authentication methods
+        
+        const handler = new APIHandlerAuthentication();
+        const checkUserRequest = new AuthenticateUserRequest(username, password);
+        const authenticateUserResponse = await handler.getSessionTokenIfUserExists(checkUserRequest);
+        if (authenticateUserResponse.session_token) {
+            Cookies.set('session_token', authenticateUserResponse.session_token, {
+                expires: 1, //expires in 1 day
+                secure: true,
+                sameSite: 'strict'
+            })
+        }
+
+        console.log("Session Token: "+ authenticateUserResponse.session_token)
     } catch (error) {
       // Handle authentication errors
         console.error('Sign-in error:', error);
@@ -47,9 +62,13 @@ const SignInModal = ({ open, handleClose }) => {
 
     const handleSignUpClick = () => {
         handleClose();
-        onSignUp && onSignUp();
+        // onSignUp && onSignUp();
     }
 
+    const handleClose =  () => {
+        
+        setOpen(!open)
+    }
 return (
     <Modal
         open={open}
@@ -75,9 +94,9 @@ return (
         <TextField
             fullWidth
             margin="normal"
-            label="Email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            label="Username"
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
         />
         <TextField
             fullWidth

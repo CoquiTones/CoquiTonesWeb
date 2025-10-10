@@ -19,14 +19,22 @@ from datetime import datetime, timedelta
 dotenv.load_dotenv(dotenv_path="backend/src/.env")
 
 app = FastAPI()
+app = FastAPI()
+
 origins = [
-    "https://localhost:5173",
-    "localhost:5173",
+    "https://localhost:5173",  # Removed trailing slash
+    "https://127.0.0.1:5173",  # Consistent formatting
+    "http://localhost:5173",   # Added http variant
+    "http://127.0.0.1:5173",   # Added http variant
     "https://localhost:8080",
-    "localhost:8080",
     "https://0.0.0.0:8080",
-    os.getenv("WEB_URL"),
 ]
+
+# Safely handle environment variable
+web_url = os.getenv("WEB_URL")
+if web_url:
+    origins.append(web_url)
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
@@ -197,6 +205,7 @@ async def node_health_check(current_user: Annotated[LightWeightUser, Depends(get
 
 @app.get(path="/api/dashboard/recent-reports")
 async def recent_reports(
+    current_user: Annotated[LightWeightUser, Depends(get_current_user)],
     low_temp: float = float("-inf"),
     high_temp: float = float("inf"),
     low_humidity: float = float("-inf"),

@@ -119,7 +119,7 @@ async def read_users_me(
 ):
     return current_user
 
-@router.post("/api/createuser/")
+@router.post("/api/createuser")
 async def create_user(
     username: Annotated[str, Form()],
     password: Annotated[SecretStr, Form()],

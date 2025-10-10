@@ -9,7 +9,8 @@ export class APIHandlerDashboard extends APIHandlerBase {
     async get_week_species_summary() {
         try {
             const response = await fetch(this.web_url + "/api/dashboard/week-species-summary", {
-                method: "GET"
+                method: "GET",
+                headers: this.getAuthenticationHeader()
             })
 
             if (!response.ok) {
@@ -22,11 +23,12 @@ export class APIHandlerDashboard extends APIHandlerBase {
             throw new APIHandlerError('Error with latest week summary in Handler: ' + error.message)
         }
     }
-
+// eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ1c2VybmFtZTp0ZXN0dXNlciIsImF1aWQiOjEsImV4cCI6MTc2MDEyMjY4MH0.pyOlThe_J53TDI6s9kLmsSXySYowypXiOL9X4zbevhs
     async get_node_health_check() {
         try {
             const response = await fetch(this.web_url + "/api/dashboard/node-health-check", {
-                method: "GET"
+                method: "GET",
+                headers: this.getAuthenticationHeader()
             })
 
             if (!response.ok) {
@@ -43,7 +45,8 @@ export class APIHandlerDashboard extends APIHandlerBase {
     async get_recent_reports() {
         try {
             const response = await fetch(this.web_url + "/api/dashboard/recent-reports", {
-                method: "GET"
+                method: "GET",
+                headers: this.getAuthenticationHeader()
             })
 
             if (!response.ok) {
