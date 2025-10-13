@@ -21,7 +21,8 @@ frontend/node_modules/
 
 # Data
 ML/RAW.csv
-machine_learning/processed/processed.csv
+machine_learning/processed/*
+machine_learning/dataset
 .ipynb_checkpoints/*
 machine_learning/.ipynb_checkpoints/*
 
