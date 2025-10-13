@@ -12,7 +12,7 @@ export default class APIHandlerBase {
 
     getAuthenticationHeader () {
         const authenticated_header = {'Authorization' : 'Bearer ' + Cookies.get('session_token')}
-        console.log("Authentication header from hadnler base: " + authenticated_header.Authentication);
+        console.log("Authentication header from Handler base: " + authenticated_header.Authorization);
         return authenticated_header;
     }
 }

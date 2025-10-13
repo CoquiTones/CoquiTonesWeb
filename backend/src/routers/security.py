@@ -131,4 +131,6 @@ async def create_user(
     pwhash = hash_password(password, salt)
     if await dao.User.insert(db, username, pwhash, salt) is None:
         raise HTTPException(status.HTTP_409_CONFLICT, "Username taken")
+    
+    return {"message": "success"}
 

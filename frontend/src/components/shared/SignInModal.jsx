@@ -44,17 +44,16 @@ const SignInModal = ({ open, setOpen }) => {
         
         const handler = new APIHandlerAuthentication();
         const checkUserRequest = new AuthenticateUserRequest(username, password);
-        const authenticateUserResponse = await handler.getSessionTokenIfUserExists(checkUserRequest);
-        if (authenticateUserResponse.session_token) {
-            Cookies.set('session_token', authenticateUserResponse.session_token, {
-                expires: 1, //expires in 1 day
-                secure: true,
-                sameSite: 'strict'
-            })
-        }
+        const successfullyAuthenticatedStatus = await handler.setSessionTokenIfUserExists(checkUserRequest);
 
-        console.log("Session Token: "+ authenticateUserResponse.session_token)
-    } catch (error) {
+        if (successfullyAuthenticatedStatus) {
+            alert('Successfully authenticated'); // obviously change this to something pretty 
+            handleClose();
+        }
+        else {
+            alert('incorrect username or password. Try again. ') // obviously change this to something pretty 
+        }
+        } catch (error) {
       // Handle authentication errors
         console.error('Sign-in error:', error);
     }
