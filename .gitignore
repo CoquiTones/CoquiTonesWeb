@@ -3,6 +3,7 @@ __pycache__/
 *.pkl
 .venv/
 *.env
+machine_learning/dataset
 
 # VSCode
 .vscode/
