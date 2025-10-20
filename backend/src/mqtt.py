@@ -1,4 +1,4 @@
-from aiomqtt import Client
+from aiomqtt import Client, ProtocolVersion
 import asyncio
 import threading
 import dao
@@ -7,6 +7,9 @@ from pydantic import BaseModel, ValidationError
 from datetime import datetime
 from app import classify_and_save
 from mlutil import get_model
+
+MQTT_BROKER_HOSTNAME = "localhost"
+MQTT_BROKER_PORT = 2043
 
 class WeatherData(BaseModel):
     temperature: float
@@ -46,7 +49,7 @@ def main():
 
 async def listen():
     model = next(get_model())
-    async with Client("test.mosquitto.org") as client:
+    async with Client(hostname=MQTT_BROKER_HOSTNAME, port=MQTT_BROKER_PORT) as client:
         await client.subscribe("temperature/#")
         async for message in client.messages:
             if not isinstance(message.payload, bytes):
