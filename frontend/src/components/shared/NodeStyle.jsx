@@ -8,6 +8,27 @@ export const NodeContainer = styled("div")(({ theme }) => ({
   justifyContent: "center",
   alignItems: "center",
   background: "rgb(0, 0, 0)",
+
+  scrollbarWidth: "thin",
+  scrollbarColor: "#ffc857",
+
+  '*::-webkit-scrollbar': {
+    width: "8px",
+  },
+  '*::-webkit-scrollbar-track': {
+    background: "transparent",
+  },
+  '*::-webkit-scrollbar-thumb': {
+    backgroundColor: "#ffc857",
+    borderRadius:"10px",
+    border:"2px solid transparent",
+    backgroundClip:"content-box",
+  },
+  '*::-webkit-scrollbar-thumb:hover': {
+    backgroundColor: "#a44200",
+  },
+
+
   [theme.breakpoints.down("md")]: {
     height: "1400px",
   },
@@ -20,12 +41,16 @@ export const NodeWrapper = styled("div")(({ theme }) => ({
   maxWidth: "2000px",
   margin: "0 auto",
   display: "grid",
-  gridTemplateColumns: "1fr 1fr",
+  gridTemplateColumns: "1fr 1fr 1fr",
   height: "100%",
   width: "80%",
   alignItems: "center",
   gridGap: "24px",
   padding: "0 50px",
+  height: "100%",
+  overflowY: "auto",
+  overflowX: "hidden",
+
   [theme.breakpoints.down("md")]: {
     gridTemplateColumns: "1fr",
     padding: "0 20px",
@@ -45,7 +70,7 @@ export const NodeCard = styled("div")({
   alignItems: "flex-start",
   borderRadius: "10px",
   maxHeight: "380px",
-  maxWidth: "720px",
+  maxWidth: "360px",
   padding: "40px",
   transition: "all 0.2s ease-in-out",
   "&hover": {

@@ -186,45 +186,52 @@ class AudioSlice(DAO):
     id_column = "asid"
 
     @classmethod
-    async def insert(cls, db: connection, 
-        afid: int, 
-        starttime: timedelta, 
-        endtime: timedelta, 
-        coqui: bool, 
-        wightmanae: bool, 
-        gryllus: bool, 
-        portoricensis: bool, 
-        unicolor: bool, 
+    async def insert(
+        cls,
+        db: connection,
+        afid: int,
+        starttime: timedelta,
+        endtime: timedelta,
+        coqui: bool,
+        wightmanae: bool,
+        gryllus: bool,
+        portoricensis: bool,
+        unicolor: bool,
         hedricki: bool,
         locustus: bool,
-        richmondi: bool
-        ):
+        richmondi: bool,
+    ):
         with db.cursor() as curs:
             try:
                 curs.execute(
-                    sql.SQL("""
+                    sql.SQL(
+                        """
                         INSERT INTO audioslice (afid, starttime, endtime, coqui, wightmanae, gryllus, portoricensis, unicolor, hedricki, locustus, richmondi)
                         VALUES (%(afid)s, %(starttime)s, %(endtime)s, %(coqui)s, %(wightmanae)s, %(gryllus)s, %(portoricensis)s, %(unicolor)s, %(hedricki)s, %(locustus)s, %(richmondi)s)
                         RETURNING asid
-                    """), locals()
-                    )
+                    """
+                    ),
+                    locals(),
+                )
                 return curs.fetchone()
             except psycopg2.Error as e:
                 print("Error executing SQL query:", e)
-                raise default_HTTP_exception(e.pgcode, "inser audio slice query")   
+                raise default_HTTP_exception(e.pgcode, "inser audio slice query")
 
     @classmethod
     async def get_classified(cls, afid: int, db: connection):
         with db.cursor() as curs:
-            curs.execute(sql.SQL(
-                """
+            curs.execute(
+                sql.SQL(
+                    """
                 SELECT * FROM audioslice a 
                 WHERE a.afid = %s
                 """
-            ),
-            (afid,)
+                ),
+                (afid,),
             )
             return list(starmap(cls, curs.fetchall()))
+
 
 @dataclass
 class WeatherData(DAO):
@@ -298,45 +305,48 @@ class AudioFile(DAO):
     async def is_classified(cls, afid: int, db: connection):
         try:
             with db.cursor() as curs:
-                curs.execute(sql.SQL(
-                    """
+                curs.execute(
+                    sql.SQL(
+                        """
                     SELECT EXISTS (
                         SELECT asid 
                         FROM audioslice 
                         WHERE afid = %s
                         )
                 """
-                ),
-                (afid,)
+                    ),
+                    (afid,),
                 )
                 return curs.fetchone()[0]
         except psycopg2.Error as e:
             print("Error executing SQL query:", e)
-            raise default_HTTP_exception(e.pgcode, "verify file is classified query")            
-    
+            raise default_HTTP_exception(e.pgcode, "verify file is classified query")
+
     @classmethod
     async def exists(cls, afid: int, db: connection):
         try:
             with db.cursor() as curs:
-                curs.execute(sql.SQL(
-                    """
+                curs.execute(
+                    sql.SQL(
+                        """
                     SELECT EXISTS (
                         SELECT afid 
                         FROM audiofile 
                         WHERE afid = %s
                         )
                 """
-                ),
-                (afid,)
+                    ),
+                    (afid,),
                 )
                 return curs.fetchone()[0]
         except psycopg2.Error as e:
             print("Error executing SQL query:", e)
-            raise default_HTTP_exception(e.pgcode, "verify file exists query")           
+            raise default_HTTP_exception(e.pgcode, "verify file exists query")
 
 
 class Dashboard:
     """Collection of queries for dashboard endpoints"""
+
     @staticmethod
     def week_species_summary(db: connection) -> dict[str, list]:
         """Returns time series with sums of classifier hits of each species from all nodes, binned into days"""
@@ -386,28 +396,31 @@ class Dashboard:
                     "total_hedricki": column_transposed[5],
                     "total_locustus": column_transposed[6],
                     "total_richmondi": column_transposed[7],
-                    "date_bin": column_transposed[8]
+                    "date_bin": column_transposed[8],
                 }
             except psycopg2.Error as e:
                 print("Error executing SQL query:", e)
-                raise default_HTTP_exception(e.pgcode, "dashboard species weekly summary query")
+                raise default_HTTP_exception(
+                    e.pgcode, "dashboard species weekly summary query"
+                )
 
-
-    
     @staticmethod
     def node_health_check(db: connection) -> list:
         """Returns the time of the last message from each node along with the type of node"""
-        @dataclass
 
+        @dataclass
         class NodeReport:
             """Node health report query object"""
+
             latest_time: datetime
             ndescription: str
             ntype: str
+
         with db.cursor() as curs:
             try:
-                curs.execute(sql.SQL(
-                    """
+                curs.execute(
+                    sql.SQL(
+                        """
                     SELECT latest_time, n.ndescription, n.ntype FROM  (
                         SELECT max(ttime) as latest_time, nid FROM timestampindex
                         GROUP by  nid
@@ -415,51 +428,66 @@ class Dashboard:
                     NATURAL INNER JOIN node n
                     ORDER by n.ntype 
                     """
-                ))
+                    )
+                )
 
                 return list(starmap(NodeReport, curs.fetchall()))
-                
+
             except psycopg2.Error as e:
                 print("Error executing SQL query:", e)
-                raise default_HTTP_exception(e.pgcode, "dashboard node health check query")
-       
-        
+                raise default_HTTP_exception(
+                    e.pgcode, "dashboard node health check query"
+                )
+
     @staticmethod
     def recent_reports(
-        low_temp: float, high_temp: float,
-        low_humidity: float, high_humidity: float,
-        low_pressure: float, high_pressure: float,
-        low_coqui:          int, high_coqui:            int,
-        low_wightmanae:     int, high_wightmanae:       int,
-        low_gryllus:        int, high_gryllus:          int,
-        low_portoricensis:  int, high_portoricensis:    int,
-        low_unicolor:       int, high_unicolor:         int,
-        low_hedricki:       int, high_hedricki:         int,
-        low_locustus:       int, high_locustus:         int,
-        low_richmondi:      int, high_richmondi:        int,        
+        low_temp: float,
+        high_temp: float,
+        low_humidity: float,
+        high_humidity: float,
+        low_pressure: float,
+        high_pressure: float,
+        low_coqui: int,
+        high_coqui: int,
+        low_wightmanae: int,
+        high_wightmanae: int,
+        low_gryllus: int,
+        high_gryllus: int,
+        low_portoricensis: int,
+        high_portoricensis: int,
+        low_unicolor: int,
+        high_unicolor: int,
+        low_hedricki: int,
+        high_hedricki: int,
+        low_locustus: int,
+        high_locustus: int,
+        low_richmondi: int,
+        high_richmondi: int,
         description_filter: str,
-        skip: int, limit: int, 
+        skip: int,
+        limit: int,
         orderby: int,
-        db: connection) -> list:
+        db: connection,
+    ) -> list:
 
         @dataclass
         class ReportTableEntry:
-            ndescription:   str
-            ttime:          datetime
-            coqui:          int
-            wightmanae:     int
-            gryllus:        int
-            portoricensis:  int
-            unicolor:       int
-            hedricki:       int
-            locustus:       int
-            richmondi:      int
-            wdhumidity:     float
-            wdtemperature:  float
-            wdpressure:     float
-            wddid_rain:     bool
-            afid:           int # Front end should generate URL to audio file by using get audio file endpoint
-        
+            ndescription: str
+            ttime: datetime
+            coqui: int
+            wightmanae: int
+            gryllus: int
+            portoricensis: int
+            unicolor: int
+            hedricki: int
+            locustus: int
+            richmondi: int
+            wdhumidity: float
+            wdtemperature: float
+            wdpressure: float
+            wddid_rain: bool
+            afid: int  # Front end should generate URL to audio file by using get audio file endpoint
+
         with db.cursor() as curs:
             try:
                 curs.execute(
@@ -531,33 +559,33 @@ class Dashboard:
                         """
                     ),
                     {
-                        'lowhum': low_humidity,
-                        'highhum': high_humidity,
-                        'lowtemp': low_temp,
-                        'hightemp': high_temp,
-                        'lowpress': low_pressure,
-                        'highpress': high_pressure,
-                        'lowcoqui': low_coqui,
-                        'highcoqui': high_coqui,
-                        'lowwightmanae': low_wightmanae,
-                        'highwightmanae': high_wightmanae,
-                        'lowgryllus': low_gryllus,
-                        'highgryllus': high_gryllus,
-                        'lowportoricensis': low_portoricensis,
-                        'highportoricensis': high_portoricensis,
-                        'lowunicolor': low_unicolor,
-                        'highunicolor': high_unicolor,
-                        'lowhedricki': low_hedricki,
-                        'highhedricki': high_hedricki,
-                        'lowlocustus': low_locustus,
-                        'highlocustus': high_locustus,
-                        'lowrichmondi': low_richmondi,
-                        'highrichmondi': high_richmondi,
-                        'descriptionfilter': description_filter,
-                        'offset': skip,
-                        'limit': limit,
-                        'orderby': orderby,
-                    }
+                        "lowhum": low_humidity,
+                        "highhum": high_humidity,
+                        "lowtemp": low_temp,
+                        "hightemp": high_temp,
+                        "lowpress": low_pressure,
+                        "highpress": high_pressure,
+                        "lowcoqui": low_coqui,
+                        "highcoqui": high_coqui,
+                        "lowwightmanae": low_wightmanae,
+                        "highwightmanae": high_wightmanae,
+                        "lowgryllus": low_gryllus,
+                        "highgryllus": high_gryllus,
+                        "lowportoricensis": low_portoricensis,
+                        "highportoricensis": high_portoricensis,
+                        "lowunicolor": low_unicolor,
+                        "highunicolor": high_unicolor,
+                        "lowhedricki": low_hedricki,
+                        "highhedricki": high_hedricki,
+                        "lowlocustus": low_locustus,
+                        "highlocustus": high_locustus,
+                        "lowrichmondi": low_richmondi,
+                        "highrichmondi": high_richmondi,
+                        "descriptionfilter": description_filter,
+                        "offset": skip,
+                        "limit": limit,
+                        "orderby": orderby,
+                    },
                 )
 
                 return list(starmap(ReportTableEntry, curs.fetchall()))
@@ -565,5 +593,3 @@ class Dashboard:
             except psycopg2.Error as e:
                 print("Error executing SQL query:", e)
                 raise default_HTTP_exception(e.pgcode, "dashboard recent reports query")
-
-
