@@ -7,7 +7,7 @@ Docker CLI and Docker compose
 Recommendation: Use VScode Docker Extension to use docker compose commands
 
 ## Step 1: Configure Environment Variables
-modify the frontend/.env.template accordingly and save a copy without the ".template" extension. 
+modify the [.env environment file](../frontend/.env.template) accordingly and save a copy without the ".template" extension. 
 
 ## Optional Step: Run Machine Learning notebook to generate model
 
