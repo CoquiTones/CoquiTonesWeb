@@ -19,14 +19,22 @@ from datetime import datetime, timedelta
 dotenv.load_dotenv(dotenv_path="backend/src/.env")
 
 app = FastAPI()
+app = FastAPI()
+
 origins = [
-    "https://localhost:5173",
-    "localhost:5173",
+    "https://localhost:5173",  # Removed trailing slash
+    "https://127.0.0.1:5173",  # Consistent formatting
+    "http://localhost:5173",   # Added http variant
+    "http://127.0.0.1:5173",   # Added http variant
     "https://localhost:8080",
-    "localhost:8080",
     "https://0.0.0.0:8080",
-    os.getenv("WEB_URL"),
 ]
+
+# Safely handle environment variable
+web_url = os.getenv("WEB_URL")
+if web_url:
+    origins.append(web_url)
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
@@ -67,6 +75,7 @@ async def timestamp_all(current_user: Annotated[LightWeightUser, Depends(get_cur
 async def timestamp_get(tid: int, current_user: Annotated[LightWeightUser, Depends(get_current_user)], db=Depends(get_db_connection)):
     return await dao.TimestampIndex.get(current_user.auid, tid, db)
 
+
 @app.get("/api/weather/all")
 async def weather_all(current_user: Annotated[LightWeightUser, Depends(get_current_user)], db=Depends(get_db_connection)):
     return await dao.WeatherData.get_all(current_user.auid, db)
@@ -91,6 +100,7 @@ async def audio_get(afid: int, current_user: Annotated[LightWeightUser, Depends(
 
     return Response(content=bytes(data), media_type="audio/mpeg") # type: ignore
 
+
 @app.get("/api/audioslices/all")
 async def audio_slice_all(current_user: Annotated[LightWeightUser, Depends(get_current_user)], db=Depends(get_db_connection)):
     return await dao.AudioSlice.get_all(current_user.auid, db)
@@ -99,6 +109,7 @@ async def audio_slice_all(current_user: Annotated[LightWeightUser, Depends(get_c
 @app.get(path="/api/audioslices/{asid}")
 async def audio_slice_get(asid: int, current_user: Annotated[LightWeightUser, Depends(get_current_user)], db=Depends(get_db_connection)):
     return await dao.AudioSlice.get(current_user.auid, asid, db)
+
 
 async def classify_and_save(audio, audio_file_id, db, model):
     classifier_output = classify_audio_file(audio, model)
@@ -155,18 +166,6 @@ async def classify_by_afid(
     return await dao.AudioSlice.get_classified(afid, db)
 
 
-@app.post(path="/api/mel-spectrogram/", response_class=Response)
-async def mel_spectrogram_get(file: UploadFile = File(...)):
-    specData = sendMelSpectrogram(file.file)
-    return specData
-
-
-@app.post(path="/api/basic-spectrogram/", response_class=Response)
-async def basic_spectrogram_get(file: UploadFile = File(...)):
-    specData = sendBasicSpectrogram(file.file)
-    return specData
-
-
 @app.post(path="/api/node/insert")
 async def node_insert(
     ntype: Annotated[str, Form()],
@@ -187,39 +186,58 @@ async def node_delete(nid: int, current_user: Annotated[LightWeightUser, Depends
     return dao.Node.delete(current_user.auid, nid, db)
 
 
-@app.post(path="/api/ml/classify")
+@app.post(path="/api/classifier/classify")
 async def classify(file: UploadFile = File(...), model=Depends(get_model)):
-    r = classify_audio_file(file.file, model)
-    return r
+    report = classify_audio_file(file.file, model)
+    return report
+
 
 
 @app.get(path="/api/dashboard/week-species-summary")
 async def week_species_summary(current_user: Annotated[LightWeightUser, Depends(get_current_user)], db=Depends(get_db_connection)):
     return dao.Dashboard.week_species_summary(current_user.auid, db)
 
+
 @app.get(path="/api/dashboard/node-health-check")
 async def node_health_check(current_user: Annotated[LightWeightUser, Depends(get_current_user)], db=Depends(get_db_connection)):
     return dao.Dashboard.node_health_check(current_user.auid, db)
 
-@app.get(path="/api/dashboard/recent-reports/")
+
+@app.get(path="/api/dashboard/recent-reports")
 async def recent_reports(
-    current_user: Annotated[LightWeightUser, Depends(get_current_user)], 
-    low_temp: float = float('-inf'), high_temp: float = float('inf'),
-    low_humidity: float = float('-inf'), high_humidity: float = float('inf'),
-    low_pressure: float = float('-inf'), high_pressure: float = float('inf'),
-    low_coqui:          int = 0, high_coqui:            int = 1 << 31 - 1, # int max for PostgresSQL integer data type
-    low_wightmanae:     int = 0, high_wightmanae:       int = 1 << 31 - 1,
-    low_gryllus:        int = 0, high_gryllus:          int = 1 << 31 - 1,
-    low_portoricensis:  int = 0, high_portoricensis:    int = 1 << 31 - 1,
-    low_unicolor:       int = 0, high_unicolor:         int = 1 << 31 - 1,
-    low_hedricki:       int = 0, high_hedricki:         int = 1 << 31 - 1,
-    low_locustus:       int = 0, high_locustus:         int = 1 << 31 - 1,
-    low_richmondi:      int = 0, high_richmondi:        int = 1 << 31 - 1,   
-    description_filter: str = '%',
-    skip: int = 0, limit: int = 10, 
-    orderby: int = 1, # This could be changed to an enum, but passing through the query might be weird.
-    db=Depends(get_db_connection)):
-    return dao.Dashboard.recent_reports(**locals()) # pass all keyword args as unpacked dictionary
+    current_user: Annotated[LightWeightUser, Depends(get_current_user)],
+    low_temp: float = float("-inf"),
+    high_temp: float = float("inf"),
+    low_humidity: float = float("-inf"),
+    high_humidity: float = float("inf"),
+    low_pressure: float = float("-inf"),
+    high_pressure: float = float("inf"),
+    low_coqui: int = 0,
+    high_coqui: int = 1 << 31 - 1,  # int max for PostgresSQL integer data type
+    low_wightmanae: int = 0,
+    high_wightmanae: int = 1 << 31 - 1,
+    low_gryllus: int = 0,
+    high_gryllus: int = 1 << 31 - 1,
+    low_portoricensis: int = 0,
+    high_portoricensis: int = 1 << 31 - 1,
+    low_unicolor: int = 0,
+    high_unicolor: int = 1 << 31 - 1,
+    low_hedricki: int = 0,
+    high_hedricki: int = 1 << 31 - 1,
+    low_locustus: int = 0,
+    high_locustus: int = 1 << 31 - 1,
+    low_richmondi: int = 0,
+    high_richmondi: int = 1 << 31 - 1,
+    description_filter: str = "%",
+    skip: int = 0,
+    limit: int = 10,
+    orderby: int = 1,  # This could be changed to an enum, but passing through the query might be weird.
+    db=Depends(get_db_connection),
+):
+    return dao.Dashboard.recent_reports(
+        **locals()
+    )  # pass all keyword args as unpacked dictionary
+
 
 @app.get("/{full_path:path}", response_class=HTMLResponse)
 async def serve_frontend():

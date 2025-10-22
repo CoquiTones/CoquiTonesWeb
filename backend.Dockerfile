@@ -25,5 +25,7 @@ COPY ./backend/src ./backend/src
 # Copy frontend build from previous stage
 COPY --from=frontend-builder /frontend/dist ./frontend/dist
 
+COPY ./localhost.crt .
+COPY ./localhost.key .
 # Expose the port (optional, in case you use docker run directly)
 EXPOSE 8080
