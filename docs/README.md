@@ -21,7 +21,12 @@ Simply `docker compose up -d --build`
 **Make sure to run this in root of project!!**
 
 Example: `./scripts/build.sh`
+
 [build.sh](../scripts/build.sh): setup backend installation, and frontend installation
+
 [launch.sh](../scripts/launch.sh): deploy database, start backend server, start frontend server
-[clean.sh](../scripts/clean.sh): removed all build files
-[docker_deployment.sh](../scripts/docker_deployment.sh): deploy  docker using docker compose but also create logs for each container that can be found in ./logs/
+
+[clean.sh](../scripts/clean.sh): removed all build files 
+
+[docker_deployment.sh](../scripts/docker_deployment.sh): deploy  docker using docker compose but also create logs for each container that can be found in ./logs/ \n
+
