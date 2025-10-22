@@ -1,115 +1,210 @@
-import React, { useState, Fragment } from 'react';
-import Cookies from 'js-cookie';
+// src/components/auth/SignUpPage.jsx
+import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
-	Modal,
-	Box,
-	Typography,
-	TextField,
-	Button,
-	Stack,
-	Divider,
-	styled,
-	CssBaseline,
-	Container,
-	Grid2
+  Box,
+  Typography,
+  TextField,
+  Button,
+  Stack,
+  Divider,
+  styled,
+  Link
 } from '@mui/material';
-import Sidebar from "../components/shared/Sidebar";
-
 import logo from "../components/assets/images/logo512.png";
-import Navbar from "../components/shared/Navbar";
-import Footer from "../components/shared/Footer";
+import HeroSection from '../components/shared/HeroSection';
+// import Cookies from 'js-cookie'; // optional
 import { APIHandlerAuthentication } from '../services/rest/APIHandler/APIHandlerAuthentication';
 import { SignUpRequest } from '../services/rest/RequestORM/Authentication/SignUpRequest';
 
+const PageContainer = styled(Box)(({ theme }) => ({
+  minHeight: '100vh',
+  position: 'relative',
+  overflow: 'hidden',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  backgroundColor: '#000',
+  padding: theme.spacing(3),
+
+  '& .bgVideo': {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    width: '100%',
+    height: '100%',
+    objectFit: 'cover',
+    zIndex: 0,
+    pointerEvents: 'none',
+  },
+
+  '& .overlay': {
+    position: 'absolute',
+    inset: 0,
+    background: 'rgba(0,0,0,0.45)', // adjust for contrast
+    zIndex: 1,
+  },
+
+  '& .card': {
+    width: 420,
+    maxWidth: '90%',
+    backgroundColor: 'rgba(25,23,22,0.9)',
+    border: '2px solid #000',
+    boxShadow: 24,
+    padding: theme.spacing(4),
+    position: 'relative',
+    zIndex: 2,
+    backdropFilter: 'blur(4px)',
+  },
+
+  '& img': {
+    width: '50%',
+    height: '50%',
+    display: 'block',
+    margin: '0 auto 8px auto'
+  }
+}));
+
+
 const SignUpPage = () => {
-	const [username, setUsername] = useState('');
-	const [password, setPassword] = useState('');
-	const [isOpen, setIsOpen] = useState(false);
-	const toggle = () => {
-		setIsOpen(!isOpen);
-	};
-	const handleSignUp = async () => {
-		try {
+  const navigate = useNavigate();
+  const [form, setForm] = useState({
+    username: '',
+    password: '',
+    confirmPassword: ''
+  });
+  const [errors, setErrors] = useState({});
+  const [loading, setLoading] = useState(false);
 
-			const handler = new APIHandlerAuthentication();
-			const signupRequest = new SignUpRequest(username, password);
-			const successfullyAuthenticatedStatus = await handler.SignUpNewUser(signupRequest);
+  const validate = () => {
+    const e = {};
+    if (!form.username.trim()) e.username = 'Username required';
+    if (!form.password) e.password = 'Password required';
+    else if (form.password.length < 8) e.password = 'Minimum 8 characters';
+    if (form.password !== form.confirmPassword) e.confirmPassword = 'Passwords do not match';
+    setErrors(e);
+    return Object.keys(e).length === 0;
+  };
 
-			if (successfullyAuthenticatedStatus) {
-				alert('Successfully Signed Up!!'); // obviously change this to something pretty 
-				handleClose();
-			}
-			else {
-				alert('Some Fucking Error Happened!') // obviously change this to something pretty 
-			}
-		} catch (error) {
-			// Handle authentication errors
-			console.error('Sign-in error:', error);
-		}
-	};
+  const handleChange = (field) => (evt) => {
+    setForm((s) => ({ ...s, [field]: evt.target.value }));
+    setErrors((es) => ({ ...es, [field]: undefined }));
+  };
 
-	const handleClose = () => {
+  const handleSubmit = async () => {
+    if (!validate()) return;
+    setLoading(true);
+    try {
+      const handler = new APIHandlerAuthentication();
+      // Replace with your real request/handler:
+      // const created = await handler.createUser(req);
+      // Example placeholder (simulate):
+	  const createNewUserRequest = new SignUpRequest(form.username, form.password)
+      const created = await handler.SignUpNewUser(createNewUserRequest)
 
-		setOpen(!open)
-	}
-	return (
-		<Fragment>
+      if (created) {
+        // optionally set cookie or session token here
+        // Cookies.set('session', token);
+		alert('Successfully Signed in!');
+        navigate('/'); // redirect to sign-in page
+      } else {
+        setErrors({ form: 'Registration failed. Try again.' });
+      }
+    } catch (err) {
+      console.error('Sign-up error', err);
+      setErrors({ form: 'Server error. Try again later.' });
+    } finally {
+      setLoading(false);
+    }
+  };
 
-			<Sidebar isOpen={isOpen} toggle={toggle} />
-			<Navbar toggle={toggle} />
-			<Box sx={{ display: "flex", width: "100%" }}>
-				<CssBaseline />
-				<Container>
-					<Grid2>
-						<img src={logo}></img>
-						<Typography
-							id="sign-in-modal-title"
-							variant="h6"
-							component="h2"
-							align='center'
-							sx={{
-								color: "#ffc857",
-								cursor: 'pointer',
-								fontSize: '1.5rem',
-								fontWeight: 'bold',
-								TextDecoration: 'none'
-							}}>
-							Sign In
-						</Typography>
-						<TextField
-							fullWidth
-							margin="normal"
-							label="Username"
-							value={username}
-							onChange={(e) => setUsername(e.target.value)}
-						/>
-						<TextField
-							fullWidth
-							margin="normal"
-							type="password"
-							label="Password"
-							value={password}
-							onChange={(e) => setPassword(e.target.value)}
-						/>
+  return (
+    <PageContainer>
+    <video
+      className="bgVideo"
+      autoPlay
+      loop
+      muted
+      playsInline
+      src="https://videos.pexels.com/video-files/9777616/9777616-hd_1920_1080_30fps.mp4"
+      type="video/mp4"
+    />
+    <div className="overlay" />
+      <Box className="card">
+        <img src={logo} alt="logo" />
+        <Typography
+          variant="h5"
+          align="center"
+          sx={{ color: '#ffc857', fontWeight: 'bold', mb: 2 }}
+        >
+          Create Account
+        </Typography>
 
-						<Stack spacing={2} sx={{ mt: 2 }}>
-							<Button
-								variant="contained"
-								onClick={handleSignUp}
-								fullWidth
-								sx={{ mt: 2 }}
-							>
-								Sign Up
-							</Button>
-						</Stack>
+        <TextField
+          fullWidth
+          margin="normal"
+          label="Username"
+          value={form.username}
+          onChange={handleChange('username')}
+          error={!!errors.username}
+          helperText={errors.username}
+        />
 
-					</Grid2>
-				</Container>
-			</Box>
-		</Fragment>
+        <TextField
+          fullWidth
+          margin="normal"
+          type="password"
+          label="Password"
+          value={form.password}
+          onChange={handleChange('password')}
+          error={!!errors.password}
+          helperText={errors.password}
+        />
 
+        <TextField
+          fullWidth
+          margin="normal"
+          type="password"
+          label="Confirm Password"
+          value={form.confirmPassword}
+          onChange={handleChange('confirmPassword')}
+          error={!!errors.confirmPassword}
+          helperText={errors.confirmPassword}
+        />
 
-	);
+        {errors.form && (
+          <Typography color="error" variant="body2" sx={{ mt: 1 }}>
+            {errors.form}
+          </Typography>
+        )}
+
+        <Stack spacing={2} sx={{ mt: 2 }}>
+          <Button
+            variant="contained"
+            onClick={handleSubmit}
+            disabled={loading}
+            fullWidth
+          >
+            {loading ? 'Creating…' : 'Sign Up'}
+          </Button>
+
+          <Divider>
+            <Typography variant="body2" color="text.secondary">OR</Typography>
+          </Divider>
+
+          <Button variant="outlined" color="secondary" fullWidth onClick={() => navigate('/')}>
+            <Link component="button" underline="none" sx={{ color: 'inherit' }}>
+              Already have an account? Sign In
+            </Link>
+          </Button>
+
+          <Button variant="text" color="error" fullWidth onClick={() => navigate('/')}>
+            Cancel
+          </Button>
+        </Stack>
+      </Box>
+    </PageContainer>
+  );
 };
 
 export default SignUpPage;
