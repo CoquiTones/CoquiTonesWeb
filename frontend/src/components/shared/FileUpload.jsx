@@ -37,7 +37,7 @@ export default function FileUpload({ setAudioFile }) {
             onChange={(evt) => setCurrentFile(evt.target.files[0])}
         >
             Upload file
-            <VisuallyHiddenInput type="file" />
+            <VisuallyHiddenInput type="file" accept=".wav, .mp3, .mp4" />
         </Button>
     );
 

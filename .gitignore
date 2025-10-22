@@ -1,6 +1,5 @@
 # Python
 __pycache__/
-*.pkl
 .venv/
 
 # Secret
@@ -20,6 +19,8 @@ frontend/dist/
 frontend/node_modules/
 
 # Data
+machine_learning/dataset
+machine_learning/processed
 ML/RAW.csv
 machine_learning/processed/*
 machine_learning/dataset
