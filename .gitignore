@@ -21,6 +21,7 @@ machine_learning/processed/processed.csv
 .ipynb_checkpoints/*
 machine_learning/.ipynb_checkpoints/*
 mosquitto/config/pwfile
+mosquitto/data
 
 # NixOS
 .envrc

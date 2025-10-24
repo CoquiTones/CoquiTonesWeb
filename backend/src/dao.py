@@ -307,7 +307,11 @@ class AudioFile(DAO):
     async def insert(cls, db:connection, file, nid: int, tid: int):
         with db.cursor() as curs:
             try:
-                data = await file.read()
+                if isinstance(file, bytes):
+                    data = file
+                else:
+                    data = await file.read()
+                    
                 curs.execute(sql.SQL(
 """
 INSERT INTO {} (tid, data)
