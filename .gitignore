@@ -2,6 +2,7 @@
 __pycache__/
 .venv/
 *.env
+machine_learning/dataset
 
 # VSCode
 .vscode/
@@ -20,8 +21,12 @@ ML/RAW.csv
 machine_learning/processed/processed.csv
 .ipynb_checkpoints/*
 machine_learning/.ipynb_checkpoints/*
+mosquitto/config/pwfile
+mosquitto/data
 
 # NixOS
 .envrc
 *.nix
 .direnv/
+localhost.key
+localhost.crt
