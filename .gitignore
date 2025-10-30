@@ -32,3 +32,5 @@ machine_learning/.ipynb_checkpoints/*
 *.nix
 .direnv/
 
+mosquitto/config/pwfile
+mosquitto/data/mosquitto.db
