@@ -526,6 +526,9 @@ ORDER BY "bin"
                     (owner,),
                 )
                 db_output = curs.fetchall()
+                if len(db_output) == 0:
+                    # If there are no afids to group by the query will just turn up empty, so we should respond with an empty dict.
+                    return {}
                 column_transposed = list(map(list, zip(*db_output)))
                 return {
                     "total_coqui": column_transposed[0],
