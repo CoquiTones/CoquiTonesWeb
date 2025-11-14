@@ -35,7 +35,7 @@ class NodeCRUDTest(unittest.TestCase):
         self.assertEqual(res['nid'], self.nid)
         self.assertEqual(res['ntype'], 'primary')
         self.assertEqual(res['ndescription'], 'hospital')
-        self.assertAlmostEqual(res['nlatitude'], 20.887972),
+        self.assertAlmostEqual(res['nlatitude'], 20.887972)
         self.assertAlmostEqual(res['nlongitude'], -76.27185)
     
     def test_get_all(self):
