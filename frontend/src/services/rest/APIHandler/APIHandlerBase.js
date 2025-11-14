@@ -1,4 +1,4 @@
-import Cookies from 'js-cookie';
+import GlobalStateManager from "../../Authentication/GlobalStateManager";
 
 /**
  * Abstract APIHandler class for managing API calls to backend server
@@ -11,8 +11,7 @@ export default class APIHandlerBase {
     
 
     getAuthenticationHeader () {
-        const authenticated_header = {'Authorization' : 'Bearer ' + Cookies.get('session_token')}
-        console.log("Authentication header from Handler base: " + authenticated_header.Authorization);
+        const authenticated_header = {'Authorization' : 'Bearer ' + GlobalStateManager.getAuthenticationToken()}
         return authenticated_header;
     }
 }

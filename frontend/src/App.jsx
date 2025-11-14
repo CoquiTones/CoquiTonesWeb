@@ -1,6 +1,7 @@
 import React from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import './App.css';
+import ProtectedRoute from './pages/ProtectedRoute';
 import About from './pages/About';
 import NetworkMonitor from './pages/NetworkMonitor'
 import Dashboard from './pages/Dashboard';
@@ -18,9 +19,11 @@ function App() {
       <BrowserRouter>
         <Routes>
           <Route path='/' element={<ThemeProvider theme={theme} > <Home /> </ThemeProvider>} />
-          <Route path='/Dashboard' element={<ThemeProvider theme={theme} > <Dashboard /> </ThemeProvider>} />
+          <Route element={<ProtectedRoute />} >
+            <Route path='/Dashboard' element={<ThemeProvider theme={theme} > <Dashboard /> </ThemeProvider>} />
+            <Route path='/NetworkMonitor' element={<ThemeProvider theme={theme} > <NetworkMonitor /> </ThemeProvider>} />
+          </Route>
           <Route path='/About' element={<ThemeProvider theme={theme} > <About /> </ThemeProvider>} />
-          <Route path='/NetworkMonitor' element={<ThemeProvider theme={theme} > <NetworkMonitor /> </ThemeProvider>} />
           <Route path='/Classifier' element={<ThemeProvider theme={theme} > <Classifier /> </ThemeProvider>} />
           <Route path='/SpectralAnalysis' element={<ThemeProvider theme={theme} > <SpectralAnalysis /> </ThemeProvider>} />
           <Route path='/SignUp' element={<ThemeProvider theme={theme} > <SignUpPage /> </ThemeProvider>} />

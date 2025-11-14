@@ -99,13 +99,11 @@ const SignUpPage = () => {
       // Replace with your real request/handler:
       // const created = await handler.createUser(req);
       // Example placeholder (simulate):
-	  const createNewUserRequest = new SignUpRequest(form.username, form.password)
+      const createNewUserRequest = new SignUpRequest(form.username, form.password)
       const created = await handler.SignUpNewUser(createNewUserRequest)
 
       if (created) {
-        // optionally set cookie or session token here
-        // Cookies.set('session', token);
-		alert('Successfully Signed in!');
+        alert('Successfully Signed Up!');
         navigate('/'); // redirect to sign-in page
       } else {
         setErrors({ form: 'Registration failed. Try again.' });
@@ -120,16 +118,16 @@ const SignUpPage = () => {
 
   return (
     <PageContainer>
-    <video
-      className="bgVideo"
-      autoPlay
-      loop
-      muted
-      playsInline
-      src="https://videos.pexels.com/video-files/9777616/9777616-hd_1920_1080_30fps.mp4"
-      type="video/mp4"
-    />
-    <div className="overlay" />
+      <video
+        className="bgVideo"
+        autoPlay
+        loop
+        muted
+        playsInline
+        src="https://videos.pexels.com/video-files/9777616/9777616-hd_1920_1080_30fps.mp4"
+        type="video/mp4"
+      />
+      <div className="overlay" />
       <Box className="card">
         <img src={logo} alt="logo" />
         <Typography

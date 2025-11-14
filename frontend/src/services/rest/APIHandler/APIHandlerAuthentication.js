@@ -4,10 +4,9 @@ import { AuthenticateUserResponse } from "../ResponseORM/Authentication/Authenti
 import { AuthenticateUserRequest } from "../RequestORM/Authentication/CheckUserRequest";
 import { SignUpResponse } from "../ResponseORM/Authentication/SignUpResponse";
 import { SignUpRequest } from "../RequestORM/Authentication/SignUpRequest";
-import Cookies from 'js-cookie';
+import GlobalStateManager from "../../Authentication/GlobalStateManager";
 export class APIHandlerAuthentication extends APIHandlerBase {
 
-    ACCESS_TOKEN_EXPIRE_MINUTES = 30
 
     /**
      * Sets session token in if user is successfully authenticated. 
@@ -27,11 +26,8 @@ export class APIHandlerAuthentication extends APIHandlerBase {
             }
             const validateUserExists = await response.json();
             const authenticationResponse = new AuthenticateUserResponse(validateUserExists);
-            Cookies.set('session_token', authenticationResponse.session_token, {
-                expires: this.ACCESS_TOKEN_EXPIRE_MINUTES, 
-                secure: true,
-                sameSite: 'strict'
-            })
+            const session_token = authenticationResponse.session_token;
+            GlobalStateManager.setAuthenticationToken(session_token);
             return true;
         } catch (error) {
             // catch error and output something to UI?
