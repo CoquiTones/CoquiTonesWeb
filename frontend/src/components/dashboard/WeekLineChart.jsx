@@ -13,14 +13,13 @@ export default function Chart() {
     const fetchChartData = async () => {
       const apiHandler = new APIHandlerDashboard();
       const chartData = await apiHandler.get_week_species_summary();
-      console.log(chartData);
       setChartData(chartData);
     };
 
     fetchChartData();
   }, []);
 
-  if (!chartData) {
+  if (!chartData || chartData.isEmpty()) {
     return (
       <Box
         display="flex"

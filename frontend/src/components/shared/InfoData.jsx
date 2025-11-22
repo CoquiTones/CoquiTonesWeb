@@ -2,7 +2,7 @@ import homedashboard from "../../components/assets/images/homedashboard.svg";
 import homecdn from "../../components/assets/images/homecdn.svg";
 import homeclassifier from "../../components/assets/images/homeclassifier.svg";
 import homeanalysis from "../../components/assets/images/homeanalysis.svg";
-export const homeObjOne = {
+export const dashboardData = {
   id: "dashboard",
   lightBg: false,
   lightText: true,
@@ -22,7 +22,7 @@ export const homeObjOne = {
   darkText: false,
 };
 
-export const homeObjTwo = {
+export const NetworkMonitorData = {
   id: "NetworkMonitor",
   lightBg: true,
   lightText: false,
@@ -42,7 +42,7 @@ export const homeObjTwo = {
   darkText: true,
 };
 
-export const homeObjThree = {
+export const ClassifierData = {
   id: "classifier",
   lightBg: false,
   lightText: true,
@@ -62,7 +62,7 @@ export const homeObjThree = {
   darkText: false,
 };
 
-export const homeObjFour = {
+export const SpectralAnalysisData = {
   id: "spectralanalysis",
   lightBg: true,
   lightText: false,

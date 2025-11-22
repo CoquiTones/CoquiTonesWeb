@@ -7,6 +7,16 @@
  * @typedef {WeekSpeciesSummary}
  */
 export class WeekSpeciesSummary {
+    total_coqui;
+    total_wightmanae;
+    total_gryllus;
+    total_portoricensis;
+    total_unicolor;
+    total_hedricki;
+    total_locustus;
+    total_richmondi;
+    date_bin = [];
+
     constructor(APIResponse) {
         this.total_coqui = APIResponse.total_coqui;
         this.total_wightmanae = APIResponse.total_wightmanae;
@@ -64,5 +74,9 @@ export class WeekSpeciesSummary {
         ]
 
         return series;
+    }
+
+    isEmpty() {
+        return this.date_bin == undefined ? true : false;
     }
 }

@@ -15,7 +15,7 @@ import {
   Img,
 } from "./InfoStyle";
 
-//TODO: Add Button Element from local branch. Verify the margins from the webpage later on.
+
 const InfoSection = ({
   lightBg,
   id,
@@ -34,6 +34,10 @@ const InfoSection = ({
   dark2,
   setIsHome,
 }) => {
+
+  const handleClick = () => {
+    setIsHome(true);
+  }
   return (
     <>
       <InfoContainer lightBg={lightBg} id={id}>
@@ -46,16 +50,14 @@ const InfoSection = ({
                 <Subtitle darkText={darkText}>{description}</Subtitle>
                 <BtnWrap>
                   <Button
-                    smooth
                     to={buttonRoute}
                     duration={500}
-                    spy={true}
                     exact="true"
                     offset={-80}
                     primary={primary ? 1 : 0}
                     dark={dark ? 1 : 0}
                     dark2={dark2 ? 1 : 0}
-                    onClick={() => setIsHome(false)}
+                    onClick={handleClick}
                   >
                     {buttonLabel}
                   </Button>

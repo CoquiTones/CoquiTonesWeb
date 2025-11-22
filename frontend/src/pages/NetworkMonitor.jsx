@@ -25,7 +25,6 @@ const NetworkMonitor = () => {
     const fetchNodes = async () => {
       const dataHandler = new APIHandlerNetworkMonitor();
       const nodes = await dataHandler.get_all_nodes();
-      console.log(nodes);
       setNodes(nodes);
     };
 

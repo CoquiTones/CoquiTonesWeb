@@ -9,7 +9,9 @@ import {
   Stack,
   Divider,
   styled,
-  Link
+  Link,
+  Snackbar,
+  Alert
 } from '@mui/material';
 import logo from "../components/assets/images/logo512.png";
 import HeroSection from '../components/shared/HeroSection';
@@ -75,7 +77,17 @@ const SignUpPage = () => {
   });
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
-
+  // New state for managing Snackbar
+  const [snackbarOpen, setSnackbarOpen] = useState(false);
+  const [snackbarMessage, setSnackbarMessage] = useState('');
+  const [snackbarSeverity, setSnackbarSeverity] = useState('success');
+  	// Handler to close the Snackbar
+	const handleSnackbarClose = (event, reason) => {
+		if (reason === 'clickaway') {
+			return;
+		}
+		setSnackbarOpen(false);
+	};
   const validate = () => {
     const e = {};
     if (!form.username.trim()) e.username = 'Username required';
@@ -103,8 +115,14 @@ const SignUpPage = () => {
       const created = await handler.SignUpNewUser(createNewUserRequest)
 
       if (created) {
-        alert('Successfully Signed Up!');
-        navigate('/'); // redirect to sign-in page
+				// Show success Snackbar
+				setSnackbarMessage('Successfuly Sign up. Welcome to CoquiTones!');
+				setSnackbarSeverity('success');
+				setSnackbarOpen(true);
+        setTimeout(() => {
+					navigate('/'); 
+				}, 3000);
+        
       } else {
         setErrors({ form: 'Registration failed. Try again.' });
       }
@@ -199,6 +217,20 @@ const SignUpPage = () => {
           <Button variant="text" color="error" fullWidth onClick={() => navigate('/')}>
             Cancel
           </Button>
+                <Snackbar
+                  open={snackbarOpen}
+                  autoHideDuration={3000}
+                  onClose={handleSnackbarClose}
+                  anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+                >
+                  <Alert
+                    onClose={handleSnackbarClose}
+                    severity={snackbarSeverity}
+                    sx={{ width: '100%' }}
+                  >
+                    {snackbarMessage}
+                  </Alert>
+                </Snackbar>
         </Stack>
       </Box>
     </PageContainer>
