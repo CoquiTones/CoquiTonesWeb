@@ -15,7 +15,6 @@ import {
 } from '@mui/material';
 import logo from "../components/assets/images/logo512.png";
 import HeroSection from '../components/shared/HeroSection';
-// import Cookies from 'js-cookie'; // optional
 import { APIHandlerAuthentication } from '../services/rest/APIHandler/APIHandlerAuthentication';
 import { SignUpRequest } from '../services/rest/RequestORM/Authentication/SignUpRequest';
 
