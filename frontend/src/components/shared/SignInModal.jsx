@@ -60,7 +60,7 @@ const SignInModal = ({ open, setOpen, setIsSignedIn}) => {
 				// Optional: Add a slight delay before closing the modal
 				setTimeout(() => {
 					handleClose();
-				}, 1500);
+				}, 750);
 			} else {
 				// Show error Snackbar
 				setMessage('Authentication Failed. Please check your credentials.');
