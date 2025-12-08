@@ -8,12 +8,15 @@ import datetime
 import psycopg2.extras
 import io
 import hashlib
+import logging
 
 """
 Python Program to populate existing database with mocked data
 """
 MAX_BATCH_SIZE = 5
-
+logging.basicConfig(level=logging.DEBUG,
+                    format='%(asctime)s - [%(funcName)s]: %(levelname)s - %(message)s')
+LOGGER = logging.getLogger('Mock Data Generator Logger')
 
 def get_connection_from_development_config(config_file_path):
     """
@@ -22,14 +25,14 @@ def get_connection_from_development_config(config_file_path):
     Returns:
         connection: psycopg2 connection
     """
-    print("defaulting to local config for db connection in ", config_file_path)
+    LOGGER.info("defaulting to local config for db connection in " + config_file_path)
     with open(config_file_path, "r") as f:
         db_config = json.loads(f.read())
         try:
             connection = psycopg2.connect(**db_config)
             return connection
         except psycopg2.Error as e:
-            print("Error connecting to database:", e)
+            LOGGER.error("Error connecting to database:", e)
             return None
 
 
@@ -186,6 +189,7 @@ def populate_audio(connection, number_of_inserts):
                 )
                 number_of_inserts_left -= number_of_rows_to_insert
     
+    LOGGER.info("Successfully Populated Audiofile data. Proceeding to Generate audioslices ")
     for afid in range(1, number_of_inserts + 1):
         populate_audioslice(connection, afid, 6)
 
@@ -263,15 +267,22 @@ def main():
     number_of_nodes = 5
     number_of_records = 100
     try:
+        LOGGER.info("Beggining of Resetting Database Data. ")
         prepare_database(connection)
+        LOGGER.info("Successfully Deleted Existing Table Contents.")
         populate_appusers(connection)
+        LOGGER.info("Successfullly Populated appuser Table. ")
         populate_node(connection, number_of_nodes)
+        LOGGER.info("Successfully Populated Node Table. ")
         populate_timestamp(connection, number_of_records, number_of_nodes)
+        LOGGER.info("Successfully Populated Timestamp Table. ")
         populate_audio(connection, number_of_records)
+        LOGGER.info("Successfully Populated AudioFile and AudioSlice Tables. ")
         populate_weatherdata(connection, number_of_nodes, number_of_records)
+        LOGGER.info("Done!")
 
     except psycopg2.Error as e:
-        print("Error With Generation of Mock Data\n", e)
+        LOGGER.error("Error With Generation of Mock Data\n", e)
 
 
 if __name__ == "__main__":
