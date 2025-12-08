@@ -5,12 +5,13 @@ anyio==4.3.0
 asttokens==2.4.1
 audioread==3.0.1
 certifi==2024.2.2
-cffi==1.16.0
+cffi==2.0.0
 charset-normalizer==3.3.2
 click==8.1.7
 colorama==0.4.6
 comm==0.2.2
 contourpy==1.2.0
+cryptography==46.0.3
 cycler==0.12.1
 debugpy==1.8.2
 decorator==5.1.1
@@ -19,6 +20,7 @@ executing==2.0.1
 fastapi==0.109.2
 fonttools==4.50.0
 h11==0.14.0
+httptools==0.7.1
 idna==3.6
 ipykernel==6.29.5
 ipython==8.18.0
@@ -52,10 +54,13 @@ pycparser==2.21
 pydantic==2.6.1
 pydantic_core==2.16.2
 Pygments==2.18.0
+PyJWT==2.10.1
 pyparsing==3.1.2
 python-dateutil==2.9.0.post0
+python-dotenv==1.2.1
 python-multipart==0.0.9
 pytz==2024.1
+PyYAML==6.0.3
 pyzmq==26.0.3
 requests==2.31.0
 scikit-learn==1.4.1.post1
@@ -73,4 +78,7 @@ typing_extensions==4.9.0
 tzdata==2024.1
 urllib3==2.2.1
 uvicorn==0.28.0
+uvloop==0.22.1
+watchfiles==1.1.1
 wcwidth==0.2.13
+websockets==15.0.1
