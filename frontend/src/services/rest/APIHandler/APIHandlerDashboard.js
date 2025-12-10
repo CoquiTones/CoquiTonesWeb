@@ -24,7 +24,7 @@ export class APIHandlerDashboard extends APIHandlerBase {
             throw new APIHandlerError('Error with latest week summary in Handler: ' + error.message)
         }
     }
-// eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ1c2VybmFtZTp0ZXN0dXNlciIsImF1aWQiOjEsImV4cCI6MTc2MDEyMjY4MH0.pyOlThe_J53TDI6s9kLmsSXySYowypXiOL9X4zbevhs
+
     async get_node_health_check() {
         try {
             const response = await fetch(this.web_url + "/api/dashboard/node-health-check", {
@@ -44,11 +44,12 @@ export class APIHandlerDashboard extends APIHandlerBase {
         }
     }
 
-    async get_recent_reports() {
+    async get_recent_reports(recentReportsRequest) {
         try {
             const response = await fetch(this.web_url + "/api/dashboard/recent-reports", {
                 method: "GET",
-                headers: this.getAuthenticationHeader()
+                headers: this.getAuthenticationHeader(),
+                body: recentReportsRequest.toFormData()
             })
 
             if (!response.ok) {
