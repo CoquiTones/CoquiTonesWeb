@@ -11,7 +11,7 @@ import DialogTitle from "@mui/material/DialogTitle";
 
 import FileUpload from "./FileUpload";
 import { APIHandlerSpectralAnalysis } from "../../services/rest/APIHandler/APIHandlerSpectralAnalysis";
-import { insertAuudioRequest } from "../../services/rest/RequestORM/SpectralAnalysis/insertAudioRequest";
+import { insertAudioRequest } from "../../services/rest/RequestORM/SpectralAnalysis/insertAudioRequest";
 
 const DataManager = ({ audioFile, setAudioFile, setDefaultX, setDefaultY }) => {
   const [stats, setStats] = useState({
@@ -25,7 +25,7 @@ const DataManager = ({ audioFile, setAudioFile, setDefaultX, setDefaultY }) => {
 
   const handleSubmit = () => {
     const apiHandler = new APIHandlerSpectralAnalysis();
-    const insertAudioRequest = new insertAuudioRequest(
+    const insertAudioRequest = new insertAudioRequest(
       audioFile,
       nid,
       timestamp

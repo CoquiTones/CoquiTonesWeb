@@ -23,11 +23,7 @@ app = FastAPI()
 
 origins = [
     "https://localhost:5173",  # Removed trailing slash
-    "https://127.0.0.1:5173",  # Consistent formatting
-    "http://localhost:5173",   # Added http variant
-    "http://127.0.0.1:5173",   # Added http variant
     "https://localhost:8080",
-    "https://0.0.0.0:8080",
 ]
 
 # Safely handle environment variable

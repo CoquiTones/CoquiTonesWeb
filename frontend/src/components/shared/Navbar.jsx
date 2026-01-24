@@ -7,6 +7,7 @@ import { animateScroll as scroll } from "react-scroll";
 import { Button } from "@mui/material";
 import SignInModal from "./SignInModal";
 import GlobalStateManager from "../../services/Authentication/GlobalStateManager";
+import { APIHandlerAuthentication } from "../../services/rest/APIHandler/APIHandlerAuthentication";
 const Nav = styled("nav")(({ theme }) => ({
   background: "#191716",
   height: "7vh",

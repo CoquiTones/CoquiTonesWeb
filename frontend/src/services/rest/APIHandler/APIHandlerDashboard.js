@@ -18,7 +18,6 @@ export class APIHandlerDashboard extends APIHandlerBase {
             }
 
             const latestWeekSpeciesSummaryApiResponse = await response.json();
-            console.log("week species summary api response: ",  latestWeekSpeciesSummaryApiResponse)
             return new WeekSpeciesSummary(latestWeekSpeciesSummaryApiResponse);
         } catch (error) {
             throw new APIHandlerError('Error with latest week summary in Handler: ' + error.message)
@@ -37,7 +36,6 @@ export class APIHandlerDashboard extends APIHandlerBase {
             }
 
             const nodeHealthCheckApiResponse = await response.json();
-            console.log("node health checkapi response: ", nodeHealthCheckApiResponse)
             return new NodeHealthCheck(nodeHealthCheckApiResponse);
         } catch (error) {
             throw new APIHandlerError('Error with node health check in Handler: ' + error.message)
@@ -56,7 +54,6 @@ export class APIHandlerDashboard extends APIHandlerBase {
             }
 
             const recentReportsApiResponse = await response.json();
-            console.log("recent reports api response: ", recentReportsApiResponse)
             return new RecentReports(recentReportsApiResponse);
         } catch (error) {
             throw new APIHandlerError('Error with recent reports in Handler: ' + error.message)

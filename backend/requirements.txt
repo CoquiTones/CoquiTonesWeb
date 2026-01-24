@@ -1,6 +1,6 @@
 # requirements.txt
 
-annotated-types==0.6.0
+annotated-types==0.7.0
 anyio==4.3.0
 asttokens==2.4.1
 audioread==3.0.1

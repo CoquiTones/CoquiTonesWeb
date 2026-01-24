@@ -19,7 +19,13 @@ const HeroSection = () => {
         <img src={logo} width={250} height={250} alt="Logo" />
         <h1 className="hero-h1">
           All the tools you need for monitoring Amphibian Species with
-          Acoustics. All in one place. All completely Open Source.
+          Acoustics.
+        </h1>
+        <h1 className="hero-h1">
+          All in one place.
+        </h1>
+        <h1 className="hero-h1">
+          All completely Open Source.
         </h1>
         <p className="hero-p">
           Scroll below to obtain additional information on what CoquiTones is
