@@ -7,7 +7,8 @@ Docker CLI and Docker compose
 Recommendation: Use VScode Docker Extension to use docker compose commands
 
 ## Step 1: Configure Environment Variables
-modify the [.env environment file](../frontend/.env.template) accordingly and save a copy without the ".template" extension. 
+
+modify the [.env environment file](../frontend/.env.template) accordingly and save a copy without the ".template" extension.
 
 ## Optional Step: Run Machine Learning notebook to generate model
 
@@ -26,7 +27,6 @@ Example: `./scripts/build.sh`
 
 [launch.sh](../scripts/launch.sh): deploy database, start backend server, start frontend server
 
-[clean.sh](../scripts/clean.sh): removed all build files 
+[clean.sh](../scripts/clean.sh): removed all build files
 
 [docker_deployment.sh](../scripts/docker_deployment.sh): deploy  docker using docker compose but also create logs for each container that can be found in ./logs/ \n
-
