@@ -208,9 +208,7 @@ const SignUpPage = () => {
           </Divider>
 
           <Button variant="outlined" color="secondary" fullWidth onClick={() => navigate('/')}>
-            <Link component="button" underline="none" sx={{ color: 'inherit' }}>
               Already have an account? Sign In
-            </Link>
           </Button>
 
           <Button variant="text" color="error" fullWidth onClick={() => navigate('/')}>
