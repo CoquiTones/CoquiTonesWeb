@@ -6,7 +6,7 @@ class GlobalStateManager {
 
     /**
      * 
-     * @returns string: authentication token
+     * @returns string: authentication token | undeifned
      */
     static getAuthenticationToken() {
         return Cookies.get(this.SESSION_TOKEN_KEY);
@@ -18,7 +18,7 @@ class GlobalStateManager {
      */
     static getIsAuthenticated() {
         let isAuthenticated = false;
-        if (this.getAuthenticationToken()) {
+        if (this.getAuthenticationToken() !== undefined) {
             const apiHandlerAuthentication = new APIHandlerAuthentication();
             isAuthenticated = apiHandlerAuthentication.isUserAuthenticated();
         }

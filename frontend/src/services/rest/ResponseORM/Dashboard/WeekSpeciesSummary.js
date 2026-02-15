@@ -77,6 +77,6 @@ export class WeekSpeciesSummary {
     }
 
     isEmpty() {
-        return this.date_bin == undefined ? true : false;
+        return this.date_bin === undefined ? true : false;
     }
 }
