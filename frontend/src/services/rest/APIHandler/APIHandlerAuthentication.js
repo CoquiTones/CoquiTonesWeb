@@ -61,5 +61,24 @@ export class APIHandlerAuthentication extends APIHandlerBase {
         }
     }
 
-
+    async isUserAuthenticated() {
+        try {
+            const response = await fetch(this.web_url + "/api/authenticated", {
+                method: "GET",
+                headers: this.getAuthenticationHeader()
+            })
+            if (!response.ok) {
+                throw new BackendError("Unable To check if user exists: " + await response.text())
+            }
+            const apiResponse = await response.json();
+            const isAuthenticated = apiResponse["is_authenticated"] // todo: add response object for better readability and scalability
+            if (!isAuthenticated) {
+                GlobalStateManager.clearAuthenticationToken();
+            }
+            return isAuthenticated;
+        } catch (error) {
+            console.error(error);
+            return false;
+        }
+    }
 }
