@@ -10,6 +10,8 @@ import DialogActions from "@mui/material/DialogActions";
 import DialogContent from "@mui/material/DialogContent";
 import DialogContentText from "@mui/material/DialogContentText";
 import DialogTitle from "@mui/material/DialogTitle";
+import { InsertNewNodeRequest } from "../../services/rest/RequestORM/NetworkMonitor/NewNodeRequest";
+import { APIHandlerNetworkMonitor } from "../../services/rest/APIHandler/APIHandlerNetworkMonitor";
 
 export default function NewNodeDialog({ setDucks }) {
   const [open, setOpen] = React.useState(false);
@@ -28,40 +30,9 @@ export default function NewNodeDialog({ setDucks }) {
 
   const handleSubmit = (event) => {
     event.preventDefault();
-    const formData = new FormData();
-    formData.append("ntype", nodeType);
-    formData.append("nlongitude", longitude);
-    formData.append("nlatitude", latitude);
-    formData.append("ndescription", description);
-    // .meta.env imports
-    // TODO: move to datahandler
-    const web_url = import.meta.env.VITE_BACKEND_API_URL;
-    const endpoint = "/api/node/insert";
-
-    fetch(web_url + endpoint, {
-      method: "POST",
-      body: formData,
-    })
-      .then((response) => {
-        if (!response.ok) {
-          throw new Error("Network response was not ok");
-        }
-
-        return response.json();
-      })
-      .then((data) => {
-        console.log(data);
-        setDucks((prev) => [...prev, data]);
-      })
-      .catch((error) => {
-        console.error("Error:", error);
-        throw error; // Re-throw the error for further handling
-      });
-
-    console.log("Node Type:", nodeType);
-    console.log("Latitude:", latitude);
-    console.log("Longitude:", longitude);
-    console.log("Description:", description);
+    const insert_node_request = new InsertNewNodeRequest(nodeType, longitude, latitude, description);
+    const apiHandler = new APIHandlerNetworkMonitor();
+    apiHandler.insert_new_node(insert_node_request);
     handleClose();
   };
 

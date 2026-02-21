@@ -9,6 +9,7 @@ export class APIHandlerSpectralAnalysis extends APIHandlerBase {
             const response = await fetch(`${this.web_url}/api/audio/insert`, {
                 method: "POST",
                 body: insertAudioRequest.toFormData(),
+                headers: this.authenticated_header
             });
 
             if (!response.ok) {

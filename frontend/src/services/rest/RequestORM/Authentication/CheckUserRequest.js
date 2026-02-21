@@ -1,5 +1,5 @@
 
-export class CheckUserRequest {
+export class AuthenticateUserRequest {
     constructor(username, password) {
         this.username = username;
         this.password = password;
@@ -9,6 +9,7 @@ export class CheckUserRequest {
         let formData = new FormData();
         formData.append("username", this.username);
         formData.append("password", this.password);
+        formData.append("grant_type", "password");
         return formData;
     }
 }

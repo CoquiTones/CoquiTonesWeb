@@ -7,7 +7,7 @@ import {
   NodeTitle,
   NodeInfo,
 } from "../components/shared/NodeStyle";
-import Grid from "@mui/material/Grid2";
+import Grid from "@mui/material/Grid";
 import Paper from "@mui/material/Paper";
 import Link from "@mui/material/Link";
 import Navbar from "../components/shared/Navbar";
@@ -25,7 +25,6 @@ const NetworkMonitor = () => {
     const fetchNodes = async () => {
       const dataHandler = new APIHandlerNetworkMonitor();
       const nodes = await dataHandler.get_all_nodes();
-      console.log(nodes);
       setNodes(nodes);
     };
 

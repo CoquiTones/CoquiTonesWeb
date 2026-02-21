@@ -1,25 +1,30 @@
 import unittest
 import requests
 import datetime
+from requests_oauthlib import OAuth2Session
+from tests.reg.util import *
 
-host_url = 'http://localhost:8080/'
+host_url = 'https://localhost:8080/'
+certfile = "./localhost.crt"
 
 class NodeCRUDTest(unittest.TestCase):
 
     def setUp(self):
+        self.session = login()
         url = host_url + 'api/node/insert'
 
-        response = requests.post(url, data={
-            "ntype": "primary",
-            "nlatitude": 20.8879728,
-            "nlongitude": -76.2718481,
-            "ndescription": "hospital"
-        })
+        response = self.session.post(url, data={
+                "ntype": "primary",
+                "nlatitude": 20.8879728,
+                "nlongitude": -76.2718481,
+                "ndescription": "hospital"
+            }
+        )
         self.nid = int(response.json()['nid'])
 
     def tearDown(self):
         url = host_url + f'api/node/delete/{self.nid}'
-        requests.delete(url)
+        self.session.delete(url)
 
     def test_insert(self):
         self.assertIsNotNone(self.nid)
@@ -27,7 +32,7 @@ class NodeCRUDTest(unittest.TestCase):
     def test_get(self):
         url = host_url + f'api/node/{self.nid}'
 
-        response = requests.get(url)
+        response = self.session.get(url)
 
         res: dict = response.json()
 
@@ -35,12 +40,12 @@ class NodeCRUDTest(unittest.TestCase):
         self.assertEqual(res['nid'], self.nid)
         self.assertEqual(res['ntype'], 'primary')
         self.assertEqual(res['ndescription'], 'hospital')
-        self.assertAlmostEqual(res['nlatitude'], 20.887972),
+        self.assertAlmostEqual(res['nlatitude'], 20.887972)
         self.assertAlmostEqual(res['nlongitude'], -76.27185)
     
     def test_get_all(self):
         url = host_url + f'api/node/all'
-        response = requests.get(url)
+        response = self.session.get(url)
         self.assertEqual(response.status_code, 200, 'response OK')
         
         res: list[dict] = response.json()
@@ -51,6 +56,7 @@ class NodeCRUDTest(unittest.TestCase):
 class TimeStampCRUDTest(unittest.TestCase):
 
     def setUp(self):
+        self.session = login()
         # There's no direct timestamp creation endpoint, must upload audio file instead
         url = host_url + 'api/audio/insert'
 
@@ -58,7 +64,7 @@ class TimeStampCRUDTest(unittest.TestCase):
             files = {
                 'file': file
             }
-            response = requests.post(url, files=files, data={
+            response = self.session.post(url, files=files, data={
                 "nid": 1,
                 "timestamp": datetime.datetime.now(),
                 "classify": False
@@ -73,7 +79,7 @@ class TimeStampCRUDTest(unittest.TestCase):
     def test_get_all(self):
         url = host_url + 'api/timestamp/all'
 
-        response = requests.get(url)
+        response = self.session.get(url)
         self.assertEqual(response.status_code, 200, 'response OK')
         res = response.json()
         self.assertIsInstance(res, list, 'returns list')
@@ -82,7 +88,7 @@ class TimeStampCRUDTest(unittest.TestCase):
     def test_get(self):
         url = host_url + 'api/timestamp/all'
 
-        response = requests.get(url)
+        response = self.session.get(url)
         self.assertEqual(response.status_code, 200, 'response OK')
         res = response.json()
 
@@ -90,7 +96,7 @@ class TimeStampCRUDTest(unittest.TestCase):
 
         url = host_url + f'api/timestamp/{tid}'
 
-        response = requests.get(url)
+        response = self.session.get(url)
         self.assertEqual(response.status_code, 200, 'response OK')
         res = response.json()
 
@@ -99,6 +105,7 @@ class TimeStampCRUDTest(unittest.TestCase):
 class AudioSlicesCRUDTest(unittest.TestCase):
 
     def setUp(self):
+        self.session = login()
         # There's no direct audio slice creation endpoint, must upload audio file instead
         url = host_url + 'api/audio/insert'
 
@@ -106,7 +113,7 @@ class AudioSlicesCRUDTest(unittest.TestCase):
             files = {
                 'file': file
             }
-            response = requests.post(url, files=files, data={
+            response = self.session.post(url, files=files, data={
                 "nid": 1,
                 "timestamp": datetime.datetime.now(),
             })
@@ -120,7 +127,7 @@ class AudioSlicesCRUDTest(unittest.TestCase):
     def test_get_all(self):
         url = host_url + 'api/audioslices/all'
 
-        response = requests.get(url)
+        response = self.session.get(url)
         self.assertEqual(response.status_code, 200, 'response OK')
         res = response.json()
         self.assertIsInstance(res, list, 'returns list')
@@ -129,7 +136,7 @@ class AudioSlicesCRUDTest(unittest.TestCase):
     def test_get(self):
         url = host_url + 'api/audioslices/all'
 
-        response = requests.get(url)
+        response = self.session.get(url)
         self.assertEqual(response.status_code, 200, 'response OK')
         res = response.json()
 
@@ -137,7 +144,7 @@ class AudioSlicesCRUDTest(unittest.TestCase):
 
         url = host_url + f'api/audioslices/{asid}'
 
-        response = requests.get(url)
+        response = self.session.get(url)
         self.assertEqual(response.status_code, 200, 'response OK')
         res = response.json()
 
@@ -146,13 +153,14 @@ class AudioSlicesCRUDTest(unittest.TestCase):
 class AudioCRUDTest(unittest.TestCase):
 
     def setUp(self):
+        self.session = login()
         url = host_url + 'api/audio/insert'
 
         with open("./backend/tests/reg/test_audio.wav", 'rb') as file:
             files = {
                 'file': file
             }
-            response = requests.post(url, files=files, data={
+            response = self.session.post(url, files=files, data={
                 "nid": 1,
                 "timestamp": datetime.datetime.now(),
             })
@@ -166,7 +174,7 @@ class AudioCRUDTest(unittest.TestCase):
     def test_get_all(self):
         url = host_url + 'api/audio/all'
 
-        response = requests.get(url)
+        response = self.session.get(url)
         self.assertEqual(response.status_code, 200, 'response OK')
         res = response.json()
         self.assertIsInstance(res, list, 'returns list')
@@ -174,24 +182,26 @@ class AudioCRUDTest(unittest.TestCase):
 
     def test_get(self):
         url = host_url + f'api/audio/{self.afid}'
-        response = requests.get(url)
+        response = self.session.get(url)
         self.assertEqual(response.status_code, 200, 'response OK')
 
 class WeatherDataCRUDTest(unittest.TestCase):
 
     def test_get_all(self):
+        self.session = login()
         url = host_url + 'api/weather/all'
 
-        response = requests.get(url)
+        response = self.session.get(url)
         self.assertEqual(response.status_code, 200, 'response OK')
         res = response.json()
         self.assertIsInstance(res, list, 'returns list')
         self.assertIsInstance(res[0]['wdid'], int, 'dicts have wid')
 
     def test_get(self):
+        self.session = login()
         url = host_url + 'api/weather/all'
 
-        response = requests.get(url)
+        response = self.session.get(url)
         self.assertEqual(response.status_code, 200, 'response OK')
         res = response.json()
 
@@ -199,7 +209,7 @@ class WeatherDataCRUDTest(unittest.TestCase):
 
         url = host_url + f'api/weather/{wdid}'
 
-        response = requests.get(url)
+        response = self.session.get(url)
         self.assertEqual(response.status_code, 200, 'response OK')
         res = response.json()
 
