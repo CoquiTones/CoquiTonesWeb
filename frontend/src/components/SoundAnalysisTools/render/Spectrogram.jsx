@@ -1,7 +1,7 @@
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { Canvas } from "@react-three/fiber";
 import { OrbitControls } from "@react-three/drei";
-import { CircularProgress, Box } from "@mui/material";
+import { Box } from "@mui/material";
 import Axis from "./Axis";
 import SpectrogramMesh from "./SpectrogramMesh";
 
@@ -36,16 +36,17 @@ const Spectrogram = ({
   const xSize = 60;
   const ySize = 20;
 
-  // Show message if no audio file
   if (!audioFile) {
     return (
       <Box
-        display="flex"
-        justifyContent="center"
-        alignItems="center"
-        width="100%"
-        height="100%"
-        minHeight="400px"
+        sx={{
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+          width: "100%",
+          height: "100%",
+          minHeight: "400px",
+        }}
       >
         <div>No audio file loaded</div>
       </Box>
@@ -53,7 +54,7 @@ const Spectrogram = ({
   }
 
   return (
-    <div style={{ width: "100%", height: "100%", minHeight: "400px" }}>
+    <Box sx={{ width: "100%", height: "100%", minHeight: "400px" }}>
       <Canvas camera={{ position: [0, 0, 90], fov: 20 }}>
         <ambientLight intensity={0.5} />
         <directionalLight position={[10, 10, 5]} intensity={1} />
@@ -69,7 +70,6 @@ const Spectrogram = ({
           timeSamples={timeSamples}
         />
 
-        {/* Only render axes if we have valid ranges */}
         {currentTimeRange && currentTimeRange.length === 2 && (
           <Axis
             orientation="x"
@@ -100,7 +100,7 @@ const Spectrogram = ({
           enableRotate={false}
         />
       </Canvas>
-    </div>
+    </Box>
   );
 };
 

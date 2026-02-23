@@ -26,34 +26,34 @@ const SpectralAnalysis = () => {
   const [yrange, setYrange] = useState([0, 20000]);
   const [defaultX, setDefaultX] = useState([0, 120]);
   const [defaultY, setDefaultY] = useState([0, 10000]);
+
   return (
     <ThemeProvider theme={theme}>
-      <Sidebar isOpen={isOpen} toggle={toggle} />
-      <Navbar toggle={toggle} />
-      <Box sx={{ display: "flex" }}>
-        <CssBaseline />
-        <Box
-          component="main"
-          sx={{
-            backgroundColor: (theme) =>
-              theme.palette.mode === "light"
-                ? theme.palette.grey[100]
-                : theme.palette.grey[900],
-            flexGrow: 1,
-            height: "100vh",
-            width: "100vw",
-            overflow: "auto",
-          }}
-        >
-          <Container
-            maxWidth={false}
-            disableGutters
-            sx={{ mt: 10, mb: 10, px: 2 }}
+      <CssBaseline />
+      <Box sx={{ display: "flex", height: "100vh", width: "100%" }}>
+        <Sidebar isOpen={isOpen} toggle={toggle} />
+        
+        <Box sx={{ display: "flex", flexDirection: "column", flex: 1, minWidth: 0 }}>
+          <Navbar toggle={toggle} />
+          
+          <Box
+            component="main"
+            sx={{
+              backgroundColor: (theme) =>
+                theme.palette.mode === "light"
+                  ? theme.palette.grey[100]
+                  : theme.palette.grey[900],
+              flex: 1,
+              overflow: "auto",
+              width: "100%",
+              minWidth: 0,
+            }}
           >
-            <Grid container spacing={3}>
-              {/* Data Manager */}
-              <Grid item xs={12}>
-                <Paper sx={{ width: "100%", p: 2 }}>
+            <Box sx={{ display: "grid", gridTemplateColumns: "1fr 300px", gap: 3, p: 2, pt: 10 }}>
+              {/* Left Column - Main Content */}
+              <Box sx={{ display: "flex", flexDirection: "column", gap: 3, minWidth: 0 }}>
+                {/* Data Manager */}
+                <Paper sx={{ p: 2 }}>
                   <DataManager
                     audioFile={rawAudioFile}
                     setAudioFile={setRawAudioFile}
@@ -61,47 +61,26 @@ const SpectralAnalysis = () => {
                     setDefaultY={setDefaultY}
                   />
                 </Paper>
-              </Grid>
 
-              {/* Spectrogram */}
-              <Grid item xs={12}>
+                {/* Spectrogram */}
                 <Paper
                   elevation={4}
-                  sx={{ p: 2, width: "100%", height: "80vh" }}
+                  sx={{ p: 2, flex: 1, minHeight: "500px", display: "flex", flexDirection: "column" }}
                 >
-                  <SpectrogramVisualizer
-                    audioFile={rawAudioFile}
-                    colorscale={colorscale}
-                    currentTimeRange={xrange}
-                    currentFrequencyRange={yrange}
-                    setDefaultX={setDefaultX}
-                    setDefaultY={setDefaultY}
-                  />
+                  <Box sx={{ flex: 1, minHeight: 0 }}>
+                    <SpectrogramVisualizer
+                      audioFile={rawAudioFile}
+                      colorscale={colorscale}
+                      currentTimeRange={xrange}
+                      currentFrequencyRange={yrange}
+                      setDefaultX={setDefaultX}
+                      setDefaultY={setDefaultY}
+                    />
+                  </Box>
                 </Paper>
-              </Grid>
 
-              {/* Controls */}
-              <Grid item xs={12}>
-                <Paper elevation={4} sx={{ p: 2, width: "100%" }}>
-                  <SpectrogramControls
-                    setAudioFile={setRawAudioFile}
-                    type={type}
-                    setType={setType}
-                    colorscale={colorscale}
-                    setColorscale={setColorscale}
-                    xrange={xrange}
-                    setXrange={setXrange}
-                    yrange={yrange}
-                    setYrange={setYrange}
-                    defaultX={defaultX}
-                    defaultY={defaultY}
-                  />
-                </Paper>
-              </Grid>
-
-              {/* Audio Player */}
-              <Grid item xs={12}>
-                <Paper elevation={4} sx={{ p: 2, width: "100%" }}>
+                {/* Audio Player */}
+                <Paper elevation={4} sx={{ p: 2 }}>
                   <SoundPlayer
                     file={rawAudioFile}
                     setCurrentTime={setCurrentTime}
@@ -110,9 +89,26 @@ const SpectralAnalysis = () => {
                     currentTime={currentTime}
                   />
                 </Paper>
-              </Grid>
-            </Grid>
-          </Container>
+              </Box>
+
+              {/* Right Column - Controls */}
+              <Paper elevation={4} sx={{ p: 2, height: "fit-content", position: "sticky", top: 100 }}>
+                <SpectrogramControls
+                  setAudioFile={setRawAudioFile}
+                  type={type}
+                  setType={setType}
+                  colorscale={colorscale}
+                  setColorscale={setColorscale}
+                  xrange={xrange}
+                  setXrange={setXrange}
+                  yrange={yrange}
+                  setYrange={setYrange}
+                  defaultX={defaultX}
+                  defaultY={defaultY}
+                />
+              </Paper>
+            </Box>
+          </Box>
         </Box>
       </Box>
     </ThemeProvider>
