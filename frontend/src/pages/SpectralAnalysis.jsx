@@ -49,7 +49,7 @@ const SpectralAnalysis = () => {
               minWidth: 0,
             }}
           >
-            <Box sx={{ display: "grid", gridTemplateColumns: "1fr 300px", gap: 3, p: 2, pt: 10 }}>
+            <Box sx={{ display: "grid", gridTemplateColumns: "1fr 450px", gap: 3, p: 2, pt: 10, height: "100%" }}>
               {/* Left Column - Main Content */}
               <Box sx={{ display: "flex", flexDirection: "column", gap: 3, minWidth: 0 }}>
                 {/* Data Manager */}
@@ -92,7 +92,19 @@ const SpectralAnalysis = () => {
               </Box>
 
               {/* Right Column - Controls */}
-              <Paper elevation={4} sx={{ p: 2, height: "fit-content", position: "sticky", top: 100 }}>
+              <Paper 
+                elevation={4} 
+                sx={{ 
+                  p: 2, 
+                  display: "flex",
+                  flexDirection: "column",
+                  height: "fit-content",
+                  maxHeight: "calc(100vh - 140px)",
+                  overflow: "auto",
+                  position: "sticky",
+                  top: 100,
+                }}
+              >
                 <SpectrogramControls
                   setAudioFile={setRawAudioFile}
                   type={type}
