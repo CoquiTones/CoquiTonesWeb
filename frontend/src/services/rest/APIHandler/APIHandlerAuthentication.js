@@ -15,6 +15,7 @@ export class APIHandlerAuthentication extends APIHandlerBase {
      * @returns true if authenticated else false
      */
     async setSessionTokenIfUserExists(checkUserRequest) {
+
         try {
             const response = await fetch(this.web_url + "/api/token", {
                 method: "POST",
@@ -44,11 +45,11 @@ export class APIHandlerAuthentication extends APIHandlerBase {
      */
     async SignUpNewUser(newUserRequest) {
         try {
-            const response = await fetch (this.web_url + "/api/createuser", {
+            const response = await fetch(this.web_url + "/api/createuser", {
                 method: "POST",
                 body: newUserRequest.toFormData()
             })
-                        if (!response.ok) {
+            if (!response.ok) {
                 throw new BackendError('Unable to check if user exists: ' + response.statusText)
             }
             const apiResponse = await response.json();
@@ -60,5 +61,24 @@ export class APIHandlerAuthentication extends APIHandlerBase {
         }
     }
 
-
+    async isUserAuthenticated() {
+        try {
+            const response = await fetch(this.web_url + "/api/authenticated", {
+                method: "GET",
+                headers: this.getAuthenticationHeader()
+            })
+            if (!response.ok) {
+                throw new BackendError("Unable To check if user exists: " + await response.text())
+            }
+            const apiResponse = await response.json();
+            const isAuthenticated = apiResponse["is_authenticated"] // todo: add response object for better readability and scalability
+            if (!isAuthenticated) {
+                GlobalStateManager.clearAuthenticationToken();
+            }
+            return isAuthenticated;
+        } catch (error) {
+            console.error(error);
+            return false;
+        }
+    }
 }

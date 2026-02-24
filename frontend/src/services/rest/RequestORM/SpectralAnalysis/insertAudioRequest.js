@@ -1,4 +1,4 @@
-export class insertAuudioRequest {
+export class insertAudioRequest {
     endpoint = "/api/audio/insert"
     constructor(audioFile, nodeID, timestamp) {
         this.audioFile = audioFile;

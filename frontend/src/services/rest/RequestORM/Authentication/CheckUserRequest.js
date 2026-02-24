@@ -9,6 +9,7 @@ export class AuthenticateUserRequest {
         let formData = new FormData();
         formData.append("username", this.username);
         formData.append("password", this.password);
+        formData.append("grant_type", "password");
         return formData;
     }
 }

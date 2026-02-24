@@ -543,7 +543,9 @@ ORDER BY "bin"
                 }
             except psycopg2.Error as e:
                 print("Error executing SQL query:", e)
-                raise default_HTTP_exception(e.pgcode, "dashboard species weekly summary query")  # type: ignore
+                raise default_HTTP_exception(
+                    e.pgcode, "dashboard species weekly summary query"
+                )
 
     @staticmethod
     def node_health_check(owner: int, db: connection) -> list:
@@ -740,4 +742,4 @@ LIMIT %(limit)s
 
             except psycopg2.Error as e:
                 print("Error executing SQL query:", e)
-                raise default_HTTP_exception(e.pgcode, "dashboard recent reports query")  # type: ignore
+                raise default_HTTP_exception(e.pgcode, "dashboard recent reports query")

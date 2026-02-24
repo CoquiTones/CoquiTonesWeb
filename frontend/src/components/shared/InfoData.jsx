@@ -50,7 +50,7 @@ export const ClassifierData = {
   topLine: "Machine Learning Model",
   headline: "Identify coqui species using Artificial Intelligence",
   description:
-    "Using Dataiku as the foundation, a machine language model has been built to optimize the coqui species identification process",
+    " Using the Random Forest Algorithm, a machine language model has been built to optimize the coqui species identification process",
   buttonLabel: "Go To Page",
   buttonRoute: "/Classifier",
   /*imgStart sets the location of the image in the column. If it is false, the image is to the right. If it is true, the image is to the left*/

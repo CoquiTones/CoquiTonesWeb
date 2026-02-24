@@ -18,13 +18,12 @@ export class APIHandlerDashboard extends APIHandlerBase {
             }
 
             const latestWeekSpeciesSummaryApiResponse = await response.json();
-            console.log("week species summary api response: ",  latestWeekSpeciesSummaryApiResponse)
             return new WeekSpeciesSummary(latestWeekSpeciesSummaryApiResponse);
         } catch (error) {
             throw new APIHandlerError('Error with latest week summary in Handler: ' + error.message)
         }
     }
-
+// eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ1c2VybmFtZTp0ZXN0dXNlciIsImF1aWQiOjEsImV4cCI6MTc2MDEyMjY4MH0.pyOlThe_J53TDI6s9kLmsSXySYowypXiOL9X4zbevhs
     async get_node_health_check() {
         try {
             const response = await fetch(this.web_url + "/api/dashboard/node-health-check", {
@@ -37,19 +36,17 @@ export class APIHandlerDashboard extends APIHandlerBase {
             }
 
             const nodeHealthCheckApiResponse = await response.json();
-            console.log("node health checkapi response: ", nodeHealthCheckApiResponse)
             return new NodeHealthCheck(nodeHealthCheckApiResponse);
         } catch (error) {
             throw new APIHandlerError('Error with node health check in Handler: ' + error.message)
         }
     }
 
-    async get_recent_reports(recentReportsRequest) {
+    async get_recent_reports() {
         try {
             const response = await fetch(this.web_url + "/api/dashboard/recent-reports", {
                 method: "GET",
-                headers: this.getAuthenticationHeader(),
-                body: recentReportsRequest.toFormData()
+                headers: this.getAuthenticationHeader()
             })
 
             if (!response.ok) {
@@ -57,7 +54,6 @@ export class APIHandlerDashboard extends APIHandlerBase {
             }
 
             const recentReportsApiResponse = await response.json();
-            console.log("recent reports api response: ", recentReportsApiResponse)
             return new RecentReports(recentReportsApiResponse);
         } catch (error) {
             throw new APIHandlerError('Error with recent reports in Handler: ' + error.message)

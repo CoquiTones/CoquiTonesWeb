@@ -22,12 +22,8 @@ app = FastAPI()
 app = FastAPI()
 
 origins = [
-    "https://localhost:5173",  # Removed trailing slash
-    "https://127.0.0.1:5173",  # Consistent formatting
-    "http://localhost:5173",   # Added http variant
-    "http://127.0.0.1:5173",   # Added http variant
+    "https://localhost:5173",
     "https://localhost:8080",
-    "https://0.0.0.0:8080",
 ]
 
 # Safely handle environment variable
@@ -76,6 +72,7 @@ async def timestamp_get(tid: int, current_user: Annotated[LightWeightUser, Depen
     return await dao.TimestampIndex.get(current_user.auid, tid, db)
 
 
+
 @app.get("/api/weather/all")
 async def weather_all(current_user: Annotated[LightWeightUser, Depends(get_current_user)], db=Depends(get_db_connection)):
     return await dao.WeatherData.get_all(current_user.auid, db)
@@ -101,6 +98,7 @@ async def audio_get(afid: int, current_user: Annotated[LightWeightUser, Depends(
     return Response(content=bytes(data), media_type="audio/mpeg") # type: ignore
 
 
+
 @app.get("/api/audioslices/all")
 async def audio_slice_all(current_user: Annotated[LightWeightUser, Depends(get_current_user)], db=Depends(get_db_connection)):
     return await dao.AudioSlice.get_all(current_user.auid, db)
@@ -111,13 +109,19 @@ async def audio_slice_get(asid: int, current_user: Annotated[LightWeightUser, De
     return await dao.AudioSlice.get(current_user.auid, asid, db)
 
 
+
 async def classify_and_save(audio, audio_file_id, db, model):
     classifier_output = classify_audio_file(audio, model)
     slice_insert_tasks = []
     for classified_slice_name, classified_slice in classifier_output.items():
-        classified_slice['starttime'] = classified_slice.pop('start_time')
-        classified_slice['endtime'] = classified_slice.pop('end_time')
-        slice_insert_tasks.append(asyncio.create_task(dao.AudioSlice.insert(db, audio_file_id, **classified_slice), name=classified_slice_name)) # type: ignore
+        classified_slice["starttime"] = classified_slice.pop("start_time")
+        classified_slice["endtime"] = classified_slice.pop("end_time")
+        slice_insert_tasks.append(
+            asyncio.create_task(
+                dao.AudioSlice.insert(db, audio_file_id, **classified_slice),
+                name=classified_slice_name,
+            )
+        )
 
     done, pending = await asyncio.wait(slice_insert_tasks)
     results = map(lambda task: task.result(), done)
@@ -192,10 +196,10 @@ async def classify(file: UploadFile = File(...), model=Depends(get_model)):
     return report
 
 
-
 @app.get(path="/api/dashboard/week-species-summary")
 async def week_species_summary(current_user: Annotated[LightWeightUser, Depends(get_current_user)], db=Depends(get_db_connection)):
     return dao.Dashboard.week_species_summary(current_user.auid, db)
+
 
 
 @app.get(path="/api/dashboard/node-health-check")
