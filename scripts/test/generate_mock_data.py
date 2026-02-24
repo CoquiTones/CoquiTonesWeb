@@ -7,12 +7,16 @@ import os
 import datetime
 import psycopg2.extras
 import io
+import hashlib
+import logging
 
 """
 Python Program to populate existing database with mocked data
 """
 MAX_BATCH_SIZE = 5
-
+logging.basicConfig(level=logging.DEBUG,
+                    format='%(asctime)s - [%(funcName)s]: %(levelname)s - %(message)s')
+LOGGER = logging.getLogger('Mock Data Generator Logger')
 
 def get_connection_from_development_config(config_file_path):
     """
@@ -21,14 +25,14 @@ def get_connection_from_development_config(config_file_path):
     Returns:
         connection: psycopg2 connection
     """
-    print("defaulting to local config for db connection in ", config_file_path)
+    LOGGER.info("defaulting to local config for db connection in " + config_file_path)
     with open(config_file_path, "r") as f:
         db_config = json.loads(f.read())
         try:
             connection = psycopg2.connect(**db_config)
             return connection
         except psycopg2.Error as e:
-            print("Error connecting to database:", e)
+            LOGGER.error("Error connecting to database:", e)
             return None
 
 
@@ -40,6 +44,9 @@ def random_bool():
     choices = [True, False]
     return random.choice(choices)
 
+def hash_pw(password: bytes, salt: bytes) -> bytes:
+    return hashlib.scrypt(password, salt=salt, n=16384, r=8, p=1)
+
 
 def prepare_database(connection):
 
@@ -49,7 +56,9 @@ def prepare_database(connection):
         cursor.execute("DELETE FROM audioslice")
         cursor.execute("DELETE FROM timestampindex")
         cursor.execute("DELETE FROM node")
+        cursor.execute("DELETE FROM appuser")
         cursor.execute("ALTER SEQUENCE node_nid_seq RESTART WITH 1")
+        cursor.execute("ALTER SEQUENCE appuser_auid_seq RESTART WITH 1")
         cursor.execute("ALTER SEQUENCE timestampindex_tid_seq RESTART WITH 1")
         cursor.execute("ALTER SEQUENCE weatherdata_wdid_seq RESTART WITH 1")
         cursor.execute("ALTER SEQUENCE audioslice_asid_seq RESTART WITH 1")
@@ -78,13 +87,27 @@ def random_binary_data(size=10) -> bytes:
 def random_float(min, max) -> float:
     return random.uniform(min, max)
 
+# Hardcode in the users so it's easier to test
+def populate_appusers(connection): 
+    with connection.cursor() as cursor:
+        username = "testuser"
+        salt = os.urandom(16);
+        password = b"testuserpw"
+        pwhash = hash_pw(password, salt)
+        cursor.execute(
+        """
+        INSERT INTO appuser (username, salt, pwhash) 
+        VALUES (%s, %s, %s)
+        """, (username, salt, pwhash) )
+
+    connection.commit()
 
 def populate_node(connection, number_of_inserts):
 
     latitude_range = (-90, 90)
     longitude_range = (-90, 90)
     description_length = 10
-    prepared_statement = "INSERT INTO node (ntype, nlatitude, nlongitude, ndescription) VALUES (%s, %s, %s, %s)"
+    prepared_statement = "INSERT INTO node (ntype, ownerid, nlatitude, nlongitude, ndescription) VALUES (%s, %s, %s, %s, %s)"
 
     necessary_statements = (number_of_inserts // MAX_BATCH_SIZE) + 1
     number_of_inserts_left = number_of_inserts
@@ -98,6 +121,7 @@ def populate_node(connection, number_of_inserts):
             batch_values = [
                 (
                     random_node_type(),
+                    1, # owner id
                     random_float(*latitude_range),  # asterisk means unpacking
                     random_float(*longitude_range),
                     random_string(description_length),
@@ -139,7 +163,7 @@ def populate_timestamp(connection, number_of_inserts, number_of_nodes):
 
 def populate_audio(connection, number_of_inserts):
 
-    prepared_statement = "INSERT INTO audiofile (tid, data) VALUES (%s, %s)"
+    prepared_statement = "INSERT INTO audiofile (ownerid, tid, data) VALUES (%s, %s, %s)"
     necessary_statements = (number_of_inserts // MAX_BATCH_SIZE) + 1
     number_of_inserts_left = number_of_inserts
 
@@ -154,6 +178,7 @@ def populate_audio(connection, number_of_inserts):
                 )
                 batch_values = [
                     (
+                        1, # owner id
                         random_integer(1, number_of_inserts),
                         file_bytes,
                     )
@@ -164,6 +189,7 @@ def populate_audio(connection, number_of_inserts):
                 )
                 number_of_inserts_left -= number_of_rows_to_insert
     
+    LOGGER.info("Successfully Populated Audiofile data. Proceeding to Generate audioslices ")
     for afid in range(1, number_of_inserts + 1):
         populate_audioslice(connection, afid, 6)
 
@@ -241,14 +267,22 @@ def main():
     number_of_nodes = 5
     number_of_records = 100
     try:
+        LOGGER.info("Beggining of Resetting Database Data. ")
         prepare_database(connection)
+        LOGGER.info("Successfully Deleted Existing Table Contents.")
+        populate_appusers(connection)
+        LOGGER.info("Successfullly Populated appuser Table. ")
         populate_node(connection, number_of_nodes)
+        LOGGER.info("Successfully Populated Node Table. ")
         populate_timestamp(connection, number_of_records, number_of_nodes)
+        LOGGER.info("Successfully Populated Timestamp Table. ")
         populate_audio(connection, number_of_records)
+        LOGGER.info("Successfully Populated AudioFile and AudioSlice Tables. ")
         populate_weatherdata(connection, number_of_nodes, number_of_records)
+        LOGGER.info("Done!")
 
     except psycopg2.Error as e:
-        print("Error With Generation of Mock Data\n", e)
+        LOGGER.error("Error With Generation of Mock Data\n", e)
 
 
 if __name__ == "__main__":
