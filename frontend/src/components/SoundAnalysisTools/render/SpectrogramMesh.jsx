@@ -37,7 +37,6 @@ const SpectrogramMesh = ({
 
   // Enhanced shader material that uses view bounds from geometry.userData
   const shaderMaterial = useMemo(() => {
-    console.log("Creating shader material");
     return new THREE.ShaderMaterial({
       uniforms: {
         vLut: { value: colors },
@@ -105,7 +104,7 @@ const SpectrogramMesh = ({
 
     const userData = geometry.userData;
     if (userData) {
-      console.log("Updating shader uniforms:", userData);
+
 
       shaderMaterial.uniforms.timeScale.value = userData.timeScale || 1.0;
       shaderMaterial.uniforms.freqScale.value = userData.freqScale || 1.0;
@@ -146,7 +145,6 @@ const SpectrogramMesh = ({
       "displacement",
       new THREE.BufferAttribute(displacementArray, 1)
     );
-    console.log("Created fallback geometry");
     return geo;
   }, [xSize, ySize]);
 
@@ -187,7 +185,6 @@ const SpectrogramMesh = ({
   };
 
   if (!isReady && !geometry) {
-    console.log("Rendering fallback geometry for testing");
     return (
       <mesh
         ref={meshRef}
@@ -198,11 +195,8 @@ const SpectrogramMesh = ({
   }
 
   if (!isReady || !geometry) {
-    console.log("Not ready or no geometry, returning null");
     return null;
   }
-
-  console.log("Rendering actual geometry");
   return (
     <>
       <mesh ref={meshRef} geometry={geometry} material={shaderMaterial} />{" "}

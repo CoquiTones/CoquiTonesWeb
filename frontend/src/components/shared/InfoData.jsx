@@ -2,7 +2,7 @@ import homedashboard from "../../components/assets/images/homedashboard.svg";
 import homecdn from "../../components/assets/images/homecdn.svg";
 import homeclassifier from "../../components/assets/images/homeclassifier.svg";
 import homeanalysis from "../../components/assets/images/homeanalysis.svg";
-export const homeObjOne = {
+export const dashboardData = {
   id: "dashboard",
   lightBg: false,
   lightText: true,
@@ -22,7 +22,7 @@ export const homeObjOne = {
   darkText: false,
 };
 
-export const homeObjTwo = {
+export const NetworkMonitorData = {
   id: "NetworkMonitor",
   lightBg: true,
   lightText: false,
@@ -42,7 +42,7 @@ export const homeObjTwo = {
   darkText: true,
 };
 
-export const homeObjThree = {
+export const ClassifierData = {
   id: "classifier",
   lightBg: false,
   lightText: true,
@@ -50,7 +50,7 @@ export const homeObjThree = {
   topLine: "Machine Learning Model",
   headline: "Identify coqui species using Artificial Intelligence",
   description:
-    "Using Dataiku as the foundation, a machine language model has been built to optimize the coqui species identification process",
+    " Using the Random Forest Algorithm, a machine language model has been built to optimize the coqui species identification process",
   buttonLabel: "Go To Page",
   buttonRoute: "/Classifier",
   /*imgStart sets the location of the image in the column. If it is false, the image is to the right. If it is true, the image is to the left*/
@@ -62,7 +62,7 @@ export const homeObjThree = {
   darkText: false,
 };
 
-export const homeObjFour = {
+export const SpectralAnalysisData = {
   id: "spectralanalysis",
   lightBg: true,
   lightText: false,

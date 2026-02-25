@@ -1,8 +1,12 @@
 # Python
 __pycache__/
-*.pkl
 .venv/
+
+# Secret
 *.env
+localhost.crt
+localhost.key
+.gitignore
 machine_learning/dataset
 
 # VSCode
@@ -16,8 +20,11 @@ frontend/dist/
 frontend/node_modules/
 
 # Data
+machine_learning/dataset
+machine_learning/processed
 ML/RAW.csv
-machine_learning/processed/processed.csv
+machine_learning/processed/*
+machine_learning/dataset
 .ipynb_checkpoints/*
 machine_learning/.ipynb_checkpoints/*
 mosquitto/config/pwfile
@@ -27,5 +34,9 @@ mosquitto/data
 .envrc
 *.nix
 .direnv/
+
+mosquitto/config/pwfile
+mosquitto/data/mosquitto.db
+mosquitto/config/mosquitto.conf
 localhost.key
 localhost.crt

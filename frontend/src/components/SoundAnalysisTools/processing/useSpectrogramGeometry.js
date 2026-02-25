@@ -74,21 +74,18 @@ export const useSpectrogramGeometry = ({
         }
       } finally {
         if (!isCancelled) {
-          console.log("Processing complete, loading state cleared");
         }
       }
     };
     process();
 
     return () => {
-      console.log("Cleanup: cancelling processing");
       isCancelled = true;
     };
   }, [audioFile]);
 
   useEffect(() => {
     if (!isReady || !geometryRef.current || !fullSpectrogramRef.current) {
-      console.log("Skipping view update - not ready or missing data");
       return;
     }
     updateGeometryView();
@@ -96,7 +93,6 @@ export const useSpectrogramGeometry = ({
 
   const updateGeometryView = () => {
     if (!geometryRef.current) {
-      console.log("No geometry to update");
       return;
     }
 

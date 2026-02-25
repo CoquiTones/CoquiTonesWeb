@@ -1,7 +1,5 @@
 import React, { useEffect, useState } from "react";
-import FileUpload from "./FileUpload";
 import { Typography, Box, Button } from "@mui/material";
-import DataHandler from "../../services/DataHandler";
 import IconButton from "@mui/material/IconButton";
 import AddIcon from "@mui/icons-material/Add";
 import TextField from "@mui/material/TextField";
@@ -10,21 +8,12 @@ import DialogActions from "@mui/material/DialogActions";
 import DialogContent from "@mui/material/DialogContent";
 import DialogContentText from "@mui/material/DialogContentText";
 import DialogTitle from "@mui/material/DialogTitle";
-/**
- *
- * TODO:
- * add upload to db functionality for file
- * generate report panel
- * upload report
- *
- *
- */
-const DataManager = ({
-  audioFile,
-  setAudioFile,
-  setDefaultX,
-  setDefaaultY,
-}) => {
+
+import FileUpload from "./FileUpload";
+import { APIHandlerSpectralAnalysis } from "../../services/rest/APIHandler/APIHandlerSpectralAnalysis";
+import { insertAudioRequest } from "../../services/rest/RequestORM/SpectralAnalysis/insertAudioRequest";
+
+const DataManager = ({ audioFile, setAudioFile, setDefaultX, setDefaultY }) => {
   const [stats, setStats] = useState({
     duration: 0,
     sampleRate: 22000,
@@ -35,8 +24,13 @@ const DataManager = ({
   });
 
   const handleSubmit = () => {
-    const dataHandler = new DataHandler("audio");
-    dataHandler.insertAudio(audioFile, nid, timestamp);
+    const apiHandler = new APIHandlerSpectralAnalysis();
+    const insertAudioRequest = new insertAudioRequest(
+      audioFile,
+      nid,
+      timestamp
+    );
+    apiHandler.insertAudio(insertAudioRequest);
     setOpen(false);
   };
   useEffect(() => {

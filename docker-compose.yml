@@ -5,11 +5,12 @@ services:
       dockerfile: ./backend.Dockerfile
     volumes:
       - ./backend:/app/backend
+      - ./frontend/dist:/app/frontend/dist
     ports:
-      - 127.0.0.1:8080:8080
+      - 8080:8080  # Keep access limited to localhost
     depends_on:
       - database
-    command: uvicorn --app-dir backend/src app:app --reload --host 0.0.0.0 --port 8080
+    command: uvicorn --app-dir backend/src app:app --reload --host 0.0.0.0 --port 8080 --ssl-keyfile ./localhost.key --ssl-certfile ./localhost.crt
     environment:
       - DATABASE_URL=postgresql://postgres:secrettest@database:5432/postgres
 
@@ -19,10 +20,10 @@ services:
       dockerfile: ./frontend.Dockerfile
     volumes:
       - ./frontend:/app
-      - /app/node_modules # prevent node_modules overwrite
+      - /app/node_modules # Prevent node_modules overwrite
     ports:
-      - 127.0.0.1:5173:5173
-    command: npm run start -- --host 0.0.0.0
+      - 5173:5173  # Keep access limited to localhost
+    command: npm run start -- --host 0.0.0.0  # Allow access from all interfaces
     environment:
       - CHOKIDAR_USEPOLLING=true
 
@@ -32,7 +33,6 @@ services:
       POSTGRES_DB: postgres
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: secrettest
-
     volumes:
       - ./init.sql:/docker-entrypoint-initdb.d/init.sql
     ports:

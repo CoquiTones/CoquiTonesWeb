@@ -1,13 +1,15 @@
 import requests
 import unittest
+from tests.reg.util import login
 
-host_url = 'http://localhost:8080/'
+host_url = 'https://localhost:8080/'
 
 class DashboardTest(unittest.TestCase):
     def test_week_species_summary(self):
+        session = login()
         url = host_url + 'api/dashboard/week-species-summary'
 
-        response = requests.get(url)
+        response = session.get(url)
         self.assertEqual(response.status_code, 200, 'response OK')
         res = response.json()
 
@@ -22,9 +24,10 @@ class DashboardTest(unittest.TestCase):
         self.assertIn('date_bin', res.keys())
     
     def test_recent_reports(self):
+        session = login()
         url = host_url + 'api/dashboard/recent-reports/'
 
-        response = requests.get(url)
+        response = session.get(url)
         self.assertEqual(response.status_code, 200, 'response OK')
         res = response.json()
         report = res[0]
@@ -47,9 +50,10 @@ class DashboardTest(unittest.TestCase):
         self.assertIn('afid', report.keys())
 
     def test_node_health_check(self):
+        session = login()
         url = host_url + 'api/dashboard/node-health-check'
 
-        response = requests.get(url)
+        response = session.get(url)
         self.assertEqual(response.status_code, 200, 'response OK')
         res = response.json()
         
