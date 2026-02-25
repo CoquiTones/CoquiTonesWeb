@@ -9,7 +9,6 @@ localhost.key
 .gitignore
 
 # VSCode
-.vscode/
 
 # Logs
 log/
