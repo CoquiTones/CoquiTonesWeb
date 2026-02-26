@@ -7,7 +7,7 @@ from dbutil import get_database_connection
 from typing import Annotated
 from pydantic import BaseModel, ValidationError, PlainSerializer, Base64Bytes
 from datetime import datetime
-from app import classify_and_save
+from standaloneops import classify_and_save
 from mlutil import get_model
 
 MQTT_BROKER_HOSTNAME = "localhost"
@@ -69,12 +69,15 @@ def parse_report(report_raw: bytes) -> Report:
     return Report.model_validate_json(report_raw)
 
 async def handle_report(report: Report, model):
+    print(f"INFO: New report from node {report.node_id}")
     db = get_database_connection()
     if db is None:
         print("ERROR: Couldn't save report\n\tFailed to connect to database")
         return
-    print(f"INFO: New report from node {report.node_id}")
     timestamp_index = await dao.TimestampIndex.insert(db, report.node_id, report.timestamp)
+    if timestamp_index is None:
+        print(f"ERROR: Couldn't save report\n\tFailed to save timestamp {report.timestamp}")
+        return
     f1 = dao.AudioFile.insert(db, report.audio.data, report.node_id, timestamp_index)
     f2 = dao.WeatherData.insert(
         db, 
