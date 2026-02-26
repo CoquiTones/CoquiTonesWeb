@@ -7,6 +7,7 @@ __pycache__/
 localhost.crt
 localhost.key
 .gitignore
+machine_learning/dataset
 
 # VSCode
 
@@ -25,6 +26,8 @@ machine_learning/processed/*
 machine_learning/dataset
 .ipynb_checkpoints/*
 machine_learning/.ipynb_checkpoints/*
+mosquitto/config/pwfile
+mosquitto/data
 
 # NixOS
 .envrc
@@ -34,3 +37,5 @@ machine_learning/.ipynb_checkpoints/*
 mosquitto/config/pwfile
 mosquitto/data/mosquitto.db
 mosquitto/config/mosquitto.conf
+localhost.key
+localhost.crt

@@ -253,7 +253,7 @@ class TimestampIndex(DAO):
     owner_table = sql.SQL("timestampindex NATURAL INNER JOIN node")
 
     @classmethod
-    async def insert(cls, db: connection, nid: int, timestamp: datetime):
+    async def insert(cls, db: connection, nid: int, timestamp: datetime) -> int | None:
 
         with db.cursor() as curs:
             try:
@@ -332,7 +332,7 @@ class AudioSlice(DAO):
                 return curs.fetchone()
             except psycopg2.Error as e:
                 print("Error executing SQL query:", e)
-                raise default_HTTP_exception(e.pgcode, "inser audio slice query")  # type: ignore
+                raise default_HTTP_exception(e.pgcode, "insert audio slice query")  # type: ignore
 
     @classmethod
     async def get_classified(cls, afid: int, db: connection):
@@ -365,6 +365,39 @@ class WeatherData(DAO):
     owner_table = sql.SQL(
         "weatherdata NATURAL INNER JOIN timestampindex NATURAL INNER JOIN node"
     )
+    @classmethod
+    async def insert(cls, db: connection, tid: int, wdtemperature: float, wdhumidity: float, wdpressure: float, wddid_rain: bool):
+        with db.cursor() as curs:
+            try:
+                curs.execute(
+                    sql.SQL(
+"""
+INSERT INTO {table} (tid, wdtemperature, wdhumidity, wdpressure, wddid_rain)
+VALUES (%(tid)s, %(wdtemperature)s, %(wdhumidity)s, %(wdpressure)s, %(wddid_rain)s)
+RETURNING {id_column}
+"""
+                    ).format(
+                        table=cls.table,
+                        id_column=cls.id_column
+                    ), {
+                        "tid": tid,
+                        "wdtemperature": wdtemperature,
+                        "wdhumidity": wdhumidity,
+                        "wdpressure": wdpressure,
+                        "wddid_rain": wddid_rain
+                    }
+                )
+
+                db_response = curs.fetchone()
+
+                if db_response is not None:
+                    return db_response[0]
+
+            except psycopg2.Error as e:
+
+                print("Error executing SQL query: e")
+
+                raise default_HTTP_exception(e.pgcode, "insert weather data query")
 
 
 @dataclass
@@ -401,13 +434,32 @@ class AudioFile(DAO):
             return [cls(row[0], row[1], row[2], None) for row in curs.fetchall()]
 
     @classmethod
-    async def insert(
-        cls, db: connection, owner: int, file, nid: int, timestamp: datetime
-    ):
-        # First check that the node being referenced belongs to the owner of this new audio file
-        node = await Node.get(owner, nid, db)
-        if node is None or node.ownerid != owner:
-            return None
+    async def insert(cls, db:connection, file, nid: int, tid: int):
+        with db.cursor() as curs:
+            try:
+                if isinstance(file, bytes):
+                    data = file
+                else:
+                    data = await file.read()
+                    
+                curs.execute(sql.SQL(
+"""
+INSERT INTO {} (tid, data)
+VALUES (%s, %s)
+RETURNING afid
+"""
+                ).format(cls.table), (tid, data))
+
+                db_response = curs.fetchone()
+                if db_response is not None:
+                    return db_response[0]
+            
+            except psycopg2.Error as e:
+                print("Error executing SQL query:", e)
+                raise default_HTTP_exception(e.pgcode, "insert audio file query")
+        
+    @classmethod
+    async def insert_and_timestamp(cls, db: connection, owner: int, file, nid: int, timestamp: datetime):
 
         with db.cursor() as curs:
             try:

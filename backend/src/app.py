@@ -1,3 +1,4 @@
+from contextlib import asynccontextmanager
 from typing import Annotated
 from fastapi import FastAPI, File, UploadFile, staticfiles, Depends, HTTPException, Form
 from fastapi.middleware.cors import CORSMiddleware
@@ -7,20 +8,27 @@ from mlutil import get_model, classify_audio_file
 from Spectrogram import sendMelSpectrogram, sendBasicSpectrogram
 from routers.security import get_current_user, LightWeightUser
 from routers.security import router as security_router
+from standaloneops import classify_and_save
 import dao
+import mqtt
+import dao as dao
 import os
 import io
-import asyncio
 import dotenv
-import ssl
 
 from datetime import datetime, timedelta
 
 dotenv.load_dotenv(dotenv_path="backend/src/.env")
 
-app = FastAPI()
-app = FastAPI()
+# Define our lifespan so we can start the mqtt client together with the server
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # MQTT client startup
+    mqtt.start()
+    yield
+    mqtt.end()
 
+app = FastAPI(lifespan=lifespan)
 origins = [
     "https://localhost:5173",
     "https://localhost:8080",
@@ -109,26 +117,6 @@ async def audio_slice_get(asid: int, current_user: Annotated[LightWeightUser, De
     return await dao.AudioSlice.get(current_user.auid, asid, db)
 
 
-
-async def classify_and_save(audio, audio_file_id, db, model):
-    classifier_output = classify_audio_file(audio, model)
-    slice_insert_tasks = []
-    for classified_slice_name, classified_slice in classifier_output.items():
-        classified_slice["starttime"] = classified_slice.pop("start_time")
-        classified_slice["endtime"] = classified_slice.pop("end_time")
-        slice_insert_tasks.append(
-            asyncio.create_task(
-                dao.AudioSlice.insert(db, audio_file_id, **classified_slice),
-                name=classified_slice_name,
-            )
-        )
-
-    done, pending = await asyncio.wait(slice_insert_tasks)
-    results = map(lambda task: task.result(), done)
-    db.commit()
-    return results
-
-
 @app.post(path="/api/audio/insert")
 async def audio_post(
     nid: Annotated[int, Form()],
@@ -139,7 +127,7 @@ async def audio_post(
     db=Depends(get_db_connection),
     model=Depends(get_model),
 ):
-    audio_file_id = await dao.AudioFile.insert(db, current_user.auid, file, nid, timestamp)
+    audio_file_id = await dao.AudioFile.insert_and_timestamp(db, current_user.auid, file, nid, timestamp)
 
     if classify:
         file.file.seek(0)
