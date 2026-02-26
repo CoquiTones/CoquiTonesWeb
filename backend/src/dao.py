@@ -332,7 +332,7 @@ class AudioSlice(DAO):
                 return curs.fetchone()
             except psycopg2.Error as e:
                 print("Error executing SQL query:", e)
-                raise default_HTTP_exception(e.pgcode, "inser audio slice query")  # type: ignore
+                raise default_HTTP_exception(e.pgcode, "insert audio slice query")  # type: ignore
 
     @classmethod
     async def get_classified(cls, afid: int, db: connection):
