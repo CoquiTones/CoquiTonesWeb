@@ -87,5 +87,8 @@ def get_db_connection():
         connection.close()
 
 
-def default_HTTP_exception(code: str, additional_info: str) -> HTTPException:
-    return HTTPException(status_code=500, detail=f"Database error {code}: {psycopg2.errors.lookup(code)}\n While doing " + additional_info)
+def default_HTTP_exception(code: str | None, additional_info: str) -> HTTPException:
+    return HTTPException(status_code=500, detail=
+                         f"Database error {code}: {psycopg2.errors.lookup(code)}\n While doing {additional_info}"
+                         if code else 
+                         f"Database error while doing {additional_info}")
