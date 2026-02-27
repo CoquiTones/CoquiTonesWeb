@@ -483,6 +483,56 @@ class Dashboard:
     """Collection of queries for dashboard endpoints"""
 
     @staticmethod
+    def recent_data(
+        owner: int, minTimestamp: datetime, maxTimestamp: datetime, db: connection
+    ) -> dict[str, list]:
+        """Returns Recent Data form DB, [nid, afid, ...weatherdata]"""
+
+        @dataclass
+        class RecentData:
+            nid: int
+            afid: int
+            humidity: float
+            temperature: float
+            pressure: float
+            rain: float
+
+        with db.cursor() as curs:
+            try:
+                # Ensure timestamps are timezone-aware UTC
+                if minTimestamp.tzinfo is None:
+                    minTimestamp = minTimestamp.replace(tzinfo=datetime.timezone.utc)
+                if maxTimestamp.tzinfo is None:
+                    maxTimestamp = maxTimestamp.replace(tzinfo=datetime.timezone.utc)
+
+                print(f"Query range: {minTimestamp} to {maxTimestamp}")
+
+                curs.execute(
+                    sql.SQL(
+                        """
+                    SELECT n.nid, af.afid, wd.wdhumidity AS humidity, wd.wdtemperature AS temperature, 
+                        wd.wdpressure AS pressure, wd.wddid_rain AS rain
+                    FROM node n 
+                    INNER JOIN timestampindex ti ON ti.nid = n.nid
+                    INNER JOIN audiofile af ON af.tid = ti.tid
+                    INNER JOIN weatherdata wd ON wd.tid = ti.tid
+                    WHERE n.ownerid = %s AND ti.ttime > %s AND ti.ttime < %s
+                    ORDER BY ti.ttime DESC
+                    """
+                    ),
+                    (owner, minTimestamp, maxTimestamp),
+                )
+                db_output = curs.fetchall()
+
+                if len(db_output) == 0:
+                    return {}
+                return list(starmap(RecentData, db_output))
+
+            except psycopg2.Error as e:
+                print("Error executing SQL query:", e)
+                raise default_HTTP_exception(e.pgcode, "dashboard recent data query")
+
+    @staticmethod
     def week_species_summary(owner: int, db: connection) -> dict[str, list]:
         """Returns time series with sums of classifier hits of each species from all nodes, binned into days"""
         with db.cursor() as curs:
@@ -508,15 +558,15 @@ classifierreport AS (
     GROUP BY afid 
 )
 SELECT 
-    sum(coqui_hits) AS total_coqui,
-    sum(wightmanae_hits) AS total_wightmanae,
-    sum(gryllus_hits) AS total_gryllus,
-    sum(portoricensis_hits) AS total_portoricensis,
-    sum(unicolor_hits) AS total_unicolor,
-    sum(hedricki_hits) AS total_hedricki,
-    sum(locustus_hits) AS total_locustus,
-    sum(richmondi_hits) AS total_richmondi, 
-    date_bin('1 day', ttime AT LOCAL, CURRENT_TIMESTAMP) as bin
+    SUM(coqui_hits) AS total_coqui,
+    SUM(wightmanae_hits) AS total_wightmanae,
+    SUM(gryllus_hits) AS total_gryllus,
+    SUM(portoricensis_hits) AS total_portoricensis,
+    SUM(unicolor_hits) AS total_unicolor,
+    SUM(hedricki_hits) AS total_hedricki,
+    SUM(locustus_hits) AS total_locustus,
+    SUM(richmondi_hits) AS total_richmondi, 
+    DATE_BIN('1 day', ttime AT LOCAL, CURRENT_TIMESTAMP) AS bin
 FROM classifierreport NATURAL INNER JOIN timestampindex
 WHERE ttime > (CURRENT_TIMESTAMP - '7 days'::INTERVAL)
 GROUP BY "bin" 

@@ -32,7 +32,6 @@
  */
 export class RecentReports {
     constructor(APIResponseObject) {
-        // this  is proabably a list that needs to map to this 
         this.recentReports = APIResponseObject.map((report) => (
             new Report(report)
         ));

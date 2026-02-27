@@ -9,8 +9,24 @@ const theme = createTheme({
         secondary: {
             main: "#a44200"
         },
-        background: '#0000'
+        // background: '#0000',
+        error: { main: '#e70505' },
+        warning: { main: '#fffb00' },
+        info: { main: '#2196f3' },
+        success: { main: '#4caf50' },
     },
 });
 
+
+// // ✅ CORRECT - all colors defined
+// const theme = createTheme({
+//   palette: {
+//     primary: { main: '#1976d2' },
+//     secondary: { main: '#e70505' },
+//     error: { main: '#f44336' },
+//     warning: { main: '#fffb00' },
+//     info: { main: '#2196f3' },
+//     success: { main: '#4caf50' },
+//   }
+// });
 export default theme;

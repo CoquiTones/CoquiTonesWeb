@@ -53,61 +53,93 @@ app.include_router(security_router)
 
 
 @app.get("/api/node/all")
-async def node_all(current_user: Annotated[LightWeightUser, Depends(get_current_user)], db=Depends(get_db_connection)):
+async def node_all(
+    current_user: Annotated[LightWeightUser, Depends(get_current_user)],
+    db=Depends(get_db_connection),
+):
     return await dao.Node.get_all(current_user.auid, db)
 
 
 @app.get("/api/node/{nid}")
-async def node_get(current_user: Annotated[LightWeightUser, Depends(get_current_user)], nid: int, db=Depends(get_db_connection)):
+async def node_get(
+    current_user: Annotated[LightWeightUser, Depends(get_current_user)],
+    nid: int,
+    db=Depends(get_db_connection),
+):
     return await dao.Node.get(current_user.auid, nid, db)
 
 
 @app.get("/api/timestamp/all")
-async def timestamp_all(current_user: Annotated[LightWeightUser, Depends(get_current_user)], db=Depends(get_db_connection)):
+async def timestamp_all(
+    current_user: Annotated[LightWeightUser, Depends(get_current_user)],
+    db=Depends(get_db_connection),
+):
     return await dao.TimestampIndex.get_all(current_user.auid, db)
 
 
 @app.get("/api/timestamp/{tid}")
-async def timestamp_get(tid: int, current_user: Annotated[LightWeightUser, Depends(get_current_user)], db=Depends(get_db_connection)):
+async def timestamp_get(
+    tid: int,
+    current_user: Annotated[LightWeightUser, Depends(get_current_user)],
+    db=Depends(get_db_connection),
+):
     return await dao.TimestampIndex.get(current_user.auid, tid, db)
 
 
-
 @app.get("/api/weather/all")
-async def weather_all(current_user: Annotated[LightWeightUser, Depends(get_current_user)], db=Depends(get_db_connection)):
+async def weather_all(
+    current_user: Annotated[LightWeightUser, Depends(get_current_user)],
+    db=Depends(get_db_connection),
+):
     return await dao.WeatherData.get_all(current_user.auid, db)
 
 
 @app.get("/api/weather/{wdid}")
-async def weather_get(wdid: int, current_user: Annotated[LightWeightUser, Depends(get_current_user)], db=Depends(get_db_connection)):
+async def weather_get(
+    wdid: int,
+    current_user: Annotated[LightWeightUser, Depends(get_current_user)],
+    db=Depends(get_db_connection),
+):
     return await dao.WeatherData.get(current_user.auid, wdid, db)
 
 
 @app.get("/api/audio/all")
-async def audio_all(current_user: Annotated[LightWeightUser, Depends(get_current_user)], db=Depends(get_db_connection)):
+async def audio_all(
+    current_user: Annotated[LightWeightUser, Depends(get_current_user)],
+    db=Depends(get_db_connection),
+):
     return await dao.AudioFile.get_all(current_user.auid, db)
 
 
 @app.get(path="/api/audio/{afid}", response_class=Response)
-async def audio_get(afid: int, current_user: Annotated[LightWeightUser, Depends(get_current_user)], db=Depends(get_db_connection)):
+async def audio_get(
+    afid: int,
+    current_user: Annotated[LightWeightUser, Depends(get_current_user)],
+    db=Depends(get_db_connection),
+):
     audio_file = await dao.AudioFile.get(current_user.auid, afid, db)
     if audio_file is None:
         raise HTTPException(status_code=404, detail="Audio file not found")
     data = audio_file.data
 
-    return Response(content=bytes(data), media_type="audio/mpeg") # type: ignore
-
+    return Response(content=bytes(data), media_type="audio/mpeg")  # type: ignore
 
 
 @app.get("/api/audioslices/all")
-async def audio_slice_all(current_user: Annotated[LightWeightUser, Depends(get_current_user)], db=Depends(get_db_connection)):
+async def audio_slice_all(
+    current_user: Annotated[LightWeightUser, Depends(get_current_user)],
+    db=Depends(get_db_connection),
+):
     return await dao.AudioSlice.get_all(current_user.auid, db)
 
 
 @app.get(path="/api/audioslices/{asid}")
-async def audio_slice_get(asid: int, current_user: Annotated[LightWeightUser, Depends(get_current_user)], db=Depends(get_db_connection)):
+async def audio_slice_get(
+    asid: int,
+    current_user: Annotated[LightWeightUser, Depends(get_current_user)],
+    db=Depends(get_db_connection),
+):
     return await dao.AudioSlice.get(current_user.auid, asid, db)
-
 
 
 async def classify_and_save(audio, audio_file_id, db, model):
@@ -139,7 +171,9 @@ async def audio_post(
     db=Depends(get_db_connection),
     model=Depends(get_model),
 ):
-    audio_file_id = await dao.AudioFile.insert(db, current_user.auid, file, nid, timestamp)
+    audio_file_id = await dao.AudioFile.insert(
+        db, current_user.auid, file, nid, timestamp
+    )
 
     if classify:
         file.file.seek(0)
@@ -151,7 +185,7 @@ async def audio_post(
 @app.get(path="/api/classify/by-id/{afid}")
 async def classify_by_afid(
     afid: int,
-    current_user: Annotated[LightWeightUser, Depends(get_current_user)], 
+    current_user: Annotated[LightWeightUser, Depends(get_current_user)],
     override: Annotated[bool, Form()] = False,
     db=Depends(get_db_connection),
     model=Depends(get_model),
@@ -159,14 +193,14 @@ async def classify_by_afid(
 
     if not await dao.AudioFile.exists(afid, current_user.auid, db):
         raise HTTPException(status_code=404, detail="Audio file does not exist")
-        
+
     if override or not await dao.AudioFile.is_classified(afid, db):
         audio = await dao.AudioFile.get(current_user.auid, afid, db)
         if audio is None or audio.data is None:
             raise HTTPException(status_code=404, detail="Audio file does not exist")
-        
+
         await classify_and_save(io.BytesIO(audio.data), afid, db, model)
-        
+
     return await dao.AudioSlice.get_classified(afid, db)
 
 
@@ -186,7 +220,11 @@ async def node_insert(
 
 
 @app.delete(path="/api/node/delete/{nid}")
-async def node_delete(nid: int, current_user: Annotated[LightWeightUser, Depends(get_current_user)], db=Depends(get_db_connection)):
+async def node_delete(
+    nid: int,
+    current_user: Annotated[LightWeightUser, Depends(get_current_user)],
+    db=Depends(get_db_connection),
+):
     return dao.Node.delete(current_user.auid, nid, db)
 
 
@@ -197,13 +235,18 @@ async def classify(file: UploadFile = File(...), model=Depends(get_model)):
 
 
 @app.get(path="/api/dashboard/week-species-summary")
-async def week_species_summary(current_user: Annotated[LightWeightUser, Depends(get_current_user)], db=Depends(get_db_connection)):
+async def week_species_summary(
+    current_user: Annotated[LightWeightUser, Depends(get_current_user)],
+    db=Depends(get_db_connection),
+):
     return dao.Dashboard.week_species_summary(current_user.auid, db)
 
 
-
 @app.get(path="/api/dashboard/node-health-check")
-async def node_health_check(current_user: Annotated[LightWeightUser, Depends(get_current_user)], db=Depends(get_db_connection)):
+async def node_health_check(
+    current_user: Annotated[LightWeightUser, Depends(get_current_user)],
+    db=Depends(get_db_connection),
+):
     return dao.Dashboard.node_health_check(current_user.auid, db)
 
 
@@ -241,6 +284,17 @@ async def recent_reports(
     return dao.Dashboard.recent_reports(
         **locals()
     )  # pass all keyword args as unpacked dictionary
+
+
+@app.post(path="/api/dashboard/recent-data")
+async def recent_data(
+    current_user: Annotated[LightWeightUser, Depends(get_current_user)],
+    minTimestamp: Annotated[datetime, Form()],  # default to yesterday
+    maxTimestamp: Annotated[datetime, Form()],  # default to present
+    db=Depends(get_db_connection),
+):
+
+    return dao.Dashboard.recent_data(current_user.auid, minTimestamp, maxTimestamp, db)
 
 
 @app.get("/{full_path:path}", response_class=HTMLResponse)
