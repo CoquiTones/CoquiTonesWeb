@@ -5,18 +5,24 @@
  */
 export class RecentData {
     constructor(APIResponseObject) {
+        let id = 1;
         this.recentData = APIResponseObject.map((recentDataEntry) => (
-            new recentDataEntry(recentDataEntry)
+            new RecentDataEntry(recentDataEntry, id++)
         ))
     }
 
     map(callback) {
         return this.recentData.map(callback);
     }
+
+    getData() {
+        return this.recentData;
+    }
 }
 
 class RecentDataEntry {
-    constructor(APIResponseObjectRecentDataEntry) {
+    constructor(APIResponseObjectRecentDataEntry, id) {
+        this.id = id;
         this.nid = APIResponseObjectRecentDataEntry.nid;
         this.afid = APIResponseObjectRecentDataEntry.afid;
         this.humidity = APIResponseObjectRecentDataEntry.humidity;
