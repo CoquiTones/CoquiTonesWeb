@@ -496,6 +496,7 @@ class Dashboard:
             temperature: float
             pressure: float
             rain: float
+            time: float
 
         with db.cursor() as curs:
             try:
@@ -511,7 +512,7 @@ class Dashboard:
                     sql.SQL(
                         """
                     SELECT n.nid, af.afid, wd.wdhumidity AS humidity, wd.wdtemperature AS temperature, 
-                        wd.wdpressure AS pressure, wd.wddid_rain AS rain
+                        wd.wdpressure AS pressure, wd.wddid_rain AS rain, ti.ttime AS time
                     FROM node n 
                     INNER JOIN timestampindex ti ON ti.nid = n.nid
                     INNER JOIN audiofile af ON af.tid = ti.tid

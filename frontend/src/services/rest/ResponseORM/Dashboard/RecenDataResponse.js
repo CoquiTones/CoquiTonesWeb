@@ -29,6 +29,7 @@ class RecentDataEntry {
         this.temperature = APIResponseObjectRecentDataEntry.temperature;
         this.pressure = APIResponseObjectRecentDataEntry.pressure;
         this.rain = APIResponseObjectRecentDataEntry.rain;
+        this.time = new Date(APIResponseObjectRecentDataEntry.time).toLocaleString();
     }
 }
 
