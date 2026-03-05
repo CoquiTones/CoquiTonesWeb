@@ -6,6 +6,7 @@
 export class RecentData {
     constructor(APIResponseObject) {
         let id = 1;
+        // fix if empty 
         this.recentData = APIResponseObject.map((recentDataEntry) => (
             new RecentDataEntry(recentDataEntry, id++)
         ))

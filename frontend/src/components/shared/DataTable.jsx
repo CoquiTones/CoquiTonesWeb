@@ -4,7 +4,9 @@ import { Box, Button, Stack, Dialog, DialogTitle, DialogContent, DialogContentTe
 import CloudDownloadIcon from '@mui/icons-material/CloudDownload';
 import DeleteIcon from '@mui/icons-material/Delete';
 import FileDownloadIcon from '@mui/icons-material/FileDownload';
-import { DatePicker } from '@mui/x-date-pickers/DatePicker';
+import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
+import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
+import { DateTimePicker } from '@mui/x-date-pickers/DateTimePicker';
 import { APIHandlerDashboard } from "../../services/rest/APIHandler/APIHandlerDashboard";
 import RecentDataRequest from "../../services/rest/RequestORM/Dashboard/RecentDataRequest";
 import AudioFileRequest from "../../services/rest/RequestORM/Shared/AudioFileRequest";
@@ -15,7 +17,7 @@ export default function DataTable({ Actions }) {
     const paginationModel = { page: 0, pageSize: 5 };
 
     const [rows, setRows] = useState([]);
-    const [minTime, setMinTime] = useState(new Date().getTime() - (1000 * 60 * 60 * 24 * 7)); // last week
+    const [minTime, setMinTime] = useState(new Date().getTime() - (1000 * 60 * 60 * 24 * 100)); // last week
     const [maxTime, setMaxTime] = useState(new Date().getTime());
     const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
     const [selectedRowForDelete, setSelectedRowForDelete] = useState(null);
@@ -43,7 +45,6 @@ export default function DataTable({ Actions }) {
     useEffect(() => {
         fetchRecentDataRows();
     }, [fetchRecentDataRows]);
-
     // Delete row handler
     const handleDeleteClick = (id) => {
         setSelectedRowForDelete(id);
@@ -116,6 +117,17 @@ export default function DataTable({ Actions }) {
                 >
                     Export CSV
                 </Button>
+                <LocalizationProvider dateAdapter={AdapterDayjs}>
+
+                    <DateTimePicker
+                        label="MinDateTime"
+                        onChange={(newMinDate) => setMinTime(new Date(newMinDate).getTime())}>
+                    </DateTimePicker>
+                    <DateTimePicker
+                        label="MaxDateTime"
+                        onChange={(newMinDate) => setMaxTime(new Date(newMinDate).getTime())}>
+                    </DateTimePicker>
+                </LocalizationProvider >
             </Stack>
 
             {(downloadError || downloadErrorMsg) && (

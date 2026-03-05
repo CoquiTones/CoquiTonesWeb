@@ -15,6 +15,7 @@
     "@react-three/fiber": "^9.5.0",
     "@vitejs/plugin-react-swc": "^4.2.3",
     "colormap": "^2.3.2",
+    "dayjs": "^1.11.19",
     "fft.js": "^4.0.4",
     "js-cookie": "^3.0.5",
     "mapbox-gl": "^3.18.1",
