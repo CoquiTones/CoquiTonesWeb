@@ -519,6 +519,7 @@ class Dashboard:
                     INNER JOIN weatherdata wd ON wd.tid = ti.tid
                     WHERE n.ownerid = %s AND ti.ttime > %s AND ti.ttime < %s
                     ORDER BY ti.ttime DESC
+                    LIMIT 1000
                     """
                     ),
                     (owner, minTimestamp, maxTimestamp),

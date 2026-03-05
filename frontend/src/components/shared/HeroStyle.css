@@ -2,12 +2,14 @@
   margin-bottom: 0;
   padding-bottom: 0;
   width: 100%;
-  min-height: 100vh; /* Changed from height to min-height to allow content to flow naturally */
+  min-height: 100vh;
+  /* Changed from height to min-height to allow content to flow naturally */
   display: flex;
   justify-content: center;
   align-items: center;
   position: relative;
-  overflow: hidden; /* Remove separate scrolling */
+  overflow: hidden;
+  /* Remove separate scrolling */
   background-color: #191716;
 }
 
@@ -23,6 +25,13 @@
 }
 
 .image-bg {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  background: transparent;
+}
+
+.video-bg {
   width: 100%;
   height: 100%;
   object-fit: cover;

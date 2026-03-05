@@ -111,9 +111,9 @@ async def audio_all(
     return await dao.AudioFile.get_all(current_user.auid, db)
 
 
-@app.get(path="/api/audio/{afid}", response_class=Response)
+@app.post(path="/api/audio", response_class=Response)
 async def audio_get(
-    afid: int,
+    afid: Annotated[int, Form()],
     current_user: Annotated[LightWeightUser, Depends(get_current_user)],
     db=Depends(get_db_connection),
 ):

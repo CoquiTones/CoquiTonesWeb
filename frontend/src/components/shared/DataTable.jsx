@@ -1,22 +1,29 @@
 import React, { useEffect, useState, useMemo, useCallback } from "react";
 import { DataGrid } from '@mui/x-data-grid'
-import { APIHandlerDashboard } from "../../services/rest/APIHandler/APIHandlerDashboard";
-import RecentDataRequest from "../../services/rest/RequestORM/Dashboard/RecentDataRequest";
-import { Box, Button, Stack, Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions } from "@mui/material";
+import { Box, Button, Stack, Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions, Alert } from "@mui/material";
 import CloudDownloadIcon from '@mui/icons-material/CloudDownload';
 import DeleteIcon from '@mui/icons-material/Delete';
 import FileDownloadIcon from '@mui/icons-material/FileDownload';
+import { DatePicker } from '@mui/x-date-pickers/DatePicker';
+import { APIHandlerDashboard } from "../../services/rest/APIHandler/APIHandlerDashboard";
+import RecentDataRequest from "../../services/rest/RequestORM/Dashboard/RecentDataRequest";
+import AudioFileRequest from "../../services/rest/RequestORM/Shared/AudioFileRequest";
+import { useAudioDownload } from "../../hooks/useAudioDownload";
 
-export default function DataTable() {
+export default function DataTable({ Actions }) {
     const APIHandler = useMemo(() => new APIHandlerDashboard(), []);
     const paginationModel = { page: 0, pageSize: 5 };
 
     const [rows, setRows] = useState([]);
-    const [minTime, setMinTime] = useState(new Date().getTime() - (1000 * 60 * 60 * 24 * 30));
+    const [minTime, setMinTime] = useState(new Date().getTime() - (1000 * 60 * 60 * 24 * 7)); // last week
     const [maxTime, setMaxTime] = useState(new Date().getTime());
     const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
     const [selectedRowForDelete, setSelectedRowForDelete] = useState(null);
     const [loading, setLoading] = useState(false);
+    const [downloadError, setDownloadError] = useState(null);
+
+    // Use custom hook
+    const { downloadAudio, loading: downloadLoading, error: downloadErrorMsg } = useAudioDownload(APIHandler);
 
     // Fetch data with backend sorting
     const fetchRecentDataRows = useCallback(async () => {
@@ -35,7 +42,7 @@ export default function DataTable() {
     // Initial fetch
     useEffect(() => {
         fetchRecentDataRows();
-    }, [minTime, maxTime]);
+    }, [fetchRecentDataRows]);
 
     // Delete row handler
     const handleDeleteClick = (id) => {
@@ -44,18 +51,24 @@ export default function DataTable() {
     };
 
     const handleConfirmDelete = async () => {
+        // Implement delete logic
+        setDeleteDialogOpen(false);
     };
 
     // Download audio file
-    const handleDownloadAudio = async (afid) => {
-    };
+    const handleDownloadAudio = useCallback(async (afid) => {
+        setDownloadError(null);
+        const audioFileRequest = new AudioFileRequest(afid);
+        await downloadAudio(afid, audioFileRequest);
+    }, [downloadAudio]);
 
     // Export CSV
     const handleExportCSV = () => {
+        // Implement CSV export
     };
 
     const columns = [
-        { field: 'time', headerName: 'Time', width: 115, },
+        { field: 'time', headerName: 'Time', width: 115 },
         { field: 'nid', headerName: 'Node ID', width: 115 },
         { field: 'afid', headerName: 'Audio ID', width: 115 },
         { field: 'humidity', headerName: 'Humidity (RH%)', width: 115 },
@@ -74,8 +87,9 @@ export default function DataTable() {
                         variant="outlined"
                         startIcon={<CloudDownloadIcon />}
                         onClick={() => handleDownloadAudio(params.row.afid)}
+                        disabled={downloadLoading}
                     >
-                        Audio
+                        {downloadLoading ? 'Downloading...' : 'Audio'}
                     </Button>
                     <Button
                         size="small"
@@ -104,13 +118,19 @@ export default function DataTable() {
                 </Button>
             </Stack>
 
+            {(downloadError || downloadErrorMsg) && (
+                <Alert severity="error" sx={{ mb: 2 }} onClose={() => setDownloadError(null)}>
+                    {downloadError || downloadErrorMsg}
+                </Alert>
+            )}
+
             <DataGrid
                 columns={columns}
                 rows={rows}
                 initialState={{ pagination: { paginationModel } }}
                 pageSizeOptions={[5, 10, 100]}
                 checkboxSelection
-                loading={loading}
+                loading={loading || downloadLoading}
             />
 
             <Dialog
