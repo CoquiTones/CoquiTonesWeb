@@ -13,6 +13,7 @@ import io
 import asyncio
 import dotenv
 import ssl
+import json
 
 from datetime import datetime, timedelta
 
@@ -215,7 +216,6 @@ async def node_insert(
 ):
     ownerid = current_user.auid
     newNode = dao.Node.insert(db, ownerid, ntype, nlatitude, nlongitude, ndescription)
-    print(newNode)
     return newNode
 
 
@@ -295,6 +295,19 @@ async def recent_data(
 ):
 
     return dao.Dashboard.recent_data(current_user.auid, minTimestamp, maxTimestamp, db)
+
+
+@app.delete(path="/api/dashboard/delete")
+async def delete_record(
+    current_user: Annotated[LightWeightUser, Depends(get_current_user)],
+    list_of_records_to_be_deleted: Annotated[str, Form()],
+    db=Depends(get_db_connection),
+):
+    list_of_records_to_be_deleted = json.loads(list_of_records_to_be_deleted)
+    print(list_of_records_to_be_deleted)
+    return dao.Dashboard.delete_records(
+        current_user.auid, list_of_records_to_be_deleted, db
+    )
 
 
 @app.get("/{full_path:path}", response_class=HTMLResponse)

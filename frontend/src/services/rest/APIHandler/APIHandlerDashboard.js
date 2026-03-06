@@ -1,3 +1,4 @@
+import DeleteRecordRequest from "../RequestORM/Dashboard/DeleteRecordRequest";
 import RecentDataRequest from "../RequestORM/Dashboard/RecentDataRequest";
 import { NodeHealthCheck } from "../ResponseORM/Dashboard/NodeHealthCheck";
 import { RecentData } from "../ResponseORM/Dashboard/RecenDataResponse";
@@ -80,10 +81,34 @@ export class APIHandlerDashboard extends APIHandlerBase {
             }
 
             const recentDataAPIResponse = await response.json();
-            console.log(recentDataAPIResponse)
             return new RecentData(recentDataAPIResponse);
         } catch (error) {
             throw new APIHandlerError('Error with recent reports in Handler: ' + error.message)
+        }
+    }
+
+    /**
+     * 
+     * @param {DeleteRecordRequest} deleteRecordRequest 
+     * @returns 
+     */
+    async delete_records(deleteRecordRequest) {
+        try {
+            const response = await fetch(this.web_url + "/api/dashboard/delete", {
+                method: "DELETE",
+                headers: this.getAuthenticationHeader(),
+                body: deleteRecordRequest.toFormData()
+            });
+
+            if (!response.ok) {
+                throw new BackendError('Unable to delete selected reports due to network error');
+            }
+
+            const deleteRecordsAPIResponse = await response.json();
+            console.log(deleteRecordsAPIResponse)
+            return deleteRecordsAPIResponse
+        } catch (error) {
+            throw new APIHandlerError('Error with deleting selected reports', error.message);
         }
     }
 }   

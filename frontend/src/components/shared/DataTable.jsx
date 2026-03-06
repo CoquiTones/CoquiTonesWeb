@@ -11,23 +11,23 @@ import { APIHandlerDashboard } from "../../services/rest/APIHandler/APIHandlerDa
 import RecentDataRequest from "../../services/rest/RequestORM/Dashboard/RecentDataRequest";
 import AudioFileRequest from "../../services/rest/RequestORM/Shared/AudioFileRequest";
 import { useAudioDownload } from "../../hooks/useAudioDownload";
+import DeleteRecordRequest from "../../services/rest/RequestORM/Dashboard/DeleteRecordRequest";
 
 export default function DataTable({ Actions }) {
     const APIHandler = useMemo(() => new APIHandlerDashboard(), []);
     const paginationModel = { page: 0, pageSize: 5 };
 
     const [rows, setRows] = useState([]);
-    const [minTime, setMinTime] = useState(new Date().getTime() - (1000 * 60 * 60 * 24 * 100)); // last week
+    // ms since epoch
+    const [minTime, setMinTime] = useState(new Date().getTime() - (1000 * 60 * 60 * 24 * 100));
     const [maxTime, setMaxTime] = useState(new Date().getTime());
     const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-    const [selectedRowForDelete, setSelectedRowForDelete] = useState(null);
+    const [selectedRows, setSelectedRows] = useState({ type: 'include', ids: new Set() }); // needed for initial rendering
     const [loading, setLoading] = useState(false);
     const [downloadError, setDownloadError] = useState(null);
 
-    // Use custom hook
     const { downloadAudio, loading: downloadLoading, error: downloadErrorMsg } = useAudioDownload(APIHandler);
 
-    // Fetch data with backend sorting
     const fetchRecentDataRows = useCallback(async () => {
         setLoading(true);
         try {
@@ -36,36 +36,78 @@ export default function DataTable({ Actions }) {
             setRows(rows.getData());
         } catch (error) {
             console.error("Error fetching data:", error);
+            setDownloadError("Failed to fetch data");
         } finally {
             setLoading(false);
         }
     }, [minTime, maxTime, APIHandler]);
 
-    // Initial fetch
+    const handleSelectionChange = useCallback((newSelection) => {
+
+        if (newSelection.type === "exclude") {
+            setSelectedRows(rows)
+        }
+        else {
+            const newSelectedRows = rows.filter((row) => newSelection.ids?.has(row.id));
+            setSelectedRows(newSelectedRows);
+        }
+    })
     useEffect(() => {
         fetchRecentDataRows();
     }, [fetchRecentDataRows]);
-    // Delete row handler
+
     const handleDeleteClick = (id) => {
-        setSelectedRowForDelete(id);
         setDeleteDialogOpen(true);
     };
 
     const handleConfirmDelete = async () => {
-        // Implement delete logic
-        setDeleteDialogOpen(false);
+        if (selectedRows === null) return;
+
+        try {
+            setLoading(true)
+            const deleteRecordsRequest = new DeleteRecordRequest(selectedRows);
+            await APIHandler.delete_records(deleteRecordsRequest);
+        } catch (error) {
+            console.error("Error deleting record:", error);
+            setDownloadError("Failed to delete record");
+        } finally {
+            setLoading(false)
+            setDeleteDialogOpen(false);
+        }
     };
 
-    // Download audio file
     const handleDownloadAudio = useCallback(async (afid) => {
         setDownloadError(null);
         const audioFileRequest = new AudioFileRequest(afid);
         await downloadAudio(afid, audioFileRequest);
     }, [downloadAudio]);
 
-    // Export CSV
     const handleExportCSV = () => {
-        // Implement CSV export
+        // Use selected rows if any are selected, otherwise export all
+        const dataToExport = selectedRows.length > 0 ? selectedRows : rows;
+
+        if (dataToExport.length === 0) {
+            setDownloadError("No rows to export");
+            return;
+        }
+
+        const headers = ['Time', 'Node ID', 'Audio ID', 'Humidity', 'Temperature', 'Pressure', 'Rain'];
+        const csvContent = [
+            headers.join(','),
+            ...dataToExport.map((row) =>
+                [row.time, row.nid, row.afid, row.humidity, row.temperature, row.pressure, row.rain]
+                    .map((val) => `"${val}"`) // Wrap in quotes to handle commas in data
+                    .join(',')
+            )
+        ].join('\n');
+
+        const element = document.createElement('a');
+        element.setAttribute('href', 'data:text/csv;charset=utf-8,' + encodeURIComponent(csvContent));
+        element.setAttribute('download', `recent_data_${new Date().toISOString()}.csv`);
+        element.style.display = 'none';
+        document.body.appendChild(element);
+        element.click();
+        document.body.removeChild(element);
     };
 
     const columns = [
@@ -115,19 +157,18 @@ export default function DataTable({ Actions }) {
                     startIcon={<FileDownloadIcon />}
                     onClick={handleExportCSV}
                 >
-                    Export CSV
+                    Export CSV {selectedRows.length > 0 && `(${selectedRows.length})`}
                 </Button>
                 <LocalizationProvider dateAdapter={AdapterDayjs}>
-
                     <DateTimePicker
                         label="MinDateTime"
-                        onChange={(newMinDate) => setMinTime(new Date(newMinDate).getTime())}>
-                    </DateTimePicker>
+                        onChange={(newMinDate) => setMinTime(new Date(newMinDate).getTime())}
+                    />
                     <DateTimePicker
                         label="MaxDateTime"
-                        onChange={(newMinDate) => setMaxTime(new Date(newMinDate).getTime())}>
-                    </DateTimePicker>
-                </LocalizationProvider >
+                        onChange={(newMaxDate) => setMaxTime(new Date(newMaxDate).getTime())}
+                    />
+                </LocalizationProvider>
             </Stack>
 
             {(downloadError || downloadErrorMsg) && (
@@ -141,14 +182,13 @@ export default function DataTable({ Actions }) {
                 rows={rows}
                 initialState={{ pagination: { paginationModel } }}
                 pageSizeOptions={[5, 10, 100]}
-                checkboxSelection
+                onRowSelectionModelChange={handleSelectionChange}
                 loading={loading || downloadLoading}
+                checkboxSelection
+                disableRowSelectionOnClick
             />
 
-            <Dialog
-                open={deleteDialogOpen}
-                onClose={() => setDeleteDialogOpen(false)}
-            >
+            <Dialog open={deleteDialogOpen} onClose={() => setDeleteDialogOpen(false)}>
                 <DialogTitle>Confirm Delete</DialogTitle>
                 <DialogContent>
                     <DialogContentText>

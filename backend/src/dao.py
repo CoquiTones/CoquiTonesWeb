@@ -1,10 +1,10 @@
 import psycopg2
 from psycopg2 import sql
 from psycopg2.extensions import connection
+from psycopg2.extras import execute_batch
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from dbutil import default_HTTP_exception
-
 from itertools import starmap
 
 node_type = str
@@ -485,7 +485,7 @@ class Dashboard:
     @staticmethod
     def recent_data(
         owner: int, minTimestamp: datetime, maxTimestamp: datetime, db: connection
-    ) -> dict[str, list]:
+    ):
         """Returns Recent Data form DB, [nid, afid, ...weatherdata]"""
 
         @dataclass
@@ -506,8 +506,6 @@ class Dashboard:
                 if maxTimestamp.tzinfo is None:
                     maxTimestamp = maxTimestamp.replace(tzinfo=datetime.timezone.utc)
 
-                print(f"Query range: {minTimestamp} to {maxTimestamp}")
-
                 curs.execute(
                     sql.SQL(
                         """
@@ -527,12 +525,68 @@ class Dashboard:
                 db_output = curs.fetchall()
 
                 if len(db_output) == 0:
-                    return {}
+                    return []
                 return list(starmap(RecentData, db_output))
 
             except psycopg2.Error as e:
                 print("Error executing SQL query:", e)
                 raise default_HTTP_exception(e.pgcode, "dashboard recent data query")
+
+    @staticmethod
+    def delete_records(owner: int, records: list[dict[str, str]], db: connection):
+        """Deletes a list of records  based on join from @recent_data record
+
+        Args:
+            list including: [
+                owner (int)
+                timetsamp (datetime)
+                node_id (int)
+                db (connection) ]
+        """
+
+        @dataclass
+        class DeleteResult:
+            recoreds_delted: int
+
+        MAX_BATCH_SIZE = 1000
+        number_of_records = len(records)
+        necessary_statements = (number_of_records // MAX_BATCH_SIZE) + 1
+        number_of_records_left = number_of_records
+        record_index = 0
+        with db.cursor() as curs:
+            try:
+                for i in range(necessary_statements):
+                    number_of_rows_to_insert = (
+                        number_of_records_left
+                        if (number_of_records_left < MAX_BATCH_SIZE)
+                        else MAX_BATCH_SIZE
+                    )
+                    batch_values = [
+                        (records[i]["afid"], owner, records[i]["time"])
+                        for j in range(
+                            record_index, number_of_rows_to_insert + record_index, 1
+                        )
+                    ]
+                    execute_batch(
+                        curs,
+                        sql.SQL(
+                            """
+                                DELETE FROM audiofile
+                                WHERE afid = %s AND ownerid = %s AND tid IN (
+                                    SELECT tid FROM timestampindex WHERE ttime = %s);
+
+                            """
+                        ),
+                        batch_values,
+                        page_size=MAX_BATCH_SIZE,
+                    )
+                    number_of_records_left -= number_of_rows_to_insert
+                    record_index += number_of_rows_to_insert
+
+                return number_of_records
+            except psycopg2.Error as e:
+                print("Error Executing SQL Query ot delte rows: ", e)
+                raise default_HTTP_exception(e.pgcode, "Dashboard Delete Record query")
 
     @staticmethod
     def week_species_summary(owner: int, db: connection) -> dict[str, list]:
