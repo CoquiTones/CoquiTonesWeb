@@ -304,7 +304,6 @@ async def delete_record(
     db=Depends(get_db_connection),
 ):
     list_of_records_to_be_deleted = json.loads(list_of_records_to_be_deleted)
-    print(list_of_records_to_be_deleted)
     return dao.Dashboard.delete_records(
         current_user.auid, list_of_records_to_be_deleted, db
     )

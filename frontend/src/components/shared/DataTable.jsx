@@ -22,7 +22,7 @@ export default function DataTable({ Actions }) {
     const [minTime, setMinTime] = useState(new Date().getTime() - (1000 * 60 * 60 * 24 * 100));
     const [maxTime, setMaxTime] = useState(new Date().getTime());
     const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-    const [selectedRows, setSelectedRows] = useState({ type: 'include', ids: new Set() }); // needed for initial rendering
+    const [selectedRows, setSelectedRows] = useState([]); // needed for initial rendering
     const [loading, setLoading] = useState(false);
     const [downloadError, setDownloadError] = useState(null);
 
@@ -48,6 +48,7 @@ export default function DataTable({ Actions }) {
             setSelectedRows(rows)
         }
         else {
+
             const newSelectedRows = rows.filter((row) => newSelection.ids?.has(row.id));
             setSelectedRows(newSelectedRows);
         }
@@ -56,7 +57,7 @@ export default function DataTable({ Actions }) {
         fetchRecentDataRows();
     }, [fetchRecentDataRows]);
 
-    const handleDeleteClick = (id) => {
+    const handleDeleteClick = () => {
         setDeleteDialogOpen(true);
     };
 
@@ -65,7 +66,7 @@ export default function DataTable({ Actions }) {
 
         try {
             setLoading(true)
-            const deleteRecordsRequest = new DeleteRecordRequest(selectedRows);
+            const deleteRecordsRequest = new DeleteRecordRequest(selectedRows.map((selectedRow) => (selectedRow.tid)));
             await APIHandler.delete_records(deleteRecordsRequest);
         } catch (error) {
             console.error("Error deleting record:", error);
@@ -84,8 +85,9 @@ export default function DataTable({ Actions }) {
 
     const handleExportCSV = () => {
         // Use selected rows if any are selected, otherwise export all
-        const dataToExport = selectedRows.length > 0 ? selectedRows : rows;
+        const dataToExport = selectedRows;
 
+        console.log("data to export", dataToExport)
         if (dataToExport.length === 0) {
             setDownloadError("No rows to export");
             return;
@@ -134,15 +136,7 @@ export default function DataTable({ Actions }) {
                     >
                         {downloadLoading ? 'Downloading...' : 'Audio'}
                     </Button>
-                    <Button
-                        size="small"
-                        variant="outlined"
-                        color="error"
-                        startIcon={<DeleteIcon />}
-                        onClick={() => handleDeleteClick(params.row.id)}
-                    >
-                        Delete
-                    </Button>
+
                 </Stack>
             )
         }
@@ -158,6 +152,15 @@ export default function DataTable({ Actions }) {
                     onClick={handleExportCSV}
                 >
                     Export CSV {selectedRows.length > 0 && `(${selectedRows.length})`}
+                </Button>
+                <Button
+                    size="small"
+                    variant="contained"
+                    color="error"
+                    startIcon={<DeleteIcon />}
+                    onClick={() => handleDeleteClick()}
+                >
+                    Delete
                 </Button>
                 <LocalizationProvider dateAdapter={AdapterDayjs}>
                     <DateTimePicker

@@ -1,4 +1,3 @@
-import psycopg2
 from psycopg2 import sql
 from psycopg2.extensions import connection
 from psycopg2.extras import execute_batch
@@ -6,8 +5,16 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta
 from dbutil import default_HTTP_exception
 from itertools import starmap
+import psycopg2
+import logging
 
 node_type = str
+
+logging.basicConfig(
+    level=logging.DEBUG,
+    format="%(asctime)s - [%(funcName)s]: %(levelname)s - %(message)s",
+)
+LOGGER = logging.getLogger("Mock Data Generator Logger")
 
 
 class DAO:
@@ -41,7 +48,7 @@ SELECT * FROM {my_table} NATURAL INNER JOIN owner_matches
                     (owner,),
                 )
             except psycopg2.Error as e:
-                print("Error executing SQL query:", e)
+                LOGGER.error("Error executing SQL query:", e)
                 raise default_HTTP_exception(e.pgcode, "get all query")  # type: ignore
 
             # Unpack the tuples into constructor
@@ -73,7 +80,7 @@ WHERE {my_id} = %s
                     ),
                 )
             except psycopg2.Error as e:
-                print("Error executing SQL query:", e)
+                LOGGER.error("Error executing SQL query:", e)
                 raise default_HTTP_exception(e.pgcode, "get query")  # type: ignore
 
             entity = curs.fetchone()
@@ -119,7 +126,7 @@ RETURNING {my_id}
                     {"my_id": id, "owner_id": owner},
                 )
             except psycopg2.Error as e:
-                print("Error executing SQL query:", e)
+                LOGGER.error("Error executing SQL query:", e)
                 raise default_HTTP_exception(e.pgcode, "delete query")  # type: ignore
             db_response = curs.fetchone()
 
@@ -161,7 +168,7 @@ class User(DAO):
                 else:
                     return None
             except psycopg2.Error as e:
-                print("Error executing SQL query:", e)
+                LOGGER.error("Error executing SQL query:", e)
                 raise default_HTTP_exception(e.pgcode, "Get user query")  # type: ignore
 
     @staticmethod
@@ -188,7 +195,7 @@ RETURNING auid
             except psycopg2.Error as e:
                 if isinstance(e, psycopg2.errors.UniqueViolation):
                     return None
-                print("Error executing SQL query:", e)
+                LOGGER.error("Error executing SQL query:", e)
                 raise default_HTTP_exception(e.pgcode, "Insert user query")  # type: ignore
 
 
@@ -236,7 +243,7 @@ class Node(DAO):
                     nid = db_response[0]
                     return cls(nid, ownerid, ntype, nlatitude, nlongitude, ndescription)
             except psycopg2.Error as e:
-                print("Error executing SQL query:", e)
+                LOGGER.error("Error executing SQL query:", e)
                 raise default_HTTP_exception(e.pgcode, "insert node query")  # type: ignore
 
 
@@ -276,7 +283,7 @@ class TimestampIndex(DAO):
                 else:
                     return None
             except psycopg2.Error as e:
-                print("Error executing SQL query:", e)
+                LOGGER.error("Error executing SQL query:", e)
                 raise default_HTTP_exception(e.pgcode, "insert timestamp query")  # type: ignore
 
 
@@ -331,7 +338,7 @@ class AudioSlice(DAO):
                 )
                 return curs.fetchone()
             except psycopg2.Error as e:
-                print("Error executing SQL query:", e)
+                LOGGER.error("Error executing SQL query:", e)
                 raise default_HTTP_exception(e.pgcode, "inser audio slice query")  # type: ignore
 
     @classmethod
@@ -394,7 +401,7 @@ class AudioFile(DAO):
                     (owner,),
                 )
             except psycopg2.Error as e:
-                print("Error executing SQL query:", e)
+                LOGGER.error("Error executing SQL query:", e)
                 raise default_HTTP_exception(e.pgcode, "get audio file query")  # type: ignore
 
             # Not pulling the audio data.
@@ -431,7 +438,7 @@ RETURNING afid
                 else:
                     return None
             except psycopg2.Error as e:
-                print("Error executing SQL query:", e)
+                LOGGER.error("Error executing SQL query:", e)
                 raise default_HTTP_exception(e.pgcode, "insert audio file query")  # type: ignore
 
     @classmethod
@@ -454,7 +461,7 @@ RETURNING afid
                 if db_response is not None:
                     return db_response[0]
         except psycopg2.Error as e:
-            print("Error executing SQL query:", e)
+            LOGGER.error("Error executing SQL query:", e)
             raise default_HTTP_exception(e.pgcode, "verify file is classified query")  # type: ignore
 
     @classmethod
@@ -475,7 +482,7 @@ RETURNING afid
                 )
                 return curs.fetchone()[0]  # type: ignore
         except psycopg2.Error as e:
-            print("Error executing SQL query:", e)
+            LOGGER.error("Error executing SQL query:", e)
             raise default_HTTP_exception(e.pgcode, "verify file exists query")  # type: ignore
 
 
@@ -497,6 +504,7 @@ class Dashboard:
             pressure: float
             rain: float
             time: float
+            tid: int
 
         with db.cursor() as curs:
             try:
@@ -510,7 +518,7 @@ class Dashboard:
                     sql.SQL(
                         """
                     SELECT n.nid, af.afid, wd.wdhumidity AS humidity, wd.wdtemperature AS temperature, 
-                        wd.wdpressure AS pressure, wd.wddid_rain AS rain, ti.ttime AS time
+                        wd.wdpressure AS pressure, wd.wddid_rain AS rain, ti.ttime AS time, ti.tid as tid
                     FROM node n 
                     INNER JOIN timestampindex ti ON ti.nid = n.nid
                     INNER JOIN audiofile af ON af.tid = ti.tid
@@ -529,11 +537,11 @@ class Dashboard:
                 return list(starmap(RecentData, db_output))
 
             except psycopg2.Error as e:
-                print("Error executing SQL query:", e)
+                LOGGER.error("Error executing SQL query:", e)
                 raise default_HTTP_exception(e.pgcode, "dashboard recent data query")
 
     @staticmethod
-    def delete_records(owner: int, records: list[dict[str, str]], db: connection):
+    def delete_records(owner: int, records: list[str], db: connection):
         """Deletes a list of records  based on join from @recent_data record
 
         Args:
@@ -553,6 +561,7 @@ class Dashboard:
         necessary_statements = (number_of_records // MAX_BATCH_SIZE) + 1
         number_of_records_left = number_of_records
         record_index = 0
+
         with db.cursor() as curs:
             try:
                 for i in range(necessary_statements):
@@ -562,30 +571,25 @@ class Dashboard:
                         else MAX_BATCH_SIZE
                     )
                     batch_values = [
-                        (records[i]["afid"], owner, records[i]["time"])
+                        int(records[j])
                         for j in range(
                             record_index, number_of_rows_to_insert + record_index, 1
                         )
                     ]
-                    execute_batch(
-                        curs,
-                        sql.SQL(
-                            """
-                                DELETE FROM audiofile
-                                WHERE afid = %s AND ownerid = %s AND tid IN (
-                                    SELECT tid FROM timestampindex WHERE ttime = %s);
-
-                            """
-                        ),
-                        batch_values,
-                        page_size=MAX_BATCH_SIZE,
+                    curs.execute(
+                        """
+                        DELETE FROM timestampindex
+                        WHERE tid = ANY(%s)
+                            """,
+                        (batch_values,),
                     )
                     number_of_records_left -= number_of_rows_to_insert
                     record_index += number_of_rows_to_insert
+                    db.commit()
 
                 return number_of_records
             except psycopg2.Error as e:
-                print("Error Executing SQL Query ot delte rows: ", e)
+                LOGGER.error("Error Executing SQL Query ot delte rows: ", e)
                 raise default_HTTP_exception(e.pgcode, "Dashboard Delete Record query")
 
     @staticmethod
@@ -648,7 +652,7 @@ ORDER BY "bin"
                     "date_bin": column_transposed[8],
                 }
             except psycopg2.Error as e:
-                print("Error executing SQL query:", e)
+                LOGGER.error("Error executing SQL query:", e)
                 raise default_HTTP_exception(
                     e.pgcode, "dashboard species weekly summary query"
                 )
@@ -685,7 +689,7 @@ ORDER by n.ntype
                 return list(starmap(NodeReport, curs.fetchall()))
 
             except psycopg2.Error as e:
-                print("Error executing SQL query:", e)
+                LOGGER.error("Error executing SQL query:", e)
                 raise default_HTTP_exception(e.pgcode, "dashboard node health check query")  # type: ignore
 
     @staticmethod
@@ -847,5 +851,5 @@ LIMIT %(limit)s
                 return list(starmap(ReportTableEntry, curs.fetchall()))
 
             except psycopg2.Error as e:
-                print("Error executing SQL query:", e)
+                LOGGER.error("Error executing SQL query:", e)
                 raise default_HTTP_exception(e.pgcode, "dashboard recent reports query")

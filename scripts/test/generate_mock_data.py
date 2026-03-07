@@ -219,8 +219,6 @@ def populate_audio(connection, number_of_inserts):
     prepared_statement = (
         "INSERT INTO audiofile (ownerid, tid, data) VALUES (%s, %s, %s)"
     )
-    necessary_statements = (number_of_inserts // MAX_BATCH_SIZE) + 1
-    number_of_inserts_left = number_of_inserts
 
     with connection.cursor() as cursor:
         with open("backend/tests/reg/test_audio.wav", "rb") as audio_file:
@@ -234,6 +232,22 @@ def populate_audio(connection, number_of_inserts):
                 LOGGER.warning("No timestamps available for audio file insertion")
                 return
 
+            # Ensure 1:1 relationship between timestampindex and audiofile
+            # Each timestamp should have exactly one audio file
+            if number_of_inserts > len(all_tids):
+                LOGGER.warning(
+                    f"Requested {number_of_inserts} audio files but only {len(all_tids)} timestamps available. Creating {len(all_tids)} audio files to maintain 1:1 relationship."
+                )
+                number_of_inserts = len(all_tids)
+
+            # Assign each timestamp to exactly one audio file
+            # Shuffle the tids to distribute them randomly
+            random.shuffle(all_tids)
+            selected_tids = all_tids[:number_of_inserts]
+
+            necessary_statements = (number_of_inserts // MAX_BATCH_SIZE) + 1
+            number_of_inserts_left = number_of_inserts
+
             for i in range(necessary_statements):
                 number_of_rows_to_insert = (
                     number_of_inserts_left
@@ -243,7 +257,9 @@ def populate_audio(connection, number_of_inserts):
                 batch_values = [
                     (
                         1,  # owner id
-                        random.choice(all_tids),  # Use actual tid from timestampindex
+                        selected_tids[
+                            i * MAX_BATCH_SIZE + j
+                        ],  # Use unique tid for each audio file
                         file_bytes,
                     )
                     for j in range(number_of_rows_to_insert)
@@ -256,6 +272,7 @@ def populate_audio(connection, number_of_inserts):
     LOGGER.info(
         "Successfully Populated Audiofile data. Proceeding to Generate audioslices "
     )
+    # Generate audioslices for the actual number of audio files created
     for afid in range(1, number_of_inserts + 1):
         populate_audioslice(connection, afid, 6)
 
