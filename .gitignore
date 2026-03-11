@@ -9,7 +9,7 @@ localhost.key
 .gitignore
 machine_learning/dataset
 mosquitto/data/mosquitto.db
-mosquitto/config/mosquitto.conf
+mosquitto/config/dynamic_security.json
 mosquitto/config/admin_pw.txt
 
 # VSCode
