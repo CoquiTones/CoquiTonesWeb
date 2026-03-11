@@ -151,7 +151,7 @@ async def classify_and_save(audio, audio_file_id, db, model):
         classified_slice["endtime"] = classified_slice.pop("end_time")
         slice_insert_tasks.append(
             asyncio.create_task(
-                dao.AudioSlice.insert(db, audio_file_id, **classified_slice),
+                dao.AudioSlice.insert(db, audio_file_id, **classified_slice), # type: ignore
                 name=classified_slice_name,
             )
         )

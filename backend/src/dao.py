@@ -2,7 +2,7 @@ from psycopg2 import sql
 from psycopg2.extensions import connection
 from psycopg2.extras import execute_batch
 from dataclasses import dataclass
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from dbutil import default_HTTP_exception
 from itertools import starmap
 import psycopg2
@@ -510,9 +510,9 @@ class Dashboard:
             try:
                 # Ensure timestamps are timezone-aware UTC
                 if minTimestamp.tzinfo is None:
-                    minTimestamp = minTimestamp.replace(tzinfo=datetime.timezone.utc)
+                    minTimestamp = minTimestamp.replace(tzinfo=timezone.utc)
                 if maxTimestamp.tzinfo is None:
-                    maxTimestamp = maxTimestamp.replace(tzinfo=datetime.timezone.utc)
+                    maxTimestamp = maxTimestamp.replace(tzinfo=timezone.utc)
 
                 curs.execute(
                     sql.SQL(
@@ -538,7 +538,7 @@ class Dashboard:
 
             except psycopg2.Error as e:
                 LOGGER.error("Error executing SQL query:", e)
-                raise default_HTTP_exception(e.pgcode, "dashboard recent data query")
+                raise default_HTTP_exception(e.pgcode, "dashboard recent data query") #type: ignore
 
     @staticmethod
     def delete_records(owner: int, records: list[str], db: connection):
@@ -590,7 +590,7 @@ class Dashboard:
                 return number_of_records
             except psycopg2.Error as e:
                 LOGGER.error("Error Executing SQL Query ot delte rows: ", e)
-                raise default_HTTP_exception(e.pgcode, "Dashboard Delete Record query")
+                raise default_HTTP_exception(e.pgcode, "Dashboard Delete Record query") # type: ignore
 
     @staticmethod
     def week_species_summary(owner: int, db: connection) -> dict[str, list]:
@@ -654,7 +654,7 @@ ORDER BY "bin"
             except psycopg2.Error as e:
                 LOGGER.error("Error executing SQL query:", e)
                 raise default_HTTP_exception(
-                    e.pgcode, "dashboard species weekly summary query"
+                    e.pgcode, "dashboard species weekly summary query" #type: ignore
                 )
 
     @staticmethod
@@ -852,4 +852,4 @@ LIMIT %(limit)s
 
             except psycopg2.Error as e:
                 LOGGER.error("Error executing SQL query:", e)
-                raise default_HTTP_exception(e.pgcode, "dashboard recent reports query")
+                raise default_HTTP_exception(e.pgcode, "dashboard recent reports query") # type: ignore
