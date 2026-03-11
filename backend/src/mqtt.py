@@ -107,8 +107,8 @@ class CommandHandle(BaseModel):
 
 report_listener_thread = None
 command_listener_thread = None
-send_command_channel: Queue[tuple[CommandHandle, asyncio.Event]] = Queue(MAX_COMMAND_QUEUE_SIZE)
-receive_command_channel: dict[CommandHandle, str] = {}
+command_sender_info_queue: Queue[tuple[CommandHandle, asyncio.Event]] = Queue(MAX_COMMAND_QUEUE_SIZE)
+receive_command_output_channel: dict[CommandHandle, str] = {}
 global_command_lock = asyncio.Lock()
 
 def start():
@@ -144,8 +144,8 @@ async def listen_for_commands():
             handle_command_output(str(message.payload))
 
 def handle_command_output(command_output: str):
-    handle, event = send_command_channel.get()
-    receive_command_channel[handle] = command_output
+    handle, event = command_sender_info_queue.get()
+    receive_command_output_channel[handle] = command_output
     event.set()
 
 def reports_main():
@@ -359,13 +359,13 @@ async def _execute_command(admin_client: Client, args: MQTTArgs) -> str:
     # Create an event to let us know when our command's output will be ready for us to read
     # Note that the asyncio event primitive isn't thread safe; however, due to the 1 producer-1 consumer nature of how 
     # we are executing and reading the output of commands, no race conditions can occur.
-    event = asyncio.Event()
+    output_received = asyncio.Event()
     # Send the command listener thread a message telling it we want to receive the output for the command we sent out
-    send_command_channel.put((handle, event))
+    command_sender_info_queue.put((handle, output_received))
     # Wait until the output from that command is available
-    await event.wait()
+    await output_received.wait()
     # Retreive output
-    output = receive_command_channel.get(handle)
+    output = receive_command_output_channel.get(handle)
     global_command_lock.release()
     assert(output is not None)
     return output
