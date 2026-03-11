@@ -50,3 +50,4 @@ services:
       - 2043:2043
     stdin_open: true
     tty: true
+    env_file: "./backend/src/.env"

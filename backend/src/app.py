@@ -5,7 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, Response
 from dbutil import get_db_connection
 from mlutil import get_model, classify_audio_file
-from Spectrogram import sendMelSpectrogram, sendBasicSpectrogram
+from pydantic import SecretStr
 from routers.security import get_current_user, LightWeightUser
 from routers.security import router as security_router
 from standaloneops import classify_and_save
@@ -164,12 +164,30 @@ async def node_insert(
     nlatitude: Annotated[float, Form()],
     nlongitude: Annotated[float, Form()],
     ndescription: Annotated[str, Form()],
+    nname: Annotated[str, Form()],
     current_user: Annotated[LightWeightUser, Depends(get_current_user)],
+    node_client_password: Annotated[SecretStr | None, Form()] = None,
     db=Depends(get_db_connection),
 ):
+    #TODO: make insert async with psycopg3 and make this concurrent
+    if ntype == "primary": 
+        if node_client_password is None:
+            raise HTTPException(status_code=400, detail="Must provide password for new primary nodes")
+        
+        # Primary node must have a client with the broker
+        if not await mqtt.create_node(current_user.auid, nname, node_client_password):
+            raise HTTPException(500, "Failed to set up node's MQTT client")
+
     ownerid = current_user.auid
     newNode = dao.Node.insert(db, ownerid, ntype, nlatitude, nlongitude, ndescription)
-    print(newNode)
+    if newNode is None:
+        raise HTTPException(500, "Failed to create new node")
+    
+    # All the user's primary nodes must have access to a topic corresponding to the new node
+    # This allows them to upload reports from the new node into the appropriate topic
+    if not await mqtt.add_topic_access(current_user.auid, newNode.nid):
+        raise HTTPException(500, "Failed to set up MQTT permissions for node")
+    
     return newNode
 
 

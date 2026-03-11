@@ -140,6 +140,27 @@ class User(DAO):
     id_column = sql.Identifier("auid")
     owner_table = sql.SQL("(SELECT auid, auid as ownerid FROM appuser)")
 
+    @classmethod
+    async def get_all_no_owner(cls, db: connection):
+        with db.cursor() as curs:
+            try:
+                curs.execute(
+                    sql.SQL(
+"""
+SELECT auid, username, salt, pwhash
+FROM appuser
+"""
+                    )
+                )
+
+                db_response = curs.fetchall()
+
+            except psycopg2.Error as e:
+                print("Error executing SQL query:", e)
+                raise default_HTTP_exception(e.pgcode, "Get all users query") # type: ignore
+            
+        return [cls(*row) for row in db_response]
+
     @staticmethod
     async def get_by_username(db: connection, username: str):
 

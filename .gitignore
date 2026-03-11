@@ -8,6 +8,9 @@ localhost.crt
 localhost.key
 .gitignore
 machine_learning/dataset
+mosquitto/data/mosquitto.db
+mosquitto/config/mosquitto.conf
+mosquitto/config/admin_pw.txt
 
 # VSCode
 
@@ -33,9 +36,3 @@ mosquitto/data
 .envrc
 *.nix
 .direnv/
-
-mosquitto/config/pwfile
-mosquitto/data/mosquitto.db
-mosquitto/config/mosquitto.conf
-localhost.key
-localhost.crt
