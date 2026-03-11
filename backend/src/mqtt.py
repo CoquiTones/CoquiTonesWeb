@@ -109,6 +109,7 @@ report_listener_thread = None
 command_listener_thread = None
 send_command_channel: Queue[tuple[CommandHandle, asyncio.Event]] = Queue(MAX_COMMAND_QUEUE_SIZE)
 receive_command_channel: dict[CommandHandle, str] = {}
+global_command_lock = asyncio.Lock()
 
 def start():
     """
@@ -138,8 +139,14 @@ async def listen_for_commands():
         username="admin",
         password=os.environ["MOSQUITTO_DYNSEC_PASSWORD"]
     ) as client:
-        await client.subscribe("")
+        await client.subscribe(CONTROL_TOPIC)
+        async for message in client.messages:
+            handle_command_output(str(message.payload))
 
+def handle_command_output(command_output: str):
+    handle, event = send_command_channel.get()
+    receive_command_channel[handle] = command_output
+    event.set()
 
 def reports_main():
     asyncio.run(listen_for_reports())
@@ -345,11 +352,13 @@ async def _execute_command(admin_client: Client, args: MQTTArgs) -> str:
 
     Returns: Command output
     """
-
+    await global_command_lock.acquire()
     await admin_client.publish(CONTROL_TOPIC, args.model_dump_json())
-    # TODO: get the command's output
 
     handle = command_handle()
+    # Create an event to let us know when our command's output will be ready for us to read
+    # Note that the asyncio event primitive isn't thread safe; however, due to the 1 producer-1 consumer nature of how 
+    # we are executing and reading the output of commands, no race conditions can occur.
     event = asyncio.Event()
     # Send the command listener thread a message telling it we want to receive the output for the command we sent out
     send_command_channel.put((handle, event))
@@ -357,6 +366,7 @@ async def _execute_command(admin_client: Client, args: MQTTArgs) -> str:
     await event.wait()
     # Retreive output
     output = receive_command_channel.get(handle)
+    global_command_lock.release()
     assert(output is not None)
     return output
 
