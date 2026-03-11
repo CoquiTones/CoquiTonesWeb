@@ -11,10 +11,13 @@ from enum import Enum
 from datetime import datetime
 from standaloneops import classify_and_save
 from mlutil import get_model
+from queue import Queue
+from random import randint
 
 MQTT_BROKER_HOSTNAME = "localhost"
 MQTT_BROKER_PORT = 2043
 CONTROL_TOPIC = "$CONTROL/dynamic-security/v1"
+MAX_COMMAND_QUEUE_SIZE = 10
 
 #---Report Data Types---
 class WeatherData(BaseModel):
@@ -95,32 +98,53 @@ class AddRoleACLArgs(MQTTArgs):
     topic: str
     priority: int
     allow: bool
-#---------------
 
-thread = None
+#---Misc Types---
+
+class CommandHandle(BaseModel):
+    time: datetime
+    id: int
+
+report_listener_thread = None
+command_listener_thread = None
+send_command_channel: Queue[tuple[CommandHandle, asyncio.Event]] = Queue(MAX_COMMAND_QUEUE_SIZE)
+receive_command_channel: dict[CommandHandle, str] = {}
 
 def start():
     """
     Syncs broker with DB then creates a thread where the mqtt operations will run.
     """
+    command_listener_thread = threading.Thread(target=lambda: asyncio.run(listen_for_commands()))
+    command_listener_thread.start()
     syncing_thread = threading.Thread(target=lambda: asyncio.run(broker_sync()))
     syncing_thread.start()
     syncing_thread.join()
-    thread = threading.Thread(target=main)
-    thread.start()
+    report_listener_thread = threading.Thread(target=reports_main)
+    report_listener_thread.start()
 
 def end():
     """
     Join the thread if it exists
     """
-    if thread is None:
+    if report_listener_thread is None:
         return
-    thread.join()
+    report_listener_thread.join()
 
-def main():
-    asyncio.run(listen())
+async def listen_for_commands():
+    async with Client(
+        hostname=MQTT_BROKER_HOSTNAME,
+        port=MQTT_BROKER_PORT,
+        identifier="commands-listener",
+        username="admin",
+        password=os.environ["MOSQUITTO_DYNSEC_PASSWORD"]
+    ) as client:
+        await client.subscribe("")
 
-async def listen():
+
+def reports_main():
+    asyncio.run(listen_for_reports())
+
+async def listen_for_reports():
     model = next(get_model())
     async with Client(
             hostname=MQTT_BROKER_HOSTNAME, 
@@ -324,7 +348,17 @@ async def _execute_command(admin_client: Client, args: MQTTArgs) -> str:
 
     await admin_client.publish(CONTROL_TOPIC, args.model_dump_json())
     # TODO: get the command's output
-    return ""
+
+    handle = command_handle()
+    event = asyncio.Event()
+    # Send the command listener thread a message telling it we want to receive the output for the command we sent out
+    send_command_channel.put((handle, event))
+    # Wait until the output from that command is available
+    await event.wait()
+    # Retreive output
+    output = receive_command_channel.get(handle)
+    assert(output is not None)
+    return output
 
 async def _create_listener(admin_client: Client) -> bool:
     """
@@ -364,3 +398,8 @@ async def _create_listener(admin_client: Client) -> bool:
 
     return True
 
+def command_handle() -> CommandHandle:
+    """
+    Returns a command handle for a command scheduled right now.
+    """
+    return CommandHandle(time=datetime.now(), id=randint(0, 1 << 31))
