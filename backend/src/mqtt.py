@@ -16,6 +16,7 @@ MQTT_BROKER_HOSTNAME = "localhost"
 MQTT_BROKER_PORT = 2043
 CONTROL_TOPIC = "$CONTROL/dynamic-security/v1"
 
+#---Report Data Types---
 class WeatherData(BaseModel):
     temperature: float
     humidity: float
@@ -31,6 +32,7 @@ class Report(BaseModel):
     audio: AudioData
     weather_data: WeatherData
 
+#---MQTT Management Types---
 class MQTTGroup(BaseModel):
     groupname: str
     priority: int
@@ -39,6 +41,27 @@ class MQTTRoleDescription(BaseModel):
     rolename: str
     priority: int
 
+class AclType(str, Enum):
+    publish_client_send = "publishClientSend"
+    publish_client_receive = "publishClientReceive"
+    subscribe_literal = "subscribeLiteral"
+    subscribe_pattern = "subscribePattern"
+    unsubscribe_literal = "unsubscribeLiteral"
+    unsubscribe_pattern = "unsubscribePattern"
+
+class MQTTAcl(BaseModel):
+    acltype: AclType
+    topic: str
+    priority: int
+    allow: bool
+class MQTTRole(BaseModel):
+    rolename: str
+    acls: list[MQTTAcl]
+
+class MQTTClientDescription(BaseModel):
+    username: str
+
+# ---Command types---
 class MQTTArgs(BaseModel):
     command: str
 
@@ -58,13 +81,12 @@ class ListClientsArgs(MQTTArgs):
 class ListRolesArgs(MQTTArgs):
     command: str = "listRoles"
 
-class AclType(str, Enum):
-    publish_client_send = "publishClientSend"
-    publish_client_receive = "publishClientReceive"
-    subscribe_literal = "subscribeLiteral"
-    subscribe_pattern = "subscribePattern"
-    unsubscribe_literal = "unsubscribeLiteral"
-    unsubscribe_pattern = "unsubscribePattern"
+class CreateRoleArgs(MQTTArgs):
+    command: str = "createRole"
+    rolename: str
+    textname: str | None = None
+    textdescription: str | None = None
+    acls: list[MQTTAcl] | None
 
 class AddRoleACLArgs(MQTTArgs):
     command: str = "addRoleACL"
@@ -73,24 +95,7 @@ class AddRoleACLArgs(MQTTArgs):
     topic: str
     priority: int
     allow: bool
-    
-class MQTTAcl(BaseModel):
-    acltype: AclType
-    topic: str
-    priority: int
-    allow: bool
-class MQTTRole(BaseModel):
-    rolename: str
-    acls: list[MQTTAcl]
-
-class MQTTClientDescription(BaseModel):
-    username: str
-class CreateRoleArgs(MQTTArgs):
-    command: str = "createRole"
-    rolename: str
-    textname: str | None = None
-    textdescription: str | None = None
-    acls: list[MQTTAcl] | None
+#---------------
 
 thread = None
 
