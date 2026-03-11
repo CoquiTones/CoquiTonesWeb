@@ -40,7 +40,7 @@ class MQTTGroup(BaseModel):
     groupname: str
     priority: int
 
-class MQTTRoleDescription(BaseModel):
+class MQTTRoleShort(BaseModel):
     rolename: str
     priority: int
 
@@ -61,6 +61,9 @@ class MQTTRole(BaseModel):
     rolename: str
     acls: list[MQTTAcl]
 
+class MQTTRoleDescription(BaseModel):
+    rolename: str
+
 class MQTTClientDescription(BaseModel):
     username: str
 
@@ -73,7 +76,7 @@ class CreateClientArgs(MQTTArgs):
     username: str
     password: SecretStr
     groups: list[MQTTGroup]
-    roles: list[MQTTRoleDescription]
+    roles: list[MQTTRoleShort]
 
 class ListClientsArgs(MQTTArgs):
     command: str = "listClients"
@@ -206,13 +209,24 @@ async def handle_report(report: Report, model):
     await classify_and_save(fake_file, afid, db, model)
 
 def clients_from_command(command_output: str) -> dict[str, MQTTClientDescription]:
+    """
+    Parses the output of a listClients command.
+    Args:
+        command_output: output of listClients command
+    
+    Returns dict from name of each client to its description.
+    """
+    return {username: MQTTClientDescription(username=username) for username in command_output.splitlines()}
 
-    #TODO: parser
-    return {}
-
-def roles_from_command(command_output: str) -> dict[str, MQTTRole]:
-    #TODO: parser
-    return {}
+def roles_from_command(command_output: str) -> dict[str, MQTTRoleDescription]:
+    """
+    Parses the output of a listRoles command.
+    Args:
+        command_output: output of listRoles command
+    
+    Returns dict from name of each role to its description.
+    """
+    return {rolename: MQTTRoleDescription(rolename=rolename) for rolename in command_output.splitlines()}
 
 async def broker_sync():
     """
@@ -269,7 +283,7 @@ async def create_node(user_id: int, node_username: str, node_password: SecretStr
     
     Returns: ok
     """
-    role = MQTTRoleDescription(rolename= f"user{user_id}", priority=0)
+    role = MQTTRoleShort(rolename= f"user{user_id}", priority=0)
     args = CreateClientArgs(username=node_username, password=node_password, groups=[], roles=[role])
     async with Client(
             hostname=MQTT_BROKER_HOSTNAME, 
@@ -396,7 +410,7 @@ async def _create_listener(admin_client: Client) -> bool:
 
     await _execute_command(admin_client, args)
 
-    role_description = MQTTRoleDescription(rolename="listen-to-reports", priority=0)
+    role_description = MQTTRoleShort(rolename="listen-to-reports", priority=0)
     args = CreateClientArgs(
         username="reports-listener",
         password=SecretStr(os.environ["SECRET_KEY"]),
