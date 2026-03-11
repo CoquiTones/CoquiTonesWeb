@@ -538,7 +538,7 @@ class Dashboard:
 
             except psycopg2.Error as e:
                 LOGGER.error("Error executing SQL query:", e)
-                raise default_HTTP_exception(e.pgcode, "dashboard recent data query") #type: ignore
+                raise default_HTTP_exception(e.pgcode, "dashboard recent data query")  # type: ignore
 
     @staticmethod
     def delete_records(owner: int, records: list[str], db: connection):
@@ -571,17 +571,19 @@ class Dashboard:
                         else MAX_BATCH_SIZE
                     )
                     batch_values = [
-                        int(records[j])
+                        (int(records[j]))
                         for j in range(
                             record_index, number_of_rows_to_insert + record_index, 1
                         )
                     ]
+                    print("batch values: ", batch_values)
                     curs.execute(
                         """
-                        DELETE FROM timestampindex
-                        WHERE tid = ANY(%s)
+                        DELETE FROM timestampindex WHERE tid = ANY(%s) 
+                        AND 
+                        nid IN (SELECT nid FROM node  WHERE ownerid = %s)
                             """,
-                        (batch_values,),
+                        (batch_values, owner),
                     )
                     number_of_records_left -= number_of_rows_to_insert
                     record_index += number_of_rows_to_insert
@@ -590,7 +592,7 @@ class Dashboard:
                 return number_of_records
             except psycopg2.Error as e:
                 LOGGER.error("Error Executing SQL Query ot delte rows: ", e)
-                raise default_HTTP_exception(e.pgcode, "Dashboard Delete Record query") # type: ignore
+                raise default_HTTP_exception(e.pgcode, "Dashboard Delete Record query")  # type: ignore
 
     @staticmethod
     def week_species_summary(owner: int, db: connection) -> dict[str, list]:
@@ -654,7 +656,7 @@ ORDER BY "bin"
             except psycopg2.Error as e:
                 LOGGER.error("Error executing SQL query:", e)
                 raise default_HTTP_exception(
-                    e.pgcode, "dashboard species weekly summary query" #type: ignore
+                    e.pgcode, "dashboard species weekly summary query"  # type: ignore
                 )
 
     @staticmethod
@@ -852,4 +854,4 @@ LIMIT %(limit)s
 
             except psycopg2.Error as e:
                 LOGGER.error("Error executing SQL query:", e)
-                raise default_HTTP_exception(e.pgcode, "dashboard recent reports query") # type: ignore
+                raise default_HTTP_exception(e.pgcode, "dashboard recent reports query")  # type: ignore
