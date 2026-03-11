@@ -267,8 +267,9 @@ async def broker_sync():
                         _create_user_role(client, user.auid)
                     )
 
-
-            # Modify roles by getting all nodes owned by each user and ensuring user's role has permission to send to all nodes' topics
+                # Modify roles by getting all nodes owned by each user and ensuring user's role has permission to send to all nodes' topics
+                for node in await dao.Node.get_all(user.auid, db):
+                    pass
 
 
 # This function is for consumers elsewhere to be able to make a new node
