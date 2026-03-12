@@ -7,6 +7,7 @@ from io import BytesIO
 from dbutil import get_database_connection
 from typing import Annotated
 from pydantic import BaseModel, ValidationError, PlainSerializer, Base64Bytes, SecretStr
+from json import JSONDecoder
 from enum import Enum
 from datetime import datetime
 from standaloneops import classify_and_save
@@ -14,9 +15,13 @@ from mlutil import get_model
 from queue import Queue
 from random import randint
 
+ADMIN_PASSWORD = os.environ["MOSQUITTO_DYNSEC_PASSWORD"]
+LISTENER_PASSWORD = os.environ["SECRET_KEY"]
+
 MQTT_BROKER_HOSTNAME = "localhost"
 MQTT_BROKER_PORT = 2043
 CONTROL_TOPIC = "$CONTROL/dynamic-security/v1"
+CONTROL_RESPONSE_TOPIC = "$CONTROL/dynamic-security/v1/response"
 MAX_COMMAND_QUEUE_SIZE = 10
 
 #---Report Data Types---
@@ -70,11 +75,10 @@ class MQTTClientDescription(BaseModel):
 # ---Command types---
 class MQTTArgs(BaseModel):
     command: str
-
 class CreateClientArgs(MQTTArgs):
     command: str = "createClient"
     username: str
-    password: SecretStr
+    password: str # If we use SecretStr here it will send as an actual '*****' string.
     groups: list[MQTTGroup]
     roles: list[MQTTRoleShort]
 
@@ -102,17 +106,36 @@ class AddRoleACLArgs(MQTTArgs):
     priority: int
     allow: bool
 
+class MQTTCommands(BaseModel):
+    commands: list[
+        MQTTArgs            |
+        CreateClientArgs    |
+        CreateRoleArgs      |
+        ListClientsArgs     |
+        ListRolesArgs       |
+        AddRoleACLArgs      
+    ]
+
+class ListClientResponse(BaseModel):
+    totalCount: int
+    clients: list[str]
+
+class ListRolesReponse(BaseModel):
+    totalCount: int
+    roles: list[str]
+
 #---Misc Types---
 
-class CommandHandle(BaseModel):
+class CommandHandle(BaseModel, frozen=True):
     time: datetime
     id: int
 
 report_listener_thread = None
 command_listener_thread = None
 command_sender_info_queue: Queue[tuple[CommandHandle, asyncio.Event]] = Queue(MAX_COMMAND_QUEUE_SIZE)
-receive_command_output_channel: dict[CommandHandle, str] = {}
+receive_command_output_channel: dict[CommandHandle, bytes] = {}
 global_command_lock = asyncio.Lock()
+listener_ready = asyncio.Event()
 
 def start():
     """
@@ -133,6 +156,9 @@ def end():
     if report_listener_thread is None:
         return
     report_listener_thread.join()
+    if command_listener_thread is None:
+        return
+    command_listener_thread.join()
 
 async def listen_for_commands():
     async with Client(
@@ -140,13 +166,16 @@ async def listen_for_commands():
         port=MQTT_BROKER_PORT,
         identifier="commands-listener",
         username="admin",
-        password=os.environ["MOSQUITTO_DYNSEC_PASSWORD"]
+        password=ADMIN_PASSWORD
     ) as client:
-        await client.subscribe(CONTROL_TOPIC)
+        # Don't start sending commands until they can be received
+        listener_ready.set()
+        await client.subscribe(CONTROL_RESPONSE_TOPIC)
         async for message in client.messages:
-            handle_command_output(str(message.payload))
+            assert(isinstance(message.payload, bytes))
+            handle_command_output(message.payload)
 
-def handle_command_output(command_output: str):
+def handle_command_output(command_output: bytes):
     handle, event = command_sender_info_queue.get()
     receive_command_output_channel[handle] = command_output
     event.set()
@@ -158,10 +187,9 @@ async def listen_for_reports():
     model = next(get_model())
     async with Client(
             hostname=MQTT_BROKER_HOSTNAME, 
-            port=MQTT_BROKER_PORT, 
-            identifier="coquitones-app", 
+            port=MQTT_BROKER_PORT,
             username="reports-listener", 
-            password=os.environ["SECRET_KEY"]
+            password=LISTENER_PASSWORD
         ) as client:
         await client.subscribe("reports/#")
         async for message in client.messages:
@@ -216,7 +244,11 @@ def clients_from_command(command_output: str) -> dict[str, MQTTClientDescription
     
     Returns dict from name of each client to its description.
     """
-    return {username: MQTTClientDescription(username=username) for username in command_output.splitlines()}
+    decoder = JSONDecoder()
+    command_outputs: dict[str, list[dict]] = decoder.decode(command_output)
+    response: dict[str, dict] = command_outputs['responses'][0]
+    command_response = ListClientResponse.model_validate(response['data'])
+    return {username: MQTTClientDescription(username=username) for username in command_response.clients}
 
 def roles_from_command(command_output: str) -> dict[str, MQTTRoleDescription]:
     """
@@ -226,12 +258,17 @@ def roles_from_command(command_output: str) -> dict[str, MQTTRoleDescription]:
     
     Returns dict from name of each role to its description.
     """
-    return {rolename: MQTTRoleDescription(rolename=rolename) for rolename in command_output.splitlines()}
+    decoder = JSONDecoder()
+    command_outputs: dict[str, list[dict]] = decoder.decode(command_output)
+    response: dict[str, dict] = command_outputs['responses'][0]
+    command_response = ListRolesReponse.model_validate(response['data'])
+    return {rolename: MQTTRoleDescription(rolename=rolename) for rolename in command_response.roles}
 
 async def broker_sync():
     """
-    Ensures there is a client set up for the report listener
+    Ensures there is a client set up for the report listener  
     Ensures a role is set up for each user
+    Note that this cannot set up a client for each *node* as the user must supply the passwords themselves.
     """
 
     async with Client(
@@ -239,37 +276,45 @@ async def broker_sync():
             port=MQTT_BROKER_PORT, 
             identifier="admin", 
             username="admin", 
-            password=os.environ["MOSQUITTO_DYNSEC_PASSWORD"]
+            password=ADMIN_PASSWORD
         ) as client:
-        # Get clients from broker
-        clients = clients_from_command(await _execute_command(client, ListClientsArgs()))
-
-        # Get roles from broker
-        roles = roles_from_command(await _execute_command(client, ListRolesArgs()))
-
-        # Get users from DB
         db = get_database_connection()
         assert(db is not None)
-        users = await dao.User.get_all_no_owner(db=db)
+        
+        async with asyncio.TaskGroup() as get_tasks:
+            list_clients_task   = get_tasks.create_task(_execute_command(client, ListClientsArgs()))
+            list_roles_task     = get_tasks.create_task(_execute_command(client, ListRolesArgs()))
+            get_users_task      = get_tasks.create_task(dao.User.get_all_no_owner(db=db))
+        # Get clients from broker
+        clients = clients_from_command(list_clients_task.result() )
+
+        # Get roles from broker
+        roles = roles_from_command(list_roles_task.result())
+
+        # Get users from DB
+        users = get_users_task.result()
 
         async with asyncio.TaskGroup() as command_tasks:
 
-            # Create listener client if necessary
-            if clients.get("reports-listener") is None:
+            # Create listener client if necessary.
+            if 'reports-listener' not in clients.keys():
+                print("INFO: Creating listener client")
                 command_tasks.create_task(_create_listener(client))
 
-            # Create roles if necessary
+            # Create roles for each user that doesn't have one.
             role_creation_tasks = []
             for user in users:
                 role_name = f"user{user.auid}"
-                if roles.get(role_name) is None:
+                if role_name not in roles.keys():
+                    print(f"INFO: Creating role {role_name}")
                     role_creation_tasks.append(
-                        _create_user_role(client, user.auid)
+                        command_tasks.create_task(_create_user_role(client, user.auid))
                     )
 
                 # Modify roles by getting all nodes owned by each user and ensuring user's role has permission to send to all nodes' topics
                 for node in await dao.Node.get_all(user.auid, db):
                     pass
+
 
 
 # This function is for consumers elsewhere to be able to make a new node
@@ -285,13 +330,13 @@ async def create_node(user_id: int, node_username: str, node_password: SecretStr
     Returns: ok
     """
     role = MQTTRoleShort(rolename= f"user{user_id}", priority=0)
-    args = CreateClientArgs(username=node_username, password=node_password, groups=[], roles=[role])
+    args = CreateClientArgs(username=node_username, password=node_password.get_secret_value(), groups=[], roles=[role])
     async with Client(
             hostname=MQTT_BROKER_HOSTNAME, 
             port=MQTT_BROKER_PORT, 
             identifier="admin", 
             username="admin", 
-            password=os.environ["MOSQUITTO_DYNSEC_PASSWORD"]
+            password=ADMIN_PASSWORD
         ) as client:
         await _execute_command(client, args)
         return True
@@ -312,7 +357,7 @@ async def add_topic_access(user_id: int, node_id: int) -> bool:
             port=MQTT_BROKER_PORT, 
             identifier="admin", 
             username="admin", 
-            password=os.environ["MOSQUITTO_DYNSEC_PASSWORD"]
+            password=ADMIN_PASSWORD
         ) as client:
         await _execute_command(client, args)
         return True
@@ -332,7 +377,7 @@ async def create_user_role(user_id: int) -> bool:
             port=MQTT_BROKER_PORT, 
             identifier="admin", 
             username="admin", 
-            password=os.environ["MOSQUITTO_DYNSEC_PASSWORD"]
+            password=ADMIN_PASSWORD
         ) as client:
         return await _create_user_role(client, user_id)
 
@@ -368,7 +413,9 @@ async def _execute_command(admin_client: Client, args: MQTTArgs) -> str:
     Returns: Command output
     """
     await global_command_lock.acquire()
-    await admin_client.publish(CONTROL_TOPIC, args.model_dump_json())
+    await listener_ready.wait()
+    message = MQTTCommands(commands=[args]).model_dump_json()
+    await admin_client.publish(CONTROL_TOPIC, message)
 
     handle = command_handle()
     # Create an event to let us know when our command's output will be ready for us to read
@@ -383,7 +430,7 @@ async def _execute_command(admin_client: Client, args: MQTTArgs) -> str:
     output = receive_command_output_channel.get(handle)
     global_command_lock.release()
     assert(output is not None)
-    return output
+    return output.decode()
 
 async def _create_listener(admin_client: Client) -> bool:
     """
@@ -414,7 +461,7 @@ async def _create_listener(admin_client: Client) -> bool:
     role_description = MQTTRoleShort(rolename="listen-to-reports", priority=0)
     args = CreateClientArgs(
         username="reports-listener",
-        password=SecretStr(os.environ["SECRET_KEY"]),
+        password=LISTENER_PASSWORD,
         groups=[],
         roles=[role_description]
     )
