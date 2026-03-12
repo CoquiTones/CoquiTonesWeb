@@ -6,7 +6,7 @@ import os
 import re
 from io import BytesIO
 from dbutil import get_database_connection
-from typing import Annotated
+from typing import Annotated, Any
 from pydantic import BaseModel, ValidationError, PlainSerializer, Base64Bytes, SecretStr
 from json import JSONDecoder
 from enum import Enum
@@ -63,6 +63,7 @@ class MQTTAcl(BaseModel):
     topic: str
     priority: int
     allow: bool
+
 class MQTTRole(BaseModel):
     rolename: str
     acls: list[MQTTAcl]
@@ -80,6 +81,16 @@ class MQTTRoleDescriptionVerbose(BaseModel):
 class MQTTClientDescription(BaseModel):
     username: str
 
+class SuccessfulResponse(BaseModel):
+    command: str
+    data: Any
+
+class ErrorResponse(BaseModel):
+    command: str
+    error: str
+
+class MQTTCommandResponses(BaseModel):
+    responses: list[SuccessfulResponse | ErrorResponse]
 # ---Command types---
 class MQTTArgs(BaseModel):
     command: str
@@ -144,6 +155,12 @@ class ListRolesReponse(BaseModel):
 class CommandHandle(BaseModel, frozen=True):
     time: datetime
     id: int
+
+class CommandExcept(BaseException):
+    detail: ErrorResponse
+    def __init__(self, response: ErrorResponse, *args):
+        super().__init__(*args)
+        self.detail = response
 
 report_listener_thread = None
 command_listener_thread = None
@@ -251,7 +268,7 @@ async def handle_report(report: Report, model):
 
     await classify_and_save(fake_file, afid, db, model)
 
-def clients_from_command(command_output: str) -> dict[str, MQTTClientDescription]:
+def clients_from_command(command_output: SuccessfulResponse) -> dict[str, MQTTClientDescription]:
     """
     Parses the output of a listClients command.
     Args:
@@ -259,13 +276,10 @@ def clients_from_command(command_output: str) -> dict[str, MQTTClientDescription
     
     Returns dict from name of each client to its description.
     """
-    decoder = JSONDecoder()
-    command_outputs: dict[str, list[dict]] = decoder.decode(command_output)
-    response: dict[str, dict] = command_outputs['responses'][0]
-    command_response = ListClientResponse.model_validate(response['data'])
+    command_response = ListClientResponse.model_validate(command_output.data)
     return {username: MQTTClientDescription(username=username) for username in command_response.clients}
 
-def roles_from_command(command_output: str) -> dict[str, MQTTRoleDescriptionVerbose]:
+def roles_from_command(command_output: SuccessfulResponse) -> dict[str, MQTTRoleDescriptionVerbose]:
     """
     Parses the output of a listRoles command.
     Args:
@@ -273,10 +287,7 @@ def roles_from_command(command_output: str) -> dict[str, MQTTRoleDescriptionVerb
     
     Returns dict from name of each role to its description.
     """
-    decoder = JSONDecoder()
-    command_outputs: dict[str, list[dict]] = decoder.decode(command_output)
-    response: dict[str, dict] = command_outputs['responses'][0]
-    command_response = ListRolesReponse.model_validate(response['data'])
+    command_response = ListRolesReponse.model_validate(command_output.data)
     return {role.rolename: role for role in command_response.roles}
 
 async def all_clients() -> dict[str, MQTTClientDescription]:
@@ -488,7 +499,7 @@ async def _create_user_role(admin_client: Client, user_id: int) -> bool:
     await _execute_command(admin_client, args)
     return True
 
-async def _execute_command(admin_client: Client, args: MQTTArgs) -> str:
+async def _execute_command(admin_client: Client, args: MQTTArgs) -> SuccessfulResponse:
     """
     AS ADMIN
     Executes command in broker
@@ -497,7 +508,11 @@ async def _execute_command(admin_client: Client, args: MQTTArgs) -> str:
         admin_client: MQTT client with controls publish access
         args: Command to send to the control topic
 
-    Returns: Command output
+    Return: 
+        Command output (only if successful)
+
+    Raises: 
+        CommandExcept when command fails
     """
     await global_command_lock.acquire()
     await listener_ready.wait()
@@ -517,7 +532,15 @@ async def _execute_command(admin_client: Client, args: MQTTArgs) -> str:
     output = receive_command_output_channel.get(handle)
     global_command_lock.release()
     assert(output is not None)
-    return output.decode()
+    raw_command_output = MQTTCommandResponses.model_validate_json(output.decode())
+    # We get exactly 1 response.
+    response = raw_command_output.responses[0]
+    
+    if isinstance(response, SuccessfulResponse):
+        return response
+    else:
+        raise CommandExcept(response)
+
 
 async def _create_listener(admin_client: Client) -> bool:
     """
