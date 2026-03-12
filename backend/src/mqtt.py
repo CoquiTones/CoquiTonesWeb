@@ -3,6 +3,7 @@ import asyncio
 import threading
 import dao
 import os
+import re
 from io import BytesIO
 from dbutil import get_database_connection
 from typing import Annotated
@@ -69,6 +70,13 @@ class MQTTRole(BaseModel):
 class MQTTRoleDescription(BaseModel):
     rolename: str
 
+class MQTTRoleDescriptionVerbose(BaseModel):
+    rolename: str
+    textname: str | None = None
+    textdescription: str | None = None
+    allowwildcardsubs: bool = False
+    acls: list[MQTTAcl] = []
+
 class MQTTClientDescription(BaseModel):
     username: str
 
@@ -90,6 +98,13 @@ class ListClientsArgs(MQTTArgs):
 
 class ListRolesArgs(MQTTArgs):
     command: str = "listRoles"
+    verbose: bool = False
+    count: int = -1
+    offset: int = 0
+
+class GetRoleArgs(MQTTArgs):
+    command: str = "getRole"
+    rolename: str
 
 class CreateRoleArgs(MQTTArgs):
     command: str = "createRole"
@@ -101,7 +116,7 @@ class CreateRoleArgs(MQTTArgs):
 class AddRoleACLArgs(MQTTArgs):
     command: str = "addRoleACL"
     rolename: str
-    actltype: AclType
+    acltype: AclType
     topic: str
     priority: int
     allow: bool
@@ -122,7 +137,7 @@ class ListClientResponse(BaseModel):
 
 class ListRolesReponse(BaseModel):
     totalCount: int
-    roles: list[str]
+    roles: list[MQTTRoleDescriptionVerbose]
 
 #---Misc Types---
 
@@ -250,7 +265,7 @@ def clients_from_command(command_output: str) -> dict[str, MQTTClientDescription
     command_response = ListClientResponse.model_validate(response['data'])
     return {username: MQTTClientDescription(username=username) for username in command_response.clients}
 
-def roles_from_command(command_output: str) -> dict[str, MQTTRoleDescription]:
+def roles_from_command(command_output: str) -> dict[str, MQTTRoleDescriptionVerbose]:
     """
     Parses the output of a listRoles command.
     Args:
@@ -262,13 +277,13 @@ def roles_from_command(command_output: str) -> dict[str, MQTTRoleDescription]:
     command_outputs: dict[str, list[dict]] = decoder.decode(command_output)
     response: dict[str, dict] = command_outputs['responses'][0]
     command_response = ListRolesReponse.model_validate(response['data'])
-    return {rolename: MQTTRoleDescription(rolename=rolename) for rolename in command_response.roles}
+    return {role.rolename: role for role in command_response.roles}
 
 async def broker_sync():
     """
-    Ensures there is a client set up for the report listener  
-    Ensures a role is set up for each user
-    Note that this cannot set up a client for each *node* as the user must supply the passwords themselves.
+    Ensures there is a client set up for the report listener.  
+    Ensures a role is set up for each user.  
+    Note that this *cannot set up a client for each node* as the user must supply the passwords themselves.
     """
 
     async with Client(
@@ -283,7 +298,7 @@ async def broker_sync():
         
         async with asyncio.TaskGroup() as get_tasks:
             list_clients_task   = get_tasks.create_task(_execute_command(client, ListClientsArgs()))
-            list_roles_task     = get_tasks.create_task(_execute_command(client, ListRolesArgs()))
+            list_roles_task     = get_tasks.create_task(_execute_command(client, ListRolesArgs(verbose=True)))
             get_users_task      = get_tasks.create_task(dao.User.get_all_no_owner(db=db))
         # Get clients from broker
         clients = clients_from_command(list_clients_task.result() )
@@ -304,18 +319,49 @@ async def broker_sync():
             # Create roles for each user that doesn't have one.
             role_creation_tasks = []
             for user in users:
+                # Each user may or may not have a role before this part of the code runs.
+                # Since we need to know that the role exists before we start adding permissions to it,
+                # we will use this event to let the task that adds the permissions know when the role is created.
+                role_exists = asyncio.Event()
                 role_name = f"user{user.auid}"
                 if role_name not in roles.keys():
                     print(f"INFO: Creating role {role_name}")
                     role_creation_tasks.append(
                         command_tasks.create_task(_create_user_role(client, user.auid))
+                            .add_done_callback(lambda _: role_exists.set())
                     )
+                else:
+                    # If the role already exists we mark it as such.
+                    role_exists.set()
 
-                # Modify roles by getting all nodes owned by each user and ensuring user's role has permission to send to all nodes' topics
-                for node in await dao.Node.get_all(user.auid, db):
-                    pass
+                # Until we know the role exists we can't proceed.
+                await role_exists.wait()
+                # Check to see what nodes are allowed by the role.
+                try:
+                    allowed_node_ids = set(
+                        (_node_id_from_topic(acl.topic) for acl in roles[role_name].acls
+                         if acl.acltype == AclType.publish_client_send
+                         and acl.allow)
+                    )
+                except IndexError:
+                    # If the role isn't in roles that means it has no acls but we created it right now so we may proceed.
+                    allowed_node_ids = {}
+                # Modify roles by getting all nodes owned by each user and ensuring user's role has permission to send to all nodes' topics.
+                for node in filter(
+                    lambda node: node.nid not in allowed_node_ids, 
+                    await dao.Node.get_all(user.auid, db)
+                    ):
+                    print(f"INFO: adding topic access to node {node.nid} for user {user.username}")
+                    command_tasks.create_task(_add_topic_access(client, user.auid, node.nid))
 
-
+def _node_id_from_topic(topic: str) -> int:
+    """Extracts the node id from the topic"""
+    pattern = re.compile(r"\d+")
+    results = pattern.findall(topic)
+    if len(results) != 1:
+        raise ValueError
+    else:
+        return results[0]
 
 # This function is for consumers elsewhere to be able to make a new node
 async def create_node(user_id: int, node_username: str, node_password: SecretStr) -> bool:
@@ -351,7 +397,6 @@ async def add_topic_access(user_id: int, node_id: int) -> bool:
 
     Returns: ok
     """
-    args = AddRoleACLArgs(rolename=f"user{user_id}", actltype=AclType.publish_client_send, topic=f"reports/{node_id}", priority=0, allow=True)
     async with Client(
             hostname=MQTT_BROKER_HOSTNAME, 
             port=MQTT_BROKER_PORT, 
@@ -359,8 +404,38 @@ async def add_topic_access(user_id: int, node_id: int) -> bool:
             username="admin", 
             password=ADMIN_PASSWORD
         ) as client:
-        await _execute_command(client, args)
-        return True
+        return await _add_topic_access(client, user_id, node_id)
+    
+async def _add_topic_access(admin_client: Client, user_id: int, node_id: int) -> bool:
+    """
+    AS ADMIN
+    Gives user's primary nodes permission to post in a node's topic
+
+    Args:
+        admin_client: MQTT client with controls publish access
+        user_id: user whose nodes will gain permission
+        node_id: new node
+
+    Returns: ok
+    """
+    args1 = AddRoleACLArgs(
+        rolename=f"user{user_id}", 
+        acltype=AclType.publish_client_send, 
+        topic=f"reports/{node_id}", 
+        priority=0, 
+        allow=True
+    )
+    args2 = AddRoleACLArgs(
+        rolename=f"user{user_id}", 
+        acltype=AclType.publish_client_receive, 
+        topic=f"reports/{node_id}", 
+        priority=0, 
+        allow=True
+    )
+    async with asyncio.TaskGroup() as command_tasks:
+        command1 = command_tasks.create_task(_execute_command(admin_client, args1))
+        command2 = command_tasks.create_task(_execute_command(admin_client, args2))
+    return True
 
 async def create_user_role(user_id: int) -> bool:
     """
