@@ -414,7 +414,7 @@ async def _execute_command(admin_client: Client, args: MQTTArgs) -> str:
     """
     await global_command_lock.acquire()
     await listener_ready.wait()
-    message = MQTTCommands(commands=[args]).model_dump_json()
+    message = MQTTCommands(commands=[args]).model_dump_json(exclude_none=True)
     await admin_client.publish(CONTROL_TOPIC, message)
 
     handle = command_handle()
