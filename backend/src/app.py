@@ -17,6 +17,7 @@ import mqtt
 import dao as dao
 import os
 import io
+import asyncio
 
 from datetime import datetime, timedelta
 
@@ -70,6 +71,21 @@ async def node_all(current_user: Annotated[LightWeightUser, Depends(get_current_
 async def node_get(current_user: Annotated[LightWeightUser, Depends(get_current_user)], nid: int, db=Depends(get_db_connection)):
     return await dao.Node.get(current_user.auid, nid, db)
 
+@app.get("/api/node/noclient")
+async def nodes_with_no_client(current_user: Annotated[LightWeightUser, Depends(get_current_user)], db=Depends(get_db_connection)) -> list[dao.Node]:
+    """
+    Lists which of the user's primary nodes are missing a client.
+    """
+    async with asyncio.TaskGroup() as tg:
+        all_mqtt_clients = tg.create_task(mqtt.all_clients())
+        user_nodes = tg.create_task(dao.Node.get_all(current_user.auid, db))
+    primary_nodes: list[dao.Node] = list(filter(
+        lambda node: node.ntype == "primary",
+        user_nodes.result()
+    ))
+    client_names = all_mqtt_clients.result().keys()
+    missing_nodes = filter(lambda node: node.nname in client_names, primary_nodes)
+    return list(missing_nodes)
 
 @app.get("/api/timestamp/all")
 async def timestamp_all(current_user: Annotated[LightWeightUser, Depends(get_current_user)], db=Depends(get_db_connection)):
@@ -162,10 +178,10 @@ async def classify_by_afid(
 @app.post(path="/api/node/insert")
 async def node_insert(
     ntype: Annotated[str, Form()],
+    nname: Annotated[str, Form()],
     nlatitude: Annotated[float, Form()],
     nlongitude: Annotated[float, Form()],
     ndescription: Annotated[str, Form()],
-    nname: Annotated[str, Form()],
     current_user: Annotated[LightWeightUser, Depends(get_current_user)],
     node_client_password: Annotated[SecretStr | None, Form()] = None,
     db=Depends(get_db_connection),
@@ -180,7 +196,7 @@ async def node_insert(
             raise HTTPException(500, "Failed to set up node's MQTT client")
 
     ownerid = current_user.auid
-    newNode = dao.Node.insert(db, ownerid, ntype, nlatitude, nlongitude, ndescription)
+    newNode = dao.Node.insert(db, ownerid, nname, ntype, nlatitude, nlongitude, ndescription)
     if newNode is None:
         raise HTTPException(500, "Failed to create new node")
     

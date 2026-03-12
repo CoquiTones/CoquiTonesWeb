@@ -279,6 +279,18 @@ def roles_from_command(command_output: str) -> dict[str, MQTTRoleDescriptionVerb
     command_response = ListRolesReponse.model_validate(response['data'])
     return {role.rolename: role for role in command_response.roles}
 
+async def all_clients() -> dict[str, MQTTClientDescription]:
+    """Returns dict from name of each client to their description."""
+    args = ListClientsArgs()
+    async with Client(
+        hostname=MQTT_BROKER_HOSTNAME,
+        port=MQTT_BROKER_PORT,
+        identifier="admin",
+        username="admin",
+        password=ADMIN_PASSWORD
+    ) as client:
+        return clients_from_command(await _execute_command(client, args))
+
 async def broker_sync():
     """
     Ensures there is a client set up for the report listener.  
