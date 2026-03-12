@@ -552,10 +552,6 @@ class Dashboard:
                 db (connection) ]
         """
 
-        @dataclass
-        class DeleteResult:
-            recoreds_delted: int
-
         MAX_BATCH_SIZE = 1000
         number_of_records = len(records)
         necessary_statements = (number_of_records // MAX_BATCH_SIZE) + 1
@@ -589,7 +585,7 @@ class Dashboard:
                     record_index += number_of_rows_to_insert
                     db.commit()
 
-                return number_of_records
+                return rowcount
             except psycopg2.Error as e:
                 LOGGER.error("Error Executing SQL Query ot delte rows: ", e)
                 raise default_HTTP_exception(e.pgcode, "Dashboard Delete Record query")  # type: ignore

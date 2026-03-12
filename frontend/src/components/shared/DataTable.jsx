@@ -68,6 +68,7 @@ export default function DataTable({ Actions }) {
             setLoading(true)
             const deleteRecordsRequest = new DeleteRecordRequest(selectedRows.map((selectedRow) => (selectedRow.tid)));
             await APIHandler.delete_records(deleteRecordsRequest);
+            fetchRecentDataRows();
         } catch (error) {
             console.error("Error deleting record:", error);
             setDownloadError("Failed to delete record");
