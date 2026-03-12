@@ -23,8 +23,8 @@ CREATE TABLE node (
     ntype       node_type NOT NULL,
     nlatitude   REAL NOT NULL,
     nlongitude  REAL NOT NULL,
-    ndescription VARCHAR(512)
-    UNIQUE(nname)
+    ndescription VARCHAR(512),
+    UNIQUE (nname)
 );
 
 CREATE TABLE timestampindex (
