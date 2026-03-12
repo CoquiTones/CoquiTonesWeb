@@ -6,6 +6,7 @@ from typing import Annotated
 from fastapi import FastAPI, File, UploadFile, staticfiles, Depends, HTTPException, Form
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, Response
+from fastapi import status
 from dbutil import get_db_connection
 from mlutil import get_model, classify_audio_file
 from pydantic import SecretStr
@@ -70,6 +71,20 @@ async def node_all(current_user: Annotated[LightWeightUser, Depends(get_current_
 @app.get("/api/node/{nid}")
 async def node_get(current_user: Annotated[LightWeightUser, Depends(get_current_user)], nid: int, db=Depends(get_db_connection)):
     return await dao.Node.get(current_user.auid, nid, db)
+
+@app.post("api/node/mqtt/{nid}")
+async def create_node_client(
+    current_user: Annotated[LightWeightUser, Depends(get_current_user)], 
+    nid: int,
+    password: Annotated[SecretStr, Form()],
+    db=Depends(get_db_connection)
+    ):
+    """Creates an MQTT client for a node that doesn't have one."""
+    node = await dao.Node.get(current_user.auid, nid, db)
+    if node is None:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Node doesn't exist")
+    if not await mqtt.create_node(current_user.auid, node.nname, password):
+        raise HTTPException(status.HTTP_500_INTERNAL_SERVER_ERROR, "Failed to create client")
 
 @app.get("/api/node/noclient")
 async def nodes_with_no_client(current_user: Annotated[LightWeightUser, Depends(get_current_user)], db=Depends(get_db_connection)) -> list[dao.Node]:
