@@ -9,16 +9,18 @@ from pydantic import SecretStr
 from routers.security import get_current_user, LightWeightUser
 from routers.security import router as security_router
 from standaloneops import classify_and_save
+
+import dotenv
+dotenv.load_dotenv(dotenv_path="backend/src/.env")
+
 import dao
 import mqtt
 import dao as dao
 import os
 import io
-import dotenv
 
 from datetime import datetime, timedelta
 
-dotenv.load_dotenv(dotenv_path="backend/src/.env")
 
 # Define our lifespan so we can start the mqtt client together with the server
 @asynccontextmanager
