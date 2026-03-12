@@ -1,3 +1,6 @@
+import dotenv
+dotenv.load_dotenv(dotenv_path="backend/src/.env")
+
 from contextlib import asynccontextmanager
 from typing import Annotated
 from fastapi import FastAPI, File, UploadFile, staticfiles, Depends, HTTPException, Form
@@ -9,10 +12,6 @@ from pydantic import SecretStr
 from routers.security import get_current_user, LightWeightUser
 from routers.security import router as security_router
 from standaloneops import classify_and_save
-
-import dotenv
-dotenv.load_dotenv(dotenv_path="backend/src/.env")
-
 import dao
 import mqtt
 import dao as dao
