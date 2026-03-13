@@ -6,9 +6,14 @@ import os
 import re
 from io import BytesIO
 from dbutil import get_database_connection
-from typing import Annotated, Any
-from pydantic import BaseModel, ValidationError, PlainSerializer, Base64Bytes, SecretStr
-from json import JSONDecoder
+from typing import Any, List, Union
+from pydantic import (
+    BaseModel, 
+    ValidationError, 
+    Base64Bytes, 
+    SecretStr,
+    Field,
+)
 from enum import Enum
 from datetime import datetime
 from standaloneops import classify_and_save
@@ -90,7 +95,12 @@ class ErrorResponse(BaseModel):
     error: str
 
 class MQTTCommandResponses(BaseModel):
-    responses: list[SuccessfulResponse | ErrorResponse]
+    # If this file is ever extended to implement batching up commands, this will break.
+    # It assumes that the responses to a group of commands either all succeed or all fail.
+    # This was written this way because List[Union[...]] cannot be made to prioritize left to right,
+    # which is a problem since any ErrorResponse could actually match as a SuccessfulReponse.
+    # It's therefore necessary to match ErrorResponse first and then SuccessfulReponse.
+    responses: Union[List[ErrorResponse], List[SuccessfulResponse]] = Field(...,union_mode='left_to_right')
 # ---Command types---
 class MQTTArgs(BaseModel):
     command: str
