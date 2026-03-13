@@ -361,11 +361,11 @@ async def broker_sync():
                 await role_exists.wait()
                 # Check to see what nodes are allowed by the role.
                 try:
-                    allowed_node_ids = set(
-                        (_node_id_from_topic(acl.topic) for acl in roles[role_name].acls
-                         if acl.acltype == AclType.publish_client_send
-                         and acl.allow)
-                    )
+                    allowed_node_ids = {
+                        _node_id_from_topic(acl.topic) for acl in roles[role_name].acls
+                        if acl.acltype == AclType.publish_client_send
+                        and acl.allow
+                    }
                 except KeyError:
                     # If the role isn't in roles that means it has no acls but we created it right now so we may proceed.
                     allowed_node_ids = {}
@@ -384,7 +384,7 @@ def _node_id_from_topic(topic: str) -> int:
     if len(results) != 1:
         raise ValueError
     else:
-        return results[0]
+        return int(results[0])
 
 # This function is for consumers elsewhere to be able to make a new node
 async def create_node(user_id: int, node_username: str, node_password: SecretStr) -> bool:
