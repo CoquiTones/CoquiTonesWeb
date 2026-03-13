@@ -83,7 +83,7 @@ class MQTTClientDescription(BaseModel):
 
 class SuccessfulResponse(BaseModel):
     command: str
-    data: Any
+    data: Any | None = None
 
 class ErrorResponse(BaseModel):
     command: str
@@ -366,7 +366,7 @@ async def broker_sync():
                          if acl.acltype == AclType.publish_client_send
                          and acl.allow)
                     )
-                except IndexError:
+                except KeyError:
                     # If the role isn't in roles that means it has no acls but we created it right now so we may proceed.
                     allowed_node_ids = {}
                 # Modify roles by getting all nodes owned by each user and ensuring user's role has permission to send to all nodes' topics.
@@ -455,6 +455,7 @@ async def _add_topic_access(admin_client: Client, user_id: int, node_id: int) ->
         priority=0, 
         allow=True
     )
+
     async with asyncio.TaskGroup() as command_tasks:
         command1 = command_tasks.create_task(_execute_command(admin_client, args1))
         command2 = command_tasks.create_task(_execute_command(admin_client, args2))
@@ -559,24 +560,25 @@ async def _create_listener(admin_client: Client) -> bool:
         priority=0,
         allow=True
     )
-    args = CreateRoleArgs(
+    args1 = CreateRoleArgs(
         rolename="listen-to-reports",
         textname="Listen to reports",
         textdescription="Role for coquitones-app to be able to read all reports",
         acls=[acl]
     )
 
-    await _execute_command(admin_client, args)
+    await _execute_command(admin_client, args1)
 
+    # Then use the role to make the client
     role_description = MQTTRoleShort(rolename="listen-to-reports", priority=0)
-    args = CreateClientArgs(
+    args2 = CreateClientArgs(
         username="reports-listener",
         password=LISTENER_PASSWORD,
         groups=[],
         roles=[role_description]
     )
 
-    await _execute_command(admin_client, args)
+    await _execute_command(admin_client, args2)
 
     return True
 
