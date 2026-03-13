@@ -585,7 +585,7 @@ class Dashboard:
                     record_index += number_of_rows_to_insert
                     db.commit()
 
-                return rowcount
+                return curs.rowcount
             except psycopg2.Error as e:
                 LOGGER.error("Error Executing SQL Query ot delte rows: ", e)
                 raise default_HTTP_exception(e.pgcode, "Dashboard Delete Record query")  # type: ignore
