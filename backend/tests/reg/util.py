@@ -21,3 +21,8 @@ def login() -> OAuth2Session:
     oauth.verify = certfile
 
     return oauth
+
+def session() -> requests.sessions.Session:
+    session = requests.sessions.Session()
+    session.verify = certfile
+    return session
