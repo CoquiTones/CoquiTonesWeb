@@ -28,7 +28,9 @@ MQTT_BROKER_HOSTNAME = "localhost"
 MQTT_BROKER_PORT = 2043
 CONTROL_TOPIC = "$CONTROL/dynamic-security/v1"
 CONTROL_RESPONSE_TOPIC = "$CONTROL/dynamic-security/v1/response"
+
 MAX_COMMAND_QUEUE_SIZE = 10
+COMMAND_CHECK_PERIOD = 0.1 # seconds
 
 #---Report Data Types---
 class WeatherData(BaseModel):
@@ -172,11 +174,17 @@ class CommandExcept(BaseException):
         super().__init__(*args)
         self.detail = response
 
+    def __repr__(self) -> str:
+        return self.detail.error
+    
+    def __str__(self) -> str:
+        return self.detail.error
+
 report_listener_thread = None
 command_listener_thread = None
 command_sender_info_queue: Queue[tuple[CommandHandle, asyncio.Event]] = Queue(MAX_COMMAND_QUEUE_SIZE)
 receive_command_output_channel: dict[CommandHandle, bytes] = {}
-global_command_lock = asyncio.Lock()
+global_command_lock = threading.Lock()
 listener_ready = asyncio.Event()
 
 def start():
@@ -525,7 +533,11 @@ async def _execute_command(admin_client: Client, args: MQTTArgs) -> SuccessfulRe
     Raises: 
         CommandExcept when command fails
     """
-    await global_command_lock.acquire()
+    # TODO: Smarter non-blocking lock
+    # This can't be an async lock because the main app runs on a  thread with a different event loop, 
+    # which means it can't await events in this thread's event loop.
+    while not global_command_lock.acquire(blocking=False):
+        await asyncio.sleep(COMMAND_CHECK_PERIOD)
     await listener_ready.wait()
     message = MQTTCommands(commands=[args]).model_dump_json(exclude_none=True)
     await admin_client.publish(CONTROL_TOPIC, message)

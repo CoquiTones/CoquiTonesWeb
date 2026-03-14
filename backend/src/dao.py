@@ -246,11 +246,11 @@ class Node(DAO):
                     sql.SQL(
                         """
                             INSERT INTO {} (ownerid, nname, ntype, nlatitude, nlongitude, ndescription)
-                            VALUES (%s, %s, %s, %s, %s)
+                            VALUES (%s, %s, %s, %s, %s, %s)
                             RETURNING nid
                             """
                     ).format(cls.table),
-                    (ownerid, ntype, nlatitude, nlongitude, ndescription),
+                    (ownerid, nname, ntype, nlatitude, nlongitude, ndescription),
                 )
 
                 db.commit()
