@@ -405,7 +405,7 @@ def _node_id_from_topic(topic: str) -> int:
         return int(results[0])
 
 # This function is for consumers elsewhere to be able to make a new node
-async def create_node(user_id: int, node_username: str, node_password: SecretStr) -> bool:
+async def create_node(user_id: int, node_username: str, node_password: SecretStr):
     """
     Creates a new node and sets it up with the MQTT broker
 
@@ -414,7 +414,8 @@ async def create_node(user_id: int, node_username: str, node_password: SecretStr
         node_username: name for the new node's client
         node_password: password for the new node's client
     
-    Returns: ok
+    Raises:
+        CommandExcept: if command fails
     """
     role = MQTTRoleShort(rolename= f"user{user_id}", priority=0)
     args = CreateClientArgs(username=node_username, password=node_password.get_secret_value(), groups=[], roles=[role])
@@ -426,9 +427,8 @@ async def create_node(user_id: int, node_username: str, node_password: SecretStr
             password=ADMIN_PASSWORD
         ) as client:
         await _execute_command(client, args)
-        return True
     
-async def add_topic_access(user_id: int, node_id: int) -> bool:
+async def add_topic_access(user_id: int, node_id: int):
     """
     Gives user's primary nodes permission to post in a node's topic
 
@@ -436,7 +436,8 @@ async def add_topic_access(user_id: int, node_id: int) -> bool:
         user_id: user whose nodes will gain permission
         node_id: new node
 
-    Returns: ok
+    Raises:
+        CommandExcept: if command fails
     """
     async with Client(
             hostname=MQTT_BROKER_HOSTNAME, 
@@ -445,9 +446,9 @@ async def add_topic_access(user_id: int, node_id: int) -> bool:
             username="admin", 
             password=ADMIN_PASSWORD
         ) as client:
-        return await _add_topic_access(client, user_id, node_id)
+        await _add_topic_access(client, user_id, node_id)
     
-async def _add_topic_access(admin_client: Client, user_id: int, node_id: int) -> bool:
+async def _add_topic_access(admin_client: Client, user_id: int, node_id: int):
     """
     AS ADMIN
     Gives user's primary nodes permission to post in a node's topic
@@ -457,7 +458,8 @@ async def _add_topic_access(admin_client: Client, user_id: int, node_id: int) ->
         user_id: user whose nodes will gain permission
         node_id: new node
 
-    Returns: ok
+    Raises:
+        CommandExcept: if command fails
     """
     args1 = AddRoleACLArgs(
         rolename=f"user{user_id}", 
@@ -477,16 +479,16 @@ async def _add_topic_access(admin_client: Client, user_id: int, node_id: int) ->
     async with asyncio.TaskGroup() as command_tasks:
         command1 = command_tasks.create_task(_execute_command(admin_client, args1))
         command2 = command_tasks.create_task(_execute_command(admin_client, args2))
-    return True
 
-async def create_user_role(user_id: int) -> bool:
+async def create_user_role(user_id: int):
     """
     Creates a role for a user's nodes.
 
     Args:
         user_id: user
 
-    Returns: ok
+    Raises:
+        CommandExcept: if command fails
     """
 
     async with Client(
@@ -496,9 +498,9 @@ async def create_user_role(user_id: int) -> bool:
             username="admin", 
             password=ADMIN_PASSWORD
         ) as client:
-        return await _create_user_role(client, user_id)
+        await _create_user_role(client, user_id)
 
-async def _create_user_role(admin_client: Client, user_id: int) -> bool:
+async def _create_user_role(admin_client: Client, user_id: int):
     """
     AS ADMIN
     Creates a role for a user's nodes.
@@ -507,7 +509,8 @@ async def _create_user_role(admin_client: Client, user_id: int) -> bool:
         admin_client: MQTT client with controls publish access
         user_id: user
 
-    Returns: ok
+    Raises:
+        CommandExcept: if command fails
     """
     args = CreateRoleArgs(
         rolename=f"user{user_id}", 
@@ -516,7 +519,6 @@ async def _create_user_role(admin_client: Client, user_id: int) -> bool:
         acls = None
     )
     await _execute_command(admin_client, args)
-    return True
 
 async def _execute_command(admin_client: Client, args: MQTTArgs) -> SuccessfulResponse:
     """
@@ -565,7 +567,7 @@ async def _execute_command(admin_client: Client, args: MQTTArgs) -> SuccessfulRe
         raise CommandExcept(response)
 
 
-async def _create_listener(admin_client: Client) -> bool:
+async def _create_listener(admin_client: Client):
     """
     AS ADMIN
     Makes a new MQTT client for listening to reports.
@@ -573,6 +575,9 @@ async def _create_listener(admin_client: Client) -> bool:
 
     Args:
         admin_client: MQTT client with controls publish access
+    
+    Raises:
+        CommandExcept: if command fails
     """
 
     # First create the role
@@ -601,8 +606,6 @@ async def _create_listener(admin_client: Client) -> bool:
     )
 
     await _execute_command(admin_client, args2)
-
-    return True
 
 def command_handle() -> CommandHandle:
     """

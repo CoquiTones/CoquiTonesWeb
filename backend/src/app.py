@@ -207,7 +207,10 @@ async def node_insert(
             raise HTTPException(status_code=400, detail="Must provide password for new primary nodes")
         
         # Primary node must have a client with the broker
-        if not await mqtt.create_node(current_user.auid, nname, node_client_password):
+        try: 
+            await mqtt.create_node(current_user.auid, nname, node_client_password)
+        except mqtt.CommandExcept as e:
+            print(f"ERROR: Failed to create client: \n\t{e.detail.error}\n\tCommand: {e.detail.command}")
             raise HTTPException(500, "Failed to set up node's MQTT client")
 
     ownerid = current_user.auid
@@ -217,7 +220,10 @@ async def node_insert(
     
     # All the user's primary nodes must have access to a topic corresponding to the new node
     # This allows them to upload reports from the new node into the appropriate topic
-    if not await mqtt.add_topic_access(current_user.auid, newNode.nid):
+    try:
+        await mqtt.add_topic_access(current_user.auid, newNode.nid)
+    except mqtt.CommandExcept as e:
+        print(f"ERROR: Failed to add topic access: \n\t{e.detail.error}\n\tCommand: {e.detail.command}")
         raise HTTPException(500, "Failed to set up MQTT permissions for node")
     
     return newNode
