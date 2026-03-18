@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from dbutil import default_HTTP_exception
 from itertools import starmap
+from Requests.RecordToBeDeleted import RecordTimestampIndex
 import psycopg2
 import logging
 
@@ -14,7 +15,7 @@ logging.basicConfig(
     level=logging.DEBUG,
     format="%(asctime)s - [%(funcName)s]: %(levelname)s - %(message)s",
 )
-LOGGER = logging.getLogger("Mock Data Generator Logger")
+LOGGER = logging.getLogger("DAO Service Component")
 
 
 class DAO:
@@ -541,7 +542,7 @@ class Dashboard:
                 raise default_HTTP_exception(e.pgcode, "dashboard recent data query")  # type: ignore
 
     @staticmethod
-    def delete_records(owner: int, records: list[str], db: connection):
+    def delete_records(owner: int, records: list[RecordTimestampIndex], db: connection):
         """Deletes a list of records  based on join from @recent_data record
 
         Args:
@@ -567,7 +568,7 @@ class Dashboard:
                         else MAX_BATCH_SIZE
                     )
                     batch_values = [
-                        (int(records[j]))
+                        (records[j].timestamp_index_id,)
                         for j in range(
                             record_index, number_of_rows_to_insert + record_index, 1
                         )

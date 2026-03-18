@@ -96,8 +96,8 @@ export class APIHandlerDashboard extends APIHandlerBase {
         try {
             const response = await fetch(this.web_url + "/api/dashboard/delete", {
                 method: "DELETE",
-                headers: this.getAuthenticationHeader(),
-                body: deleteRecordRequest.toFormData()
+                headers: { "Content-Type": "application/json", ...this.getAuthenticationHeader() },
+                body: deleteRecordRequest.toJSON()
             });
 
             if (!response.ok) {

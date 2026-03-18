@@ -7,6 +7,7 @@ from mlutil import get_model, classify_audio_file
 from Spectrogram import sendMelSpectrogram, sendBasicSpectrogram
 from routers.security import get_current_user, LightWeightUser
 from routers.security import router as security_router
+from Requests.RecordToBeDeleted import RecordTimestampIndex
 import dao
 import os
 import io
@@ -151,7 +152,7 @@ async def classify_and_save(audio, audio_file_id, db, model):
         classified_slice["endtime"] = classified_slice.pop("end_time")
         slice_insert_tasks.append(
             asyncio.create_task(
-                dao.AudioSlice.insert(db, audio_file_id, **classified_slice), # type: ignore
+                dao.AudioSlice.insert(db, audio_file_id, **classified_slice),  # type: ignore
                 name=classified_slice_name,
             )
         )
@@ -300,10 +301,10 @@ async def recent_data(
 @app.delete(path="/api/dashboard/delete")
 async def delete_record(
     current_user: Annotated[LightWeightUser, Depends(get_current_user)],
-    list_of_records_to_be_deleted: Annotated[str, Form()],
+    list_of_records_to_be_deleted: list[RecordTimestampIndex],
     db=Depends(get_db_connection),
 ):
-    list_of_records_to_be_deleted = json.loads(list_of_records_to_be_deleted)
+
     return dao.Dashboard.delete_records(
         current_user.auid, list_of_records_to_be_deleted, db
     )
