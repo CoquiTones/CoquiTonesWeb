@@ -19,10 +19,12 @@ CREATE TABLE appuser (
 CREATE TABLE node (
     nid         SERIAL PRIMARY KEY,
     ownerid     INTEGER REFERENCES appuser,
+    nname       VARCHAR(30) NOT NULL,
     ntype       node_type NOT NULL,
     nlatitude   REAL NOT NULL,
     nlongitude  REAL NOT NULL,
-    ndescription VARCHAR(512)
+    ndescription VARCHAR(512),
+    UNIQUE (nname)
 );
 
 CREATE TABLE timestampindex (

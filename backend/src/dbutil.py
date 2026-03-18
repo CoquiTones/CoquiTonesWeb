@@ -1,12 +1,12 @@
 from fastapi import HTTPException
 from urllib.parse import urlparse
 from constants import ENVIRONMENT_DATABASE_CONFIG
+from psycopg2.extensions import connection
 import psycopg2
 import json
 import os
 
-
-def get_connection_from_environment():
+def get_connection_from_environment() -> connection | None:
     """
     Uses Environment variable database url for getting database parameters.
     See docker-compose.yml for example of what this looks like
@@ -37,7 +37,7 @@ def get_connection_from_environment():
         return None
 
 
-def get_connection_from_development_config():
+def get_connection_from_development_config() -> connection | None:
     """
     Uses config hardcoded config file to connect to database.
 
@@ -56,7 +56,7 @@ def get_connection_from_development_config():
             return None
 
 
-def get_database_connection():
+def get_database_connection() -> connection | None:
     """Returns psycopg2 connection object based on current configuration.
     Uses Environment variables or hardcoded development config json
 
@@ -87,5 +87,8 @@ def get_db_connection():
         connection.close()
 
 
-def default_HTTP_exception(code: str, additional_info: str) -> HTTPException:
-    return HTTPException(status_code=500, detail=f"Database error {code}: {psycopg2.errors.lookup(code)}\n While doing " + additional_info)
+def default_HTTP_exception(code: str | None, additional_info: str) -> HTTPException:
+    return HTTPException(status_code=500, detail=
+                         f"Database error {code}: {psycopg2.errors.lookup(code)}\n While doing {additional_info}"
+                         if code else 
+                         f"Database error while doing {additional_info}")

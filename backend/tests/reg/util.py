@@ -1,3 +1,4 @@
+# TODO: Rework all our tests to use aiohttp
 import requests
 from requests_oauthlib import OAuth2Session
 
@@ -19,4 +20,9 @@ def login() -> OAuth2Session:
     oauth = OAuth2Session(client_id="testuser", token=response.json())
     oauth.verify = certfile
 
-    return oauth    
+    return oauth
+
+def session() -> requests.sessions.Session:
+    session = requests.sessions.Session()
+    session.verify = certfile
+    return session

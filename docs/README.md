@@ -23,7 +23,7 @@
 
 ## Optional Step: [Run Machine Learning notebook to generate model](../machine_learning/prepare_data_and_train_model.ipynb)
 
-Note: This step requires you have jupyter dependancies installed
+Note: This step requires you have jupyter dependencies installed
 
 ## Step 2: Development Deployment using Docker Compose
 
