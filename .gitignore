@@ -33,4 +33,4 @@ machine_learning/.ipynb_checkpoints/*
 
 mosquitto/config/pwfile
 mosquitto/data/mosquitto.db
-mosquitto/config/mosquitto.conf
+mosquitto/config/dynamic_security.json
