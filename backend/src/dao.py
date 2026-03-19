@@ -573,7 +573,6 @@ class Dashboard:
                             record_index, number_of_rows_to_insert + record_index, 1
                         )
                     ]
-                    print("batch values: ", batch_values)
                     curs.execute(
                         """
                         DELETE FROM timestampindex WHERE tid = ANY(%s) 
