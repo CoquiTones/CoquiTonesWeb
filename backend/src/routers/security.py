@@ -6,7 +6,7 @@ from fastapi import Depends, HTTPException, APIRouter, Form
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from pydantic import BaseModel, SecretStr
 from jwt.exceptions import InvalidTokenError
-from dbutil import db_dep
+from dbutil import DependsOnDB
 import hashlib
 import dao
 import os
@@ -101,7 +101,7 @@ async def authenticate_user(
 @router.post("/api/token")
 async def login_for_access_token(
     form_data: Annotated[OAuth2PasswordRequestForm, Depends()],
-    db=Depends(db_dep),
+    db: DependsOnDB,
 ) -> Token:
 
     user = await authenticate_user(
@@ -115,6 +115,8 @@ async def login_for_access_token(
         data={"sub": f"username:{user.username}", "auid": user.auid},
         expires_delta=access_token_expires,
     )
+    
+    await db.commit()
 
     return Token(access_token=access_token, token_type="bearer")
 
@@ -137,7 +139,7 @@ async def read_users_me(
 async def create_user(
     username: Annotated[str, Form()],
     password: Annotated[SecretStr, Form()],
-    db=Depends(db_dep),
+    db: DependsOnDB,
 ):
     if len(username) > 30:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Username too long")

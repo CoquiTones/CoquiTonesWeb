@@ -1,5 +1,5 @@
-from typing import AsyncGenerator
-from fastapi import HTTPException
+from typing import AsyncGenerator, Annotated
+from fastapi import HTTPException, Depends
 from urllib.parse import urlparse
 from constants import ENVIRONMENT_DATABASE_CONFIG
 from pydantic import BaseModel, ValidationError
@@ -115,6 +115,8 @@ async def db_dep() -> AsyncGenerator[psycopg.AsyncConnection]:
             yield connection
         finally:
             await connection.close()
+
+type DependsOnDB = Annotated[psycopg.AsyncConnection, Depends(db_dep)] 
 
 
 def default_HTTP_exception(code: str | None, additional_info: str) -> HTTPException:
