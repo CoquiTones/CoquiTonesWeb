@@ -5,7 +5,7 @@ from constants import ENVIRONMENT_DATABASE_CONFIG
 from pydantic import BaseModel, ValidationError
 from aiocache import cached
 from psycopg_pool import AsyncConnectionPool
-import psycopg
+from psycopg import AsyncConnection, Error, errors
 import json
 import os
 
@@ -53,7 +53,7 @@ def get_connection_from_environment() -> ConnInfo:
             port = result.port,
         )
         return str(conn)
-    except psycopg.Error as e:
+    except Error as e:
         print("ERROR: Couldn't create connection to database:\n", e)
         raise e
 
@@ -76,7 +76,7 @@ def get_connection_from_development_config() -> ConnInfo:
         try:
             return str(conn)
         
-        except psycopg.Error as e:
+        except Error as e:
             print("ERROR: Couldn't create connection to database:\n", e)
             raise e
 
@@ -84,7 +84,8 @@ def get_connection_from_development_config() -> ConnInfo:
 async def make_connection_pool() -> AsyncConnectionPool:
     """
     Returns psycopg async connection pool based on current configuration.
-    Uses Environment variables or hardcoded development config json
+    Uses Environment variables or hardcoded development config json.
+    Also opens the pool.
 
     Returns:
         Async connection pool
@@ -99,7 +100,7 @@ async def make_connection_pool() -> AsyncConnectionPool:
     return pool
 
 
-async def db_dep() -> AsyncGenerator[psycopg.AsyncConnection]:
+async def db_dep() -> AsyncGenerator[AsyncConnection]:
     """
     Generator Function to provide database connection object.
 
@@ -116,11 +117,20 @@ async def db_dep() -> AsyncGenerator[psycopg.AsyncConnection]:
         finally:
             await connection.close()
 
-type DependsOnDB = Annotated[psycopg.AsyncConnection, Depends(db_dep)] 
+type DependsOnDB = Annotated[AsyncConnection, Depends(db_dep)] 
 
 
-def default_HTTP_exception(code: str | None, additional_info: str) -> HTTPException:
-    if code is None:
+def default_HTTP_exception(error: Error | None, additional_info: str) -> HTTPException:
+    """
+    Creates a HTTP exception that gives the general idea of why an error occured without exposing the diagnostics.
+
+    Args:
+        - error: psycopg Error
+        - additional_info: description of what operation triggered the error
+
+    Returns HTTPException that has the sqlstate and small description of what caused the error, safe to display to the user.
+    """
+    if error is None or error.sqlstate is None:
         return HTTPException(status_code=500, detail="Unknown database error while doing " + additional_info)
     else:
-        return HTTPException(status_code=500, detail=f"Database error {code}: {psycopg.errors.lookup(code)}\n While doing " + additional_info)
+        return HTTPException(status_code=500, detail=f"Database error {error.sqlstate}: {errors.lookup(error.sqlstate)}\n While doing " + additional_info)

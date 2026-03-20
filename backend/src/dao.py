@@ -1,6 +1,7 @@
-from psycopg import sql
+from psycopg import sql, errors
 from psycopg.connection_async import AsyncConnection
 from psycopg import Error as PGError
+from psycopg.rows import class_row
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from dbutil import default_HTTP_exception
@@ -29,9 +30,9 @@ class DAO:
     @classmethod
     async def get_all(cls, owner: int, db: AsyncConnection) -> list:
         """Get all owned entities in a list."""
-        async with db.cursor() as curs:
+        async with db.cursor(row_factory=class_row(cls)) as curs:
             try:
-                curs.execute(
+                await curs.execute(
                     sql.SQL(
                         """
 WITH owner_matches as (
@@ -47,19 +48,19 @@ SELECT * FROM {my_table} NATURAL INNER JOIN owner_matches
                     ),
                     (owner,),
                 )
-            except psycopg2.Error as e:
+            except PGError as e:
                 LOGGER.error("Error executing SQL query:", e)
-                raise default_HTTP_exception(e.pgcode, "get all query")  # type: ignore
+                raise default_HTTP_exception(e, "get all query") 
 
             # Unpack the tuples into constructor
-            return [cls(*row) for row in curs.fetchall()]
+            return await curs.fetchall()
 
     @classmethod
-    async def get(cls, owner: int, id: int, db: connection):
+    async def get(cls, owner: int, id: int, db: AsyncConnection):
         """Get one owned entity by its ID."""
-        with db.cursor() as curs:
+        async with db.cursor(row_factory=class_row(cls)) as curs:
             try:
-                curs.execute(
+                await curs.execute(
                     sql.SQL(
                         """
 WITH owner_matches as (
@@ -79,16 +80,13 @@ WHERE {my_id} = %s
                         id,
                     ),
                 )
-            except psycopg2.Error as e:
+            except PGError as e:
                 LOGGER.error("Error executing SQL query:", e)
-                raise default_HTTP_exception(e.pgcode, "get query")  # type: ignore
+                raise default_HTTP_exception(e, "get query")
 
             entity = curs.fetchone()
-            # Unpack the tuple into constructor
-            if entity is not None:
-                return cls(*entity)
-            else:
-                return None
+            
+            
 
     @classmethod
     def delete(cls, owner: int, id: int, db: connection) -> int | None:
@@ -125,9 +123,9 @@ RETURNING {my_id}
                     ),
                     {"my_id": id, "owner_id": owner},
                 )
-            except psycopg2.Error as e:
+            except PGError as e:
                 LOGGER.error("Error executing SQL query:", e)
-                raise default_HTTP_exception(e.pgcode, "delete query")  # type: ignore
+                raise default_HTTP_exception(e, "delete query") 
             db_response = curs.fetchone()
 
             if db_response is not None:
@@ -167,9 +165,9 @@ class User(DAO):
                     return user
                 else:
                     return None
-            except psycopg2.Error as e:
+            except PGError as e:
                 LOGGER.error("Error executing SQL query:", e)
-                raise default_HTTP_exception(e.pgcode, "Get user query")  # type: ignore
+                raise default_HTTP_exception(e, "Get user query")
 
     @staticmethod
     async def insert(
@@ -192,11 +190,11 @@ RETURNING auid
                 if db_response is None:
                     raise ValueError
                 return db_response[0]
-            except psycopg2.Error as e:
-                if isinstance(e, psycopg2.errors.UniqueViolation):
+            except PGError as e:
+                if isinstance(e, errors.UniqueViolation):
                     return None
                 LOGGER.error("Error executing SQL query:", e)
-                raise default_HTTP_exception(e.pgcode, "Insert user query")  # type: ignore
+                raise default_HTTP_exception(e, "Insert user query")
 
 
 @dataclass
@@ -242,9 +240,9 @@ class Node(DAO):
                 if db_response is not None:
                     nid = db_response[0]
                     return cls(nid, ownerid, ntype, nlatitude, nlongitude, ndescription)
-            except psycopg2.Error as e:
+            except PGError as e:
                 LOGGER.error("Error executing SQL query:", e)
-                raise default_HTTP_exception(e.pgcode, "insert node query")  # type: ignore
+                raise default_HTTP_exception(e, "insert node query")
 
 
 @dataclass
@@ -282,9 +280,9 @@ class TimestampIndex(DAO):
                     return tid
                 else:
                     return None
-            except psycopg2.Error as e:
+            except PGError as e:
                 LOGGER.error("Error executing SQL query:", e)
-                raise default_HTTP_exception(e.pgcode, "insert timestamp query")  # type: ignore
+                raise default_HTTP_exception(e, "insert timestamp query")
 
 
 @dataclass
@@ -337,9 +335,9 @@ class AudioSlice(DAO):
                     locals(),
                 )
                 return curs.fetchone()
-            except psycopg2.Error as e:
+            except PGError as e:
                 LOGGER.error("Error executing SQL query:", e)
-                raise default_HTTP_exception(e.pgcode, "inser audio slice query")  # type: ignore
+                raise default_HTTP_exception(e, "insert audio slice query")
 
     @classmethod
     async def get_classified(cls, afid: int, db: connection):
@@ -400,9 +398,9 @@ class AudioFile(DAO):
                     """,
                     (owner,),
                 )
-            except psycopg2.Error as e:
+            except PGError as e:
                 LOGGER.error("Error executing SQL query:", e)
-                raise default_HTTP_exception(e.pgcode, "get audio file query")  # type: ignore
+                raise default_HTTP_exception(e, "get audio file query")
 
             # Not pulling the audio data.
             return [cls(row[0], row[1], row[2], None) for row in curs.fetchall()]
@@ -437,9 +435,9 @@ RETURNING afid
                     return afid
                 else:
                     return None
-            except psycopg2.Error as e:
+            except PGError as e:
                 LOGGER.error("Error executing SQL query:", e)
-                raise default_HTTP_exception(e.pgcode, "insert audio file query")  # type: ignore
+                raise default_HTTP_exception(e, "insert audio file query")
 
     @classmethod
     async def is_classified(cls, afid: int, db: connection):
@@ -460,9 +458,9 @@ RETURNING afid
                 db_response = curs.fetchone()
                 if db_response is not None:
                     return db_response[0]
-        except psycopg2.Error as e:
+        except PGError as e:
             LOGGER.error("Error executing SQL query:", e)
-            raise default_HTTP_exception(e.pgcode, "verify file is classified query")  # type: ignore
+            raise default_HTTP_exception(e, "verify file is classified query")
 
     @classmethod
     async def exists(cls, afid: int, owner: int, db: connection):
@@ -481,9 +479,9 @@ RETURNING afid
                     (afid, owner),
                 )
                 return curs.fetchone()[0]  # type: ignore
-        except psycopg2.Error as e:
+        except PGError as e:
             LOGGER.error("Error executing SQL query:", e)
-            raise default_HTTP_exception(e.pgcode, "verify file exists query")  # type: ignore
+            raise default_HTTP_exception(e, "verify file exists query")
 
 
 class Dashboard:
@@ -536,9 +534,9 @@ class Dashboard:
                     return []
                 return list(starmap(RecentData, db_output))
 
-            except psycopg2.Error as e:
+            except PGError as e:
                 LOGGER.error("Error executing SQL query:", e)
-                raise default_HTTP_exception(e.pgcode, "dashboard recent data query")  # type: ignore
+                raise default_HTTP_exception(e, "dashboard recent data query")
 
     @staticmethod
     def delete_records(owner: int, records: list[RecordTimestampIndex], db: connection):
@@ -585,9 +583,9 @@ class Dashboard:
                     db.commit()
 
                 return curs.rowcount
-            except psycopg2.Error as e:
+            except PGError as e:
                 LOGGER.error("Error Executing SQL Query ot delte rows: ", e)
-                raise default_HTTP_exception(e.pgcode, "Dashboard Delete Record query")  # type: ignore
+                raise default_HTTP_exception(e, "Dashboard Delete Record query")
 
     @staticmethod
     def week_species_summary(owner: int, db: connection) -> dict[str, list]:
@@ -648,10 +646,10 @@ ORDER BY "bin"
                     "total_richmondi": column_transposed[7],
                     "date_bin": column_transposed[8],
                 }
-            except psycopg2.Error as e:
+            except PGError as e:
                 LOGGER.error("Error executing SQL query:", e)
                 raise default_HTTP_exception(
-                    e.pgcode, "dashboard species weekly summary query"  # type: ignore
+                    e, "dashboard species weekly summary query"
                 )
 
     @staticmethod
@@ -685,9 +683,9 @@ ORDER by n.ntype
 
                 return list(starmap(NodeReport, curs.fetchall()))
 
-            except psycopg2.Error as e:
+            except PGError as e:
                 LOGGER.error("Error executing SQL query:", e)
-                raise default_HTTP_exception(e.pgcode, "dashboard node health check query")  # type: ignore
+                raise default_HTTP_exception(e, "dashboard node health check query")
 
     @staticmethod
     def recent_reports(
@@ -847,6 +845,6 @@ LIMIT %(limit)s
 
                 return list(starmap(ReportTableEntry, curs.fetchall()))
 
-            except psycopg.Error as e:
+            except PGError as e:
                 LOGGER.error("Error executing SQL query:", e)
-                raise default_HTTP_exception(e.pgcode, "dashboard recent reports query")  # type: ignore
+                raise default_HTTP_exception(e, "dashboard recent reports query")
