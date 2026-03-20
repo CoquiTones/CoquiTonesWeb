@@ -20,9 +20,9 @@ class TestDBUtil(unittest.TestCase):
         conn = get_database_connection()
         self.assertIsNotNone(conn, "get connection gets something")
 
-    def test_get_db_connection(self):
+    async def test_get_db_connection(self):
         # Same as above, let's just test that it works as a generator correctly
-        conn = next(get_db_connection())
+        conn = await anext(get_db_connection())
         self.assertIsNotNone(conn, "connection generator yields something")
 
     def test_default_HTTP_exception(self):
