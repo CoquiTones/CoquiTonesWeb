@@ -1,11 +1,11 @@
+from asyncio import TaskGroup
 from psycopg import sql, errors
 from psycopg.connection_async import AsyncConnection
 from psycopg import Error as PGError
-from psycopg.rows import class_row
+from psycopg.rows import class_row, scalar_row
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from dbutil import default_HTTP_exception
-from itertools import starmap
 from Requests.RecordToBeDeleted import RecordTimestampIndex
 import logging
 
@@ -89,7 +89,7 @@ WHERE {my_id} = %s
             
 
     @classmethod
-    def delete(cls, owner: int, id: int, db: connection) -> int | None:
+    async def delete(cls, owner: int, id: int, db: AsyncConnection) -> int | None:
         """
         deletes element by id
 
@@ -103,9 +103,9 @@ WHERE {my_id} = %s
         Returns:
             id of deleted entity
         """
-        with db.cursor() as curs:
+        async with db.cursor(row_factory=scalar_row) as curs:
             try:
-                curs.execute(
+                await curs.execute(
                     sql.SQL(
                         """
 WITH owner_matches as (
@@ -126,10 +126,9 @@ RETURNING {my_id}
             except PGError as e:
                 LOGGER.error("Error executing SQL query:", e)
                 raise default_HTTP_exception(e, "delete query") 
-            db_response = curs.fetchone()
+            db_response: int | None = await curs.fetchone()
 
-            if db_response is not None:
-                return db_response[0]
+            return db_response
 
 
 @dataclass
@@ -146,11 +145,11 @@ class User(DAO):
     owner_table = sql.SQL("(SELECT auid, auid as ownerid FROM appuser)")
 
     @staticmethod
-    async def get_by_username(db: connection, username: str):
+    async def get_by_username(db: AsyncConnection, username: str):
 
-        with db.cursor() as curs:
+        async with db.cursor(row_factory=class_row(User)) as curs:
             try:
-                curs.execute(
+                await curs.execute(
                     sql.SQL(
                         """
                         SELECT auid, username, salt, pwhash FROM appuser
@@ -159,23 +158,19 @@ class User(DAO):
                     ),
                     (username,),
                 )
-                db_response = curs.fetchone()
-                if db_response is not None:
-                    user = User(*db_response)
-                    return user
-                else:
-                    return None
+                return await curs.fetchone()
+
             except PGError as e:
                 LOGGER.error("Error executing SQL query:", e)
                 raise default_HTTP_exception(e, "Get user query")
 
     @staticmethod
     async def insert(
-        db: connection, username: str, pwhash: bytes, salt: bytes
-    ) -> int | None:
-        with db.cursor() as curs:
+        db: AsyncConnection, username: str, pwhash: bytes, salt: bytes
+    ) -> int:
+        async with db.cursor(row_factory=scalar_row) as curs:
             try:
-                curs.execute(
+                await curs.execute(
                     sql.SQL(
                         """
 INSERT INTO appuser (username, pwhash, salt)
@@ -185,14 +180,13 @@ RETURNING auid
                     ),
                     (username, pwhash, salt),
                 )
-                curs.connection.commit()
-                db_response = curs.fetchone()
+                db_response = await curs.fetchone()
                 if db_response is None:
                     raise ValueError
-                return db_response[0]
+                return db_response
             except PGError as e:
                 if isinstance(e, errors.UniqueViolation):
-                    return None
+                    raise ValueError
                 LOGGER.error("Error executing SQL query:", e)
                 raise default_HTTP_exception(e, "Insert user query")
 
@@ -213,18 +207,18 @@ class Node(DAO):
     owner_table = sql.SQL("node")
 
     @classmethod
-    def insert(
+    async def insert(
         cls,
-        db: connection,
+        db: AsyncConnection,
         ownerid: int,
         ntype: str,
         nlatitude: float,
         nlongitude: float,
         ndescription: str,
     ):
-        with db.cursor() as curs:
+        async with db.cursor(row_factory=scalar_row) as curs:
             try:
-                curs.execute(
+                await curs.execute(
                     sql.SQL(
                         """
                             INSERT INTO {} (ownerid, ntype, nlatitude, nlongitude, ndescription)
@@ -234,12 +228,10 @@ class Node(DAO):
                     ).format(cls.table),
                     (ownerid, ntype, nlatitude, nlongitude, ndescription),
                 )
-
-                db.commit()
-                db_response = curs.fetchone()
-                if db_response is not None:
-                    nid = db_response[0]
-                    return cls(nid, ownerid, ntype, nlatitude, nlongitude, ndescription)
+                nid = await curs.fetchone()
+                if nid is None:
+                    return None
+                return cls(nid, ownerid, ntype, nlatitude, nlongitude, ndescription)
             except PGError as e:
                 LOGGER.error("Error executing SQL query:", e)
                 raise default_HTTP_exception(e, "insert node query")
@@ -258,11 +250,11 @@ class TimestampIndex(DAO):
     owner_table = sql.SQL("timestampindex NATURAL INNER JOIN node")
 
     @classmethod
-    async def insert(cls, db: connection, nid: int, timestamp: datetime):
+    async def insert(cls, db: AsyncConnection, nid: int, timestamp: datetime):
 
-        with db.cursor() as curs:
+        async with db.cursor(row_factory=scalar_row) as curs:
             try:
-                curs.execute(
+                await curs.execute(
                     sql.SQL(
                         """
                         INSERT INTO {} (nid, ttime)
@@ -273,13 +265,8 @@ class TimestampIndex(DAO):
                     (nid, timestamp),
                 )
 
-                db.commit()
-                db_response = curs.fetchone()
-                if db_response is not None:
-                    tid = db_response[0]
-                    return tid
-                else:
-                    return None
+                return await curs.fetchone()
+
             except PGError as e:
                 LOGGER.error("Error executing SQL query:", e)
                 raise default_HTTP_exception(e, "insert timestamp query")
@@ -309,7 +296,7 @@ class AudioSlice(DAO):
     @classmethod
     async def insert(
         cls,
-        db: connection,
+        db: AsyncConnection,
         afid: int,
         starttime: timedelta,
         endtime: timedelta,
@@ -322,9 +309,9 @@ class AudioSlice(DAO):
         locustus: bool,
         richmondi: bool,
     ):
-        with db.cursor() as curs:
+        async with db.cursor(row_factory=class_row(cls)) as curs:
             try:
-                curs.execute(
+                await curs.execute(
                     sql.SQL(
                         """
                         INSERT INTO audioslice (afid, starttime, endtime, coqui, wightmanae, gryllus, portoricensis, unicolor, hedricki, locustus, richmondi)
@@ -334,15 +321,15 @@ class AudioSlice(DAO):
                     ),
                     locals(),
                 )
-                return curs.fetchone()
+                return await curs.fetchone()
             except PGError as e:
                 LOGGER.error("Error executing SQL query:", e)
                 raise default_HTTP_exception(e, "insert audio slice query")
 
     @classmethod
-    async def get_classified(cls, afid: int, db: connection):
-        with db.cursor() as curs:
-            curs.execute(
+    async def get_classified(cls, afid: int, db: AsyncConnection):
+        async with db.cursor(row_factory=class_row(cls)) as curs:
+            await curs.execute(
                 sql.SQL(
                     """
                 SELECT * FROM audioslice a 
@@ -351,7 +338,7 @@ class AudioSlice(DAO):
                 ),
                 (afid,),
             )
-            return list(starmap(cls, curs.fetchall()))
+            return await curs.fetchall()
 
 
 @dataclass
@@ -386,11 +373,11 @@ class AudioFile(DAO):
     owner_table = sql.SQL("audiofile")
 
     @classmethod
-    async def get_all(cls, owner: int, db: connection) -> list:
-        """Get IDs of audio files, but not audio"""
-        with db.cursor() as curs:
+    async def get_all(cls, owner: int, db: AsyncConnection) -> list:
+        """Get audio file objects without audio"""
+        async with db.cursor(row_factory=class_row(cls)) as curs:
             try:
-                curs.execute(
+                await curs.execute(
                     """
                     SELECT afid, tid, ownerid
                     FROM audiofile
@@ -403,22 +390,24 @@ class AudioFile(DAO):
                 raise default_HTTP_exception(e, "get audio file query")
 
             # Not pulling the audio data.
-            return [cls(row[0], row[1], row[2], None) for row in curs.fetchall()]
+            return await curs.fetchall()
 
     @classmethod
     async def insert(
-        cls, db: connection, owner: int, file, nid: int, timestamp: datetime
+        cls, db: AsyncConnection, owner: int, file, nid: int, timestamp: datetime
     ):
         # First check that the node being referenced belongs to the owner of this new audio file
         node = await Node.get(owner, nid, db)
         if node is None or node.ownerid != owner:
             return None
 
-        with db.cursor() as curs:
+        async with db.cursor(row_factory=scalar_row) as curs:
             try:
-                tid = await TimestampIndex.insert(db, nid, timestamp)
-                data = await file.read()
-                curs.execute(
+                async with TaskGroup() as setup_group:
+                    tid = setup_group.create_task(TimestampIndex.insert(db, nid, timestamp))
+                    data = setup_group.create_task(file.read())
+
+                await curs.execute(
                     sql.SQL(
                         """
 INSERT INTO {} (tid, ownerid, data)
@@ -426,24 +415,18 @@ VALUES (%s, %s, %s)
 RETURNING afid
                         """
                     ).format(cls.table),
-                    (tid, owner, data),
+                    (tid.result(), owner, data.result()),
                 )
-                db.commit()
-                db_response = curs.fetchone()
-                if db_response is not None:
-                    afid = db_response[0]
-                    return afid
-                else:
-                    return None
+                return curs.fetchone()
             except PGError as e:
                 LOGGER.error("Error executing SQL query:", e)
                 raise default_HTTP_exception(e, "insert audio file query")
 
     @classmethod
-    async def is_classified(cls, afid: int, db: connection):
+    async def is_classified(cls, afid: int, db: AsyncConnection) -> bool:
         try:
-            with db.cursor() as curs:
-                curs.execute(
+            async with db.cursor(row_factory=scalar_row) as curs:
+                await curs.execute(
                     sql.SQL(
                         """
                     SELECT EXISTS (
@@ -455,18 +438,16 @@ RETURNING afid
                     ),
                     (afid,),
                 )
-                db_response = curs.fetchone()
-                if db_response is not None:
-                    return db_response[0]
+                return await curs.fetchone() or False
         except PGError as e:
             LOGGER.error("Error executing SQL query:", e)
             raise default_HTTP_exception(e, "verify file is classified query")
 
     @classmethod
-    async def exists(cls, afid: int, owner: int, db: connection):
+    async def exists(cls, afid: int, owner: int, db: AsyncConnection) -> bool:
         try:
-            with db.cursor() as curs:
-                curs.execute(
+            async with db.cursor(row_factory=scalar_row) as curs:
+                await curs.execute(
                     sql.SQL(
                         """
                     SELECT EXISTS (
@@ -478,33 +459,59 @@ RETURNING afid
                     ),
                     (afid, owner),
                 )
-                return curs.fetchone()[0]  # type: ignore
+                return await curs.fetchone() or False
         except PGError as e:
             LOGGER.error("Error executing SQL query:", e)
             raise default_HTTP_exception(e, "verify file exists query")
 
+@dataclass
+class RecentData:
+    """Recent reports dashboard operation response object"""
+    nid: int
+    afid: int
+    humidity: float
+    temperature: float
+    pressure: float
+    rain: float
+    time: float
+    tid: int
+
+@dataclass
+class ReportTableEntry:
+    """Week species summary table entry"""
+    ndescription: str
+    ttime: datetime
+    coqui: int
+    wightmanae: int
+    gryllus: int
+    portoricensis: int
+    unicolor: int
+    hedricki: int
+    locustus: int
+    richmondi: int
+    wdhumidity: float
+    wdtemperature: float
+    wdpressure: float
+    wddid_rain: bool
+    afid: int  # Front end should generate URL to audio file by using get audio file endpoint
+
+@dataclass
+class NodeReport:
+    """Node health report response object"""
+
+    latest_time: datetime
+    ndescription: str
+    ntype: str
 
 class Dashboard:
     """Collection of queries for dashboard endpoints"""
 
     @staticmethod
-    def recent_data(
-        owner: int, minTimestamp: datetime, maxTimestamp: datetime, db: connection
+    async def recent_data(
+        owner: int, minTimestamp: datetime, maxTimestamp: datetime, db: AsyncConnection
     ):
         """Returns Recent Data form DB, [nid, afid, ...weatherdata]"""
-
-        @dataclass
-        class RecentData:
-            nid: int
-            afid: int
-            humidity: float
-            temperature: float
-            pressure: float
-            rain: float
-            time: float
-            tid: int
-
-        with db.cursor() as curs:
+        async with db.cursor(row_factory=class_row(RecentData)) as curs:
             try:
                 # Ensure timestamps are timezone-aware UTC
                 if minTimestamp.tzinfo is None:
@@ -512,7 +519,7 @@ class Dashboard:
                 if maxTimestamp.tzinfo is None:
                     maxTimestamp = maxTimestamp.replace(tzinfo=timezone.utc)
 
-                curs.execute(
+                await curs.execute(
                     sql.SQL(
                         """
                     SELECT n.nid, af.afid, wd.wdhumidity AS humidity, wd.wdtemperature AS temperature, 
@@ -528,18 +535,14 @@ class Dashboard:
                     ),
                     (owner, minTimestamp, maxTimestamp),
                 )
-                db_output = curs.fetchall()
-
-                if len(db_output) == 0:
-                    return []
-                return list(starmap(RecentData, db_output))
+                return await curs.fetchall()
 
             except PGError as e:
                 LOGGER.error("Error executing SQL query:", e)
                 raise default_HTTP_exception(e, "dashboard recent data query")
 
     @staticmethod
-    def delete_records(owner: int, records: list[RecordTimestampIndex], db: connection):
+    async def delete_records(owner: int, records: list[RecordTimestampIndex], db: AsyncConnection):
         """Deletes a list of records  based on join from @recent_data record
 
         Args:
@@ -556,9 +559,9 @@ class Dashboard:
         number_of_records_left = number_of_records
         record_index = 0
 
-        with db.cursor() as curs:
+        async with db.cursor() as curs:
             try:
-                for i in range(necessary_statements):
+                for _ in range(necessary_statements):
                     number_of_rows_to_insert = (
                         number_of_records_left
                         if (number_of_records_left < MAX_BATCH_SIZE)
@@ -570,7 +573,7 @@ class Dashboard:
                             record_index, number_of_rows_to_insert + record_index, 1
                         )
                     ]
-                    curs.execute(
+                    await curs.execute(
                         """
                         DELETE FROM timestampindex WHERE tid = ANY(%s) 
                         AND 
@@ -580,7 +583,6 @@ class Dashboard:
                     )
                     number_of_records_left -= number_of_rows_to_insert
                     record_index += number_of_rows_to_insert
-                    db.commit()
 
                 return curs.rowcount
             except PGError as e:
@@ -588,11 +590,11 @@ class Dashboard:
                 raise default_HTTP_exception(e, "Dashboard Delete Record query")
 
     @staticmethod
-    def week_species_summary(owner: int, db: connection) -> dict[str, list]:
+    async def week_species_summary(owner: int, db: AsyncConnection) -> dict[str, list]:
         """Returns time series with sums of classifier hits of each species from all nodes, binned into days"""
-        with db.cursor() as curs:
+        async with db.cursor(row_factory=class_row(ReportTableEntry)) as curs:
             try:
-                curs.execute(
+                await curs.execute(
                     sql.SQL(
                         """
 WITH owner_matches AS (
@@ -630,7 +632,7 @@ ORDER BY "bin"
                     ),
                     (owner,),
                 )
-                db_output = curs.fetchall()
+                db_output = await curs.fetchall()
                 if len(db_output) == 0:
                     # If there are no afids to group by the query will just turn up empty, so we should respond with an empty dict.
                     return {}
@@ -653,20 +655,12 @@ ORDER BY "bin"
                 )
 
     @staticmethod
-    def node_health_check(owner: int, db: connection) -> list:
+    async def node_health_check(owner: int, db: AsyncConnection) -> list[NodeReport]:
         """Returns the time of the last message from each node along with the type of node"""
 
-        @dataclass
-        class NodeReport:
-            """Node health report query object"""
-
-            latest_time: datetime
-            ndescription: str
-            ntype: str
-
-        with db.cursor() as curs:
+        async with db.cursor(row_factory=class_row(NodeReport)) as curs:
             try:
-                curs.execute(
+                await curs.execute(
                     sql.SQL(
                         """
 SELECT latest_time, n.ndescription, n.ntype FROM  (
@@ -681,14 +675,14 @@ ORDER by n.ntype
                     (owner,),
                 )
 
-                return list(starmap(NodeReport, curs.fetchall()))
+                return await curs.fetchall()
 
             except PGError as e:
                 LOGGER.error("Error executing SQL query:", e)
                 raise default_HTTP_exception(e, "dashboard node health check query")
 
     @staticmethod
-    def recent_reports(
+    async def recent_reports(
         current_user,
         low_temp: float,
         high_temp: float,
@@ -716,30 +710,12 @@ ORDER by n.ntype
         skip: int,
         limit: int,
         orderby: int,
-        db: connection,
+        db: AsyncConnection,
     ) -> list:
 
-        @dataclass
-        class ReportTableEntry:
-            ndescription: str
-            ttime: datetime
-            coqui: int
-            wightmanae: int
-            gryllus: int
-            portoricensis: int
-            unicolor: int
-            hedricki: int
-            locustus: int
-            richmondi: int
-            wdhumidity: float
-            wdtemperature: float
-            wdpressure: float
-            wddid_rain: bool
-            afid: int  # Front end should generate URL to audio file by using get audio file endpoint
-
-        with db.cursor() as curs:
+        async with db.cursor(row_factory=class_row(ReportTableEntry)) as curs:
             try:
-                curs.execute(
+                await curs.execute(
                     sql.SQL(
                         """
 WITH
@@ -843,7 +819,7 @@ LIMIT %(limit)s
                     },
                 )
 
-                return list(starmap(ReportTableEntry, curs.fetchall()))
+                return await curs.fetchall()
 
             except PGError as e:
                 LOGGER.error("Error executing SQL query:", e)
