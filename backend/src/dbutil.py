@@ -2,8 +2,9 @@ from typing import AsyncGenerator
 from fastapi import HTTPException
 from urllib.parse import urlparse
 from constants import ENVIRONMENT_DATABASE_CONFIG
-from pydantic import BaseModel, SecretStr, ValidationError
-from functools import cache
+from pydantic import BaseModel, ValidationError
+from aiocache import cached
+from psycopg_pool import AsyncConnectionPool
 import psycopg
 import json
 import os
@@ -11,22 +12,24 @@ import os
 from psycopg.conninfo import make_conninfo
 
 class Conn(BaseModel):
-    username: str
-    password: SecretStr
-    database: str
-    hostname: str
-    port: str
+    dbname: str
+    user: str
+    password: str # Has to be a str or else it won't dump
+    host: str
+    port: int
 
     def __str__(self) -> str:
         return make_conninfo(**self.model_dump())
+    
+type ConnInfo = str
 
-async def get_connection_from_environment() -> psycopg.AsyncConnection:
+def get_connection_from_environment() -> ConnInfo:
     """
     Uses Environment variable database url for getting database parameters.
     See docker-compose.yml for example of what this looks like
 
     Returns:
-        connection: psycopg connection object
+        ConnInfo: configuration for a new connection
     """
 
 
@@ -43,25 +46,23 @@ async def get_connection_from_environment() -> psycopg.AsyncConnection:
 
     try:
         conn = Conn(
-            username = result.username,
-            password = SecretStr(result.password),
-            database = result.path[1:],
-            hostname = result.hostname,
+            user = result.username,
+            password = result.password,
+            dbname = result.path[1:],
+            host = result.hostname,
             port = result.port,
         )
-        connection = await psycopg.AsyncConnection.connect(str(conn))
-        return connection
+        return str(conn)
     except psycopg.Error as e:
         print("ERROR: Couldn't create connection to database:\n", e)
         raise e
 
-
-async def get_connection_from_development_config() -> psycopg.AsyncConnection:
+def get_connection_from_development_config() -> ConnInfo:
     """
-    Uses hardcoded config file to connect to database.
+    Uses hardcoded config file to get database parameters.
 
     Returns:
-        connection: psycopg connection
+        ConnInfo: configuration for a new connection
     """
     config_file_path = "backend/src/testdbconfig.json"
     print("defaulting to local config for db connection in ", config_file_path)
@@ -73,28 +74,32 @@ async def get_connection_from_development_config() -> psycopg.AsyncConnection:
             print("ERROR: Couldn't load db connection config:\n", e)
             raise e
         try:
-            connection = await psycopg.AsyncConnection.connect(str(conn))
-            return connection
+            return str(conn)
         
         except psycopg.Error as e:
             print("ERROR: Couldn't create connection to database:\n", e)
             raise e
 
-@cache
-async def get_database_connection() -> psycopg.AsyncConnection:
+@cached()
+async def make_connection_pool() -> AsyncConnectionPool:
     """
-    Returns psycopg async connection object based on current configuration.
+    Returns psycopg async connection pool based on current configuration.
     Uses Environment variables or hardcoded development config json
 
     Returns:
-        connection: psycopg2 connection object or None
+        Async connection pool
     """
     if os.getenv(ENVIRONMENT_DATABASE_CONFIG):
-        return await get_connection_from_environment()
-    return await get_connection_from_development_config()
+        conninfo = get_connection_from_environment()
+    else:
+        conninfo = get_connection_from_development_config()
+
+    pool: AsyncConnectionPool = AsyncConnectionPool(conninfo, open=False)
+    await pool.open()
+    return pool
 
 
-async def get_db_connection() -> AsyncGenerator[psycopg.AsyncConnection]:
+async def db_dep() -> AsyncGenerator[psycopg.AsyncConnection]:
     """
     Generator Function to provide database connection object.
 
@@ -104,11 +109,12 @@ async def get_db_connection() -> AsyncGenerator[psycopg.AsyncConnection]:
     Yields:
         connection: psycopg2 connection object
     """
-    connection = await get_database_connection()
-    try:
-        yield connection
-    finally:
-        await connection.close()
+    pool = await make_connection_pool()
+    async with pool.connection() as connection:
+        try:
+            yield connection
+        finally:
+            await connection.close()
 
 
 def default_HTTP_exception(code: str | None, additional_info: str) -> HTTPException:

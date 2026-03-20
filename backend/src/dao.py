@@ -1,12 +1,11 @@
-from psycopg2 import sql
-from psycopg2.extensions import connection
-from psycopg2.extras import execute_batch
+from psycopg import sql
+from psycopg.connection_async import AsyncConnection
+from psycopg import Error as PGError
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from dbutil import default_HTTP_exception
 from itertools import starmap
 from Requests.RecordToBeDeleted import RecordTimestampIndex
-import psycopg2
 import logging
 
 node_type = str
@@ -28,9 +27,9 @@ class DAO:
     # timestampindex contains the id column, then node has an ownerid column.
 
     @classmethod
-    async def get_all(cls, owner: int, db: connection) -> list:
+    async def get_all(cls, owner: int, db: AsyncConnection) -> list:
         """Get all owned entities in a list."""
-        with db.cursor() as curs:
+        async with db.cursor() as curs:
             try:
                 curs.execute(
                     sql.SQL(
@@ -848,6 +847,6 @@ LIMIT %(limit)s
 
                 return list(starmap(ReportTableEntry, curs.fetchall()))
 
-            except psycopg2.Error as e:
+            except psycopg.Error as e:
                 LOGGER.error("Error executing SQL query:", e)
                 raise default_HTTP_exception(e.pgcode, "dashboard recent reports query")  # type: ignore

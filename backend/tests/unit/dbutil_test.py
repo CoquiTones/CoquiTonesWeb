@@ -1,9 +1,10 @@
 import unittest
+from unittest import IsolatedAsyncioTestCase
 
 from dbutil import *
 
 
-class TestDBUtil(unittest.TestCase):    
+class TestDBUtil(IsolatedAsyncioTestCase):    
     def test_get_connection_from_environment(self):
         # TODO: Mock database network connection so this method can work in the test environment
         # conn = get_connection_from_environment()
@@ -13,16 +14,18 @@ class TestDBUtil(unittest.TestCase):
     def test_get_connection_from_development_config(self):
         # This is the fallback method so it always resolves
         conn = get_connection_from_development_config()
-        self.assertIsNotNone(conn, "get connection gets something")
+        self.assertIsNotNone(conn, "db config returns and doesn't cause validation exceptions")
 
-    def test_get_database_connection(self):
+    async def test_make_connection_pool(self):
         # This should always resolve if the database is running, so we'll only test the happy path
-        conn = get_database_connection()
-        self.assertIsNotNone(conn, "get connection gets something")
+        pool = await make_connection_pool()
+        async with pool.connection() as conn:
+            self.assertIsNotNone(conn, "pool can connect")
+            self.assertIsNotNone(conn.cursor(), "can get cursor")
 
     async def test_get_db_connection(self):
         # Same as above, let's just test that it works as a generator correctly
-        conn = await anext(get_db_connection())
+        conn = await anext(db_dep())
         self.assertIsNotNone(conn, "connection generator yields something")
 
     def test_default_HTTP_exception(self):

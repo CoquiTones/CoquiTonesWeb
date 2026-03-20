@@ -2,7 +2,7 @@ from typing import Annotated
 from fastapi import FastAPI, File, UploadFile, staticfiles, Depends, HTTPException, Form
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, Response
-from dbutil import get_db_connection
+from dbutil import db_dep
 from mlutil import get_model, classify_audio_file
 from Spectrogram import sendMelSpectrogram, sendBasicSpectrogram
 from routers.security import get_current_user, LightWeightUser
@@ -57,7 +57,7 @@ app.include_router(security_router)
 @app.get("/api/node/all")
 async def node_all(
     current_user: Annotated[LightWeightUser, Depends(get_current_user)],
-    db=Depends(get_db_connection),
+    db=Depends(db_dep),
 ):
     return await dao.Node.get_all(current_user.auid, db)
 
@@ -66,7 +66,7 @@ async def node_all(
 async def node_get(
     current_user: Annotated[LightWeightUser, Depends(get_current_user)],
     nid: int,
-    db=Depends(get_db_connection),
+    db=Depends(db_dep),
 ):
     return await dao.Node.get(current_user.auid, nid, db)
 
@@ -74,7 +74,7 @@ async def node_get(
 @app.get("/api/timestamp/all")
 async def timestamp_all(
     current_user: Annotated[LightWeightUser, Depends(get_current_user)],
-    db=Depends(get_db_connection),
+    db=Depends(db_dep),
 ):
     return await dao.TimestampIndex.get_all(current_user.auid, db)
 
@@ -83,7 +83,7 @@ async def timestamp_all(
 async def timestamp_get(
     tid: int,
     current_user: Annotated[LightWeightUser, Depends(get_current_user)],
-    db=Depends(get_db_connection),
+    db=Depends(db_dep),
 ):
     return await dao.TimestampIndex.get(current_user.auid, tid, db)
 
@@ -91,7 +91,7 @@ async def timestamp_get(
 @app.get("/api/weather/all")
 async def weather_all(
     current_user: Annotated[LightWeightUser, Depends(get_current_user)],
-    db=Depends(get_db_connection),
+    db=Depends(db_dep),
 ):
     return await dao.WeatherData.get_all(current_user.auid, db)
 
@@ -100,7 +100,7 @@ async def weather_all(
 async def weather_get(
     wdid: int,
     current_user: Annotated[LightWeightUser, Depends(get_current_user)],
-    db=Depends(get_db_connection),
+    db=Depends(db_dep),
 ):
     return await dao.WeatherData.get(current_user.auid, wdid, db)
 
@@ -108,7 +108,7 @@ async def weather_get(
 @app.get("/api/audio/all")
 async def audio_all(
     current_user: Annotated[LightWeightUser, Depends(get_current_user)],
-    db=Depends(get_db_connection),
+    db=Depends(db_dep),
 ):
     return await dao.AudioFile.get_all(current_user.auid, db)
 
@@ -117,7 +117,7 @@ async def audio_all(
 async def audio_get(
     afid: Annotated[int, Form()],
     current_user: Annotated[LightWeightUser, Depends(get_current_user)],
-    db=Depends(get_db_connection),
+    db=Depends(db_dep),
 ):
     audio_file = await dao.AudioFile.get(current_user.auid, afid, db)
     if audio_file is None:
@@ -130,7 +130,7 @@ async def audio_get(
 @app.get("/api/audioslices/all")
 async def audio_slice_all(
     current_user: Annotated[LightWeightUser, Depends(get_current_user)],
-    db=Depends(get_db_connection),
+    db=Depends(db_dep),
 ):
     return await dao.AudioSlice.get_all(current_user.auid, db)
 
@@ -139,7 +139,7 @@ async def audio_slice_all(
 async def audio_slice_get(
     asid: int,
     current_user: Annotated[LightWeightUser, Depends(get_current_user)],
-    db=Depends(get_db_connection),
+    db=Depends(db_dep),
 ):
     return await dao.AudioSlice.get(current_user.auid, asid, db)
 
@@ -170,7 +170,7 @@ async def audio_post(
     current_user: Annotated[LightWeightUser, Depends(get_current_user)],
     file: UploadFile = File(...),
     classify: Annotated[bool, Form()] = True,
-    db=Depends(get_db_connection),
+    db=Depends(db_dep),
     model=Depends(get_model),
 ):
     audio_file_id = await dao.AudioFile.insert(
@@ -189,7 +189,7 @@ async def classify_by_afid(
     afid: int,
     current_user: Annotated[LightWeightUser, Depends(get_current_user)],
     override: Annotated[bool, Form()] = False,
-    db=Depends(get_db_connection),
+    db=Depends(db_dep),
     model=Depends(get_model),
 ):
 
@@ -213,7 +213,7 @@ async def node_insert(
     nlongitude: Annotated[float, Form()],
     ndescription: Annotated[str, Form()],
     current_user: Annotated[LightWeightUser, Depends(get_current_user)],
-    db=Depends(get_db_connection),
+    db=Depends(db_dep),
 ):
     ownerid = current_user.auid
     newNode = dao.Node.insert(db, ownerid, ntype, nlatitude, nlongitude, ndescription)
@@ -224,7 +224,7 @@ async def node_insert(
 async def node_delete(
     nid: int,
     current_user: Annotated[LightWeightUser, Depends(get_current_user)],
-    db=Depends(get_db_connection),
+    db=Depends(db_dep),
 ):
     return dao.Node.delete(current_user.auid, nid, db)
 
@@ -238,7 +238,7 @@ async def classify(file: UploadFile = File(...), model=Depends(get_model)):
 @app.get(path="/api/dashboard/week-species-summary")
 async def week_species_summary(
     current_user: Annotated[LightWeightUser, Depends(get_current_user)],
-    db=Depends(get_db_connection),
+    db=Depends(db_dep),
 ):
     return dao.Dashboard.week_species_summary(current_user.auid, db)
 
@@ -246,7 +246,7 @@ async def week_species_summary(
 @app.get(path="/api/dashboard/node-health-check")
 async def node_health_check(
     current_user: Annotated[LightWeightUser, Depends(get_current_user)],
-    db=Depends(get_db_connection),
+    db=Depends(db_dep),
 ):
     return dao.Dashboard.node_health_check(current_user.auid, db)
 
@@ -280,7 +280,7 @@ async def recent_reports(
     skip: int = 0,
     limit: int = 10,
     orderby: int = 1,  # This could be changed to an enum, but passing through the query might be weird.
-    db=Depends(get_db_connection),
+    db=Depends(db_dep),
 ):
     return dao.Dashboard.recent_reports(
         **locals()
@@ -292,7 +292,7 @@ async def recent_data(
     current_user: Annotated[LightWeightUser, Depends(get_current_user)],
     minTimestamp: Annotated[datetime, Form()],  # default to yesterday
     maxTimestamp: Annotated[datetime, Form()],  # default to present
-    db=Depends(get_db_connection),
+    db=Depends(db_dep),
 ):
 
     return dao.Dashboard.recent_data(current_user.auid, minTimestamp, maxTimestamp, db)
@@ -302,7 +302,7 @@ async def recent_data(
 async def delete_record(
     current_user: Annotated[LightWeightUser, Depends(get_current_user)],
     list_of_records_to_be_deleted: list[RecordTimestampIndex],
-    db=Depends(get_db_connection),
+    db=Depends(db_dep),
 ):
 
     return dao.Dashboard.delete_records(
