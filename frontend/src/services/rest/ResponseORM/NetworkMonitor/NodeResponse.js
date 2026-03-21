@@ -1,4 +1,4 @@
-class Node {
+export class Node {
     constructor(nid, ntype, nlatitude, nlongitude, ndescription) {
         this.nid = nid;
         this.ntype = ntype;
