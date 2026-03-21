@@ -87,7 +87,7 @@ async def authenticate_user(
 ) -> dao.User | None:
     if not validate_username(submitted_username):
         return None
-    user: dao.User | None = await dao.User.get_by_username(db, submitted_username)  # type: ignore
+    user: dao.User | None = await dao.User.get_by_username(db, submitted_username)
     if not user:
         return None
 
