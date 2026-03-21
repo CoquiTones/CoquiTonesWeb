@@ -7,10 +7,10 @@ import { Node } from "../../services/rest/ResponseORM/NetworkMonitor/NodeRespons
 /**
  * 
  * @param {*} mapRef
- * @param {Node} duck
+ * @param {Node} Node
  * @returns 
  */
-const Popup = ({ map, duck }) => {
+const Popup = ({ map, Node }) => {
 
     // a ref to hold the popup instance
     const popupRef = useRef()
@@ -33,29 +33,32 @@ const Popup = ({ map, duck }) => {
     }, [])
 
 
-    // when activeFeature changes, set the popup's location and content, and add it to the map
+    // when Node changes, set the popup's location and content, and add it to the map
     useEffect(() => {
-        if (!activeFeature) return
-        coordintates = [duck.nlongitude, duck.nlatitude]
+        if (!Node) return
         popupRef.current
-            .setLngLat(coordintates) // set its position using activeFeature's geometry
+            .setLngLat([Node.nlongitude, Node.nlatitude]) // set its position using Node's geometry
             .setHTML(contentRef.current.outerHTML) // use contentRef's `outerHTML` to set the content of the popup
             .addTo(map) // add the popup to the map
-    }, [activeFeature])
+    }, [Node])
 
     // use a react portal to render the content to show in the popup, assigning it to contentRef
     return (
         <>{
             createPortal(
-                <div className="portal-content">
+                <div className="portal-content" style={{ color: "black" }}>
                     <table>
                         <tbody>
                             <tr>
-                                <td><strong>Node {duck.nid}: {duck.nname} </strong></td>
+                                <td><strong>Node {Node.nid}: {Node.nname} </strong></td>
                             </tr>
                             <tr>
-                                <td><strong>Description</strong></td>
-                                <td>{duck.ndescription}</td>
+                                <td><strong>Node Type: </strong></td>
+                                <td>{Node.ntype}</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Description: </strong></td>
+                                <td>{Node.ndescription}</td>
                             </tr>
                         </tbody>
                     </table>

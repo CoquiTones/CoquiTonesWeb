@@ -2,10 +2,11 @@ import { useEffect, useRef } from "react";
 import mapboxgl from "mapbox-gl";
 import { createPortal } from "react-dom";
 
-const Marker = ({ map, duck, isActive, onClick }) => {
+const Marker = ({ map, Node, isActive, onClick }) => {
     const markerRef = useRef(null);
     const contentRef = useRef(document.createElement("div"));
-    const [nlongitude, nlatitude] = duck;
+    const nlongitude = Node.nlongitude;
+    const nlatitude = Node.nlatitude;
     useEffect(() => {
         markerRef.current = new mapboxgl.Marker(contentRef.current)
             .setLngLat([nlongitude, nlatitude])
@@ -20,7 +21,7 @@ const Marker = ({ map, duck, isActive, onClick }) => {
         <>
             {createPortal(
                 <div
-                    onClick={() => onClick(duck.nid)}
+                    onClick={() => onClick(Node.nid)}
                     style={{
                         display: "inline-block",
                         padding: "2px 10px",
@@ -34,7 +35,7 @@ const Marker = ({ map, duck, isActive, onClick }) => {
                         textAlign: "center",
                     }}
                 >
-                    {duck.nid}
+                    {Node.nid}
                 </div>,
                 contentRef.current
             )}

@@ -88,7 +88,6 @@ export default function DataTable({ Actions }) {
         // Use selected rows if any are selected, otherwise export all
         const dataToExport = selectedRows;
 
-        console.log("data to export", dataToExport)
         if (dataToExport.length === 0) {
             setDownloadError("No rows to export");
             return;

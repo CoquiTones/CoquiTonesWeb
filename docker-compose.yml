@@ -36,7 +36,7 @@ services:
     volumes:
       - ./init.sql:/docker-entrypoint-initdb.d/init.sql
     ports:
-      - 127.0.0.1:5432:5432
+      - 5432:5432
 
   mqtt-broker:
     image: eclipse-mosquitto:latest
@@ -46,7 +46,7 @@ services:
       - ./mosquitto/data:/mosquitto/data
       - ./mosquitto/log:/mosquitto/log
     ports:
-      - 127.0.0.1:1883:1883
+      - 1883:1883
       - 2043:2043
     stdin_open: true
     tty: true

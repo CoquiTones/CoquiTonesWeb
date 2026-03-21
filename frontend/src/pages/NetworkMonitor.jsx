@@ -102,7 +102,7 @@ const NetworkMonitor = () => {
           <div style={{ height: "100%" }}>
             {" "}
             {/* Ensure map container fills parent's height */}
-            <MapEmbed ducks={nodes} />
+            <MapEmbed Nodes={nodes} />
           </div>
         </Paper>
       </Grid>

@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useRef } from "react";
+import React, { useEffect, useState, useRef, useCallback } from "react";
 
 import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
@@ -18,36 +18,26 @@ const MapEmbed = ({ Nodes }) => {
 
   const [center, setCenter] = useState(INITIAL_CENTER)
   const [zoom, setZoom] = useState(INITIAL_ZOOM)
-  const [activeNode, setActiveNode] = useState();
+  const [activeNode, setActiveNode] = useState(null);
   const mapRef = useRef();
   const mapContainerRef = useRef();
 
   const handleMarkerClick = (selectedNode) => {
-    console.error("selectedNode: ", selectedNode)
     setActiveNode(selectedNode)
   }
-  const markers = useMemo(
-    () =>
-      Nodes.map((Node) => (
-        <Marker key={Node.nid}
-          map={mapRef.current}
-          longitude={Node.nlongitude}
-          latitude={Node.nlatitude}
-          onClick={handleMarkerClick}
-          isActive={selectedNodeID === Node.nid}
-          anchor="bottom" />
-      )),
-    [Nodes]
-  );
-  const popups = useMemo(() => {
-    <Popup map={mapRef.current} Node={selectedNodeID} />
-  })
   useEffect(() => {
     mapboxgl.accessToken = import.meta.env.VITE_MAPBOX_API_TOKEN;
     mapRef.current = new mapboxgl.Map({
       container: mapContainerRef.current,
-      center: [-66.1057, 18.4655],
-      zoom: 9
+      center: [
+        -66.48590156897816,
+        18.215311781299874
+      ],
+      maxBounds: [[-68.34863711943092, 16.788333451001122], [-65.28422465966874, 18.60716956104943]],
+      zoom: 9,
+      dragPan: false,
+      dragRotate: false,
+      scrollZoom: false
     });
 
     mapRef.current.on('move', () => {
@@ -62,15 +52,24 @@ const MapEmbed = ({ Nodes }) => {
     return () => {
       mapRef.current.remove()
     }
-  }, [Nodes])
+  }, [])
 
 
   return (
     <>
 
-      <div id="map-container" style={{ width: "100%", height: "100%", padding: "1em" }} >
-        {mapRef.current && markers}
-        {mapRef.current && popups}
+      <div id="map-container" ref={mapContainerRef} style={{ width: "100%", height: "100vh", position: "relative", padding: "1em" }} >
+        {(mapRef.current && Nodes) && Nodes.map((Node) => {
+          return <Marker key={Node.nid}
+            map={mapRef.current}
+            Node={Node}
+            onClick={() => handleMarkerClick(Node)}
+            isActive={activeNode?.nid === Node.nid}
+            anchor="bottom" />
+        }
+        )
+        }
+        {(mapRef.current && activeNode) && (<Popup map={mapRef.current} Node={activeNode} />)}
       </div>
     </>
   );

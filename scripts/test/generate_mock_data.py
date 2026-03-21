@@ -111,8 +111,8 @@ def populate_appusers(connection):
 
 def populate_node(connection, number_of_inserts):
 
-    latitude_range = (-90, 90)
-    longitude_range = (-90, 90)
+    longitude_range = (-69.1057, -66.1057)
+    latitude_range = (16.4655, 19.4655)
     name_length = 10
     description_length = 10
     prepared_statement = "INSERT INTO node (ntype, ownerid, nname, nlatitude, nlongitude, ndescription) VALUES (%s, %s, %s, %s, %s, %s)"
