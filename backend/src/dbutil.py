@@ -117,7 +117,7 @@ async def db_dep() -> AsyncGenerator[AsyncConnection]:
         finally:
             await connection.close()
 
-type DependsOnDB = Annotated[AsyncConnection, Depends(db_dep)] 
+DependsOnDB = Annotated[AsyncConnection, Depends(db_dep)] 
 
 
 def default_HTTP_exception(error: Error | None, additional_info: str) -> HTTPException:
