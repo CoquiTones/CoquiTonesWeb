@@ -5,11 +5,13 @@ from constants import ENVIRONMENT_DATABASE_CONFIG
 from pydantic import BaseModel, ValidationError
 from aiocache import cached
 from psycopg_pool import AsyncConnectionPool
-from psycopg import AsyncConnection, Error, errors
+from psycopg import AsyncConnection, AsyncTransaction, Error, errors 
 import json
 import os
 
 from psycopg.conninfo import make_conninfo
+
+pool: None | AsyncConnectionPool = None
 
 class Conn(BaseModel):
     dbname: str
@@ -80,15 +82,13 @@ def get_connection_from_development_config() -> ConnInfo:
             print("ERROR: Couldn't create connection to database:\n", e)
             raise e
 
-@cached()
-async def make_connection_pool() -> AsyncConnectionPool:
+async def init_connection_pool():
     """
-    Returns psycopg async connection pool based on current configuration.
+    Starts the psycopg async connection pool based on current configuration.
     Uses Environment variables or hardcoded development config json.
     Also opens the pool.
 
-    Returns:
-        Async connection pool
+    Note: this returns nothing, it just starts the pool.
     """
     if os.getenv(ENVIRONMENT_DATABASE_CONFIG):
         conninfo = get_connection_from_environment()
@@ -97,7 +97,11 @@ async def make_connection_pool() -> AsyncConnectionPool:
 
     pool: AsyncConnectionPool = AsyncConnectionPool(conninfo, open=False)
     await pool.open()
-    return pool
+
+async def kill_connection_pool():
+    """Closes the connection pool."""
+    if pool is not None:
+        await pool.close()
 
 
 async def db_dep() -> AsyncGenerator[AsyncConnection]:
@@ -105,20 +109,34 @@ async def db_dep() -> AsyncGenerator[AsyncConnection]:
     Generator Function to provide database connection object.
 
     Raises:
-        HTTPException: When psycopg2 fails to create connection
+        HTTPException: When connection fails
 
     Yields:
-        connection: psycopg2 connection object
+        connection: psycopg connection object
     """
-    pool = await make_connection_pool()
+    global pool
+    assert(type(pool) is AsyncConnectionPool)
     async with pool.connection() as connection:
         try:
             yield connection
         finally:
             await connection.close()
 
-DependsOnDB = Annotated[AsyncConnection, Depends(db_dep)] 
+async def transaction_dep(database_connection: Annotated[AsyncConnection, Depends(db_dep)]):
+    """
+    Injectable transaction dependency.
 
+    Raises:
+        HTTPException: When connection fails
+
+    Yields:
+        transaction: psycopg transaction
+    """
+    async with database_connection.transaction() as transaction:
+        yield transaction
+
+DBConnectionDependency = Annotated[AsyncConnection, Depends(db_dep)] 
+DBTransactionDependency = Annotated[AsyncTransaction, Depends(transaction_dep)]
 
 def default_HTTP_exception(error: Error | None, additional_info: str) -> HTTPException:
     """

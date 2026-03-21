@@ -2,12 +2,13 @@ from typing import Annotated
 from fastapi import FastAPI, File, UploadFile, staticfiles, Depends, HTTPException, Form
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, Response
-from dbutil import db_dep
+from dbutil import DBTransactionDependency, init_connection_pool, kill_connection_pool
 from mlutil import get_model, classify_audio_file
 from Spectrogram import sendMelSpectrogram, sendBasicSpectrogram
 from routers.security import get_current_user, LightWeightUser
 from routers.security import router as security_router
 from Requests.RecordToBeDeleted import RecordTimestampIndex
+from contextlib import asynccontextmanager
 import dao
 import os
 import io
@@ -20,8 +21,13 @@ from datetime import datetime, timedelta
 
 dotenv.load_dotenv(dotenv_path="backend/src/.env")
 
-app = FastAPI()
-app = FastAPI()
+@asynccontextmanager
+async def lifespan(instance: FastAPI):
+    await init_connection_pool()
+    yield
+    await kill_connection_pool()
+
+app = FastAPI(lifespan=lifespan)
 
 origins = [
     "https://localhost:5173",
@@ -57,69 +63,69 @@ app.include_router(security_router)
 @app.get("/api/node/all")
 async def node_all(
     current_user: Annotated[LightWeightUser, Depends(get_current_user)],
-    db=Depends(db_dep),
+    transaction: DBTransactionDependency,
 ):
-    return await dao.Node.get_all(current_user.auid, db)
+    return await dao.Node.get_all(current_user.auid, transaction.connection)
 
 
 @app.get("/api/node/{nid}")
 async def node_get(
     current_user: Annotated[LightWeightUser, Depends(get_current_user)],
     nid: int,
-    db=Depends(db_dep),
+    transaction: DBTransactionDependency,
 ):
-    return await dao.Node.get(current_user.auid, nid, db)
+    return await dao.Node.get(current_user.auid, nid, transaction.connection)
 
 
 @app.get("/api/timestamp/all")
 async def timestamp_all(
     current_user: Annotated[LightWeightUser, Depends(get_current_user)],
-    db=Depends(db_dep),
+    transaction: DBTransactionDependency,
 ):
-    return await dao.TimestampIndex.get_all(current_user.auid, db)
+    return await dao.TimestampIndex.get_all(current_user.auid, transaction.connection)
 
 
 @app.get("/api/timestamp/{tid}")
 async def timestamp_get(
     tid: int,
     current_user: Annotated[LightWeightUser, Depends(get_current_user)],
-    db=Depends(db_dep),
+    transaction: DBTransactionDependency,
 ):
-    return await dao.TimestampIndex.get(current_user.auid, tid, db)
+    return await dao.TimestampIndex.get(current_user.auid, tid, transaction.connection)
 
 
 @app.get("/api/weather/all")
 async def weather_all(
     current_user: Annotated[LightWeightUser, Depends(get_current_user)],
-    db=Depends(db_dep),
+    transaction: DBTransactionDependency,
 ):
-    return await dao.WeatherData.get_all(current_user.auid, db)
+    return await dao.WeatherData.get_all(current_user.auid, transaction.connection)
 
 
 @app.get("/api/weather/{wdid}")
 async def weather_get(
     wdid: int,
     current_user: Annotated[LightWeightUser, Depends(get_current_user)],
-    db=Depends(db_dep),
+    transaction: DBTransactionDependency,
 ):
-    return await dao.WeatherData.get(current_user.auid, wdid, db)
+    return await dao.WeatherData.get(current_user.auid, wdid, transaction.connection)
 
 
 @app.get("/api/audio/all")
 async def audio_all(
     current_user: Annotated[LightWeightUser, Depends(get_current_user)],
-    db=Depends(db_dep),
+    transaction: DBTransactionDependency,
 ):
-    return await dao.AudioFile.get_all(current_user.auid, db)
+    return await dao.AudioFile.get_all(current_user.auid, transaction.connection)
 
 
 @app.post(path="/api/audio", response_class=Response)
 async def audio_get(
     afid: Annotated[int, Form()],
     current_user: Annotated[LightWeightUser, Depends(get_current_user)],
-    db=Depends(db_dep),
+    transaction: DBTransactionDependency,
 ):
-    audio_file = await dao.AudioFile.get(current_user.auid, afid, db)
+    audio_file = await dao.AudioFile.get(current_user.auid, afid, transaction.connection)
     if audio_file is None:
         raise HTTPException(status_code=404, detail="Audio file not found")
     data = audio_file.data
@@ -130,20 +136,21 @@ async def audio_get(
 @app.get("/api/audioslices/all")
 async def audio_slice_all(
     current_user: Annotated[LightWeightUser, Depends(get_current_user)],
-    db=Depends(db_dep),
+    transaction: DBTransactionDependency,
 ):
-    return await dao.AudioSlice.get_all(current_user.auid, db)
+    return await dao.AudioSlice.get_all(current_user.auid, transaction.connection)
 
 
 @app.get(path="/api/audioslices/{asid}")
 async def audio_slice_get(
     asid: int,
     current_user: Annotated[LightWeightUser, Depends(get_current_user)],
-    db=Depends(db_dep),
+    transaction: DBTransactionDependency,
 ):
-    return await dao.AudioSlice.get(current_user.auid, asid, db)
+    return await dao.AudioSlice.get(current_user.auid, asid, transaction.connection)
 
 
+# TODO: Sort this out as a service(?)
 async def classify_and_save(audio, audio_file_id, db, model):
     classifier_output = classify_audio_file(audio, model)
     slice_insert_tasks = []
@@ -159,7 +166,6 @@ async def classify_and_save(audio, audio_file_id, db, model):
 
     done, pending = await asyncio.wait(slice_insert_tasks)
     results = map(lambda task: task.result(), done)
-    db.commit()
     return results
 
 
@@ -168,18 +174,18 @@ async def audio_post(
     nid: Annotated[int, Form()],
     timestamp: Annotated[datetime, Form()],
     current_user: Annotated[LightWeightUser, Depends(get_current_user)],
+    transaction: DBTransactionDependency,
     file: UploadFile = File(...),
     classify: Annotated[bool, Form()] = True,
-    db=Depends(db_dep),
     model=Depends(get_model),
 ):
     audio_file_id = await dao.AudioFile.insert(
-        db, current_user.auid, file, nid, timestamp
+        transaction.connection, current_user.auid, file, nid, timestamp
     )
 
     if classify:
         file.file.seek(0)
-        await classify_and_save(file.file, audio_file_id, db, model)
+        await classify_and_save(file.file, audio_file_id, transaction.connection, model)
 
     return audio_file_id
 
@@ -188,22 +194,22 @@ async def audio_post(
 async def classify_by_afid(
     afid: int,
     current_user: Annotated[LightWeightUser, Depends(get_current_user)],
+    transaction: DBTransactionDependency,
     override: Annotated[bool, Form()] = False,
-    db=Depends(db_dep),
     model=Depends(get_model),
 ):
 
-    if not await dao.AudioFile.exists(afid, current_user.auid, db):
+    if not await dao.AudioFile.exists(afid, current_user.auid, transaction.connection):
         raise HTTPException(status_code=404, detail="Audio file does not exist")
 
-    if override or not await dao.AudioFile.is_classified(afid, db):
-        audio = await dao.AudioFile.get(current_user.auid, afid, db)
+    if override or not await dao.AudioFile.is_classified(afid, transaction.connection):
+        audio = await dao.AudioFile.get(current_user.auid, afid, transaction.connection)
         if audio is None or audio.data is None:
             raise HTTPException(status_code=404, detail="Audio file does not exist")
 
-        await classify_and_save(io.BytesIO(audio.data), afid, db, model)
+        await classify_and_save(io.BytesIO(audio.data), afid, transaction.connection, model)
 
-    return await dao.AudioSlice.get_classified(afid, db)
+    return await dao.AudioSlice.get_classified(afid, transaction.connection)
 
 
 @app.post(path="/api/node/insert")
@@ -213,10 +219,10 @@ async def node_insert(
     nlongitude: Annotated[float, Form()],
     ndescription: Annotated[str, Form()],
     current_user: Annotated[LightWeightUser, Depends(get_current_user)],
-    db=Depends(db_dep),
+    transaction: DBTransactionDependency,
 ):
     ownerid = current_user.auid
-    newNode = dao.Node.insert(db, ownerid, ntype, nlatitude, nlongitude, ndescription)
+    newNode = dao.Node.insert(transaction.connection, ownerid, ntype, nlatitude, nlongitude, ndescription)
     return newNode
 
 
@@ -224,9 +230,9 @@ async def node_insert(
 async def node_delete(
     nid: int,
     current_user: Annotated[LightWeightUser, Depends(get_current_user)],
-    db=Depends(db_dep),
+    transaction: DBTransactionDependency,
 ):
-    return dao.Node.delete(current_user.auid, nid, db)
+    return dao.Node.delete(current_user.auid, nid, transaction.connection)
 
 
 @app.post(path="/api/classifier/classify")
@@ -238,21 +244,22 @@ async def classify(file: UploadFile = File(...), model=Depends(get_model)):
 @app.get(path="/api/dashboard/week-species-summary")
 async def week_species_summary(
     current_user: Annotated[LightWeightUser, Depends(get_current_user)],
-    db=Depends(db_dep),
+    transaction: DBTransactionDependency,
 ):
-    return dao.Dashboard.week_species_summary(current_user.auid, db)
+    return dao.Dashboard.week_species_summary(current_user.auid, transaction.connection)
 
 
 @app.get(path="/api/dashboard/node-health-check")
 async def node_health_check(
     current_user: Annotated[LightWeightUser, Depends(get_current_user)],
-    db=Depends(db_dep),
+    transaction: DBTransactionDependency,
 ):
-    return dao.Dashboard.node_health_check(current_user.auid, db)
+    return dao.Dashboard.node_health_check(current_user.auid, transaction.connection)
 
 
 @app.get(path="/api/dashboard/recent-reports")
 async def recent_reports(
+    transaction: DBTransactionDependency,
     current_user: Annotated[LightWeightUser, Depends(get_current_user)],
     low_temp: float = float("-inf"),
     high_temp: float = float("inf"),
@@ -280,11 +287,10 @@ async def recent_reports(
     skip: int = 0,
     limit: int = 10,
     orderby: int = 1,  # This could be changed to an enum, but passing through the query might be weird.
-    db=Depends(db_dep),
 ):
     return dao.Dashboard.recent_reports(
-        **locals()
-    )  # pass all keyword args as unpacked dictionary
+        **locals() | {"db": transaction.connection}
+    )  # pass all keyword args as unpacked dictionary, special case for db connection
 
 
 @app.post(path="/api/dashboard/recent-data")
@@ -292,21 +298,21 @@ async def recent_data(
     current_user: Annotated[LightWeightUser, Depends(get_current_user)],
     minTimestamp: Annotated[datetime, Form()],  # default to yesterday
     maxTimestamp: Annotated[datetime, Form()],  # default to present
-    db=Depends(db_dep),
+    transaction: DBTransactionDependency,
 ):
 
-    return dao.Dashboard.recent_data(current_user.auid, minTimestamp, maxTimestamp, db)
+    return dao.Dashboard.recent_data(current_user.auid, minTimestamp, maxTimestamp, transaction.connection)
 
 
 @app.delete(path="/api/dashboard/delete")
 async def delete_record(
     current_user: Annotated[LightWeightUser, Depends(get_current_user)],
     list_of_records_to_be_deleted: list[RecordTimestampIndex],
-    db=Depends(db_dep),
+    transaction: DBTransactionDependency,
 ):
 
     return dao.Dashboard.delete_records(
-        current_user.auid, list_of_records_to_be_deleted, db
+        current_user.auid, list_of_records_to_be_deleted, transaction.connection
     )
 
 
