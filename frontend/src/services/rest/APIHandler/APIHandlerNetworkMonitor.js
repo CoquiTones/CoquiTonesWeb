@@ -2,7 +2,7 @@
 import APIHandlerBase from "./APIHandlerBase";
 import { APIHandlerError, BackendError } from "./Errors";
 import { NodeList } from "../ResponseORM/NetworkMonitor/NodeResponse";
-import {InsertNewNodeRequest} from "../RequestORM/NetworkMonitor/NewNodeRequest"
+import { InsertNewNodeRequest } from "../RequestORM/NetworkMonitor/NewNodeRequest"
 export class APIHandlerNetworkMonitor extends APIHandlerBase {
     async get_all_nodes() {
         try {

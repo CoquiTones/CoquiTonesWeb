@@ -32,7 +32,7 @@ export default function NewNodeDialog({ setDucks }) {
 
   const handleSubmit = (event) => {
     event.preventDefault();
-    const insert_node_request = new InsertNewNodeRequest(nodeType, longitude, latitude, description);
+    const insert_node_request = new InsertNewNodeRequest(nodeType, longitude, latitude, description, nodeName, mqttNodeClientPassword);
     const apiHandler = new APIHandlerNetworkMonitor();
     apiHandler.insert_new_node(insert_node_request);
     handleClose();
@@ -124,17 +124,21 @@ export default function NewNodeDialog({ setDucks }) {
             value={nodeName}
             onChange={(event) => setNodeName(event.target.value)}
           />
-          <TextField
-            required
-            margin="dense"
-            id="mqtt"
-            label="Mqtt Client Password"
-            type="password"
-            fullWidth
-            variant="standard"
-            value={mqttNodeClientPassword}
-            onChange={(event) => setMqttNodeClientPassword(event.target.value)}
-          />
+
+          {nodeType == "primary" &&
+
+            <TextField
+              required
+              margin="dense"
+              id="mqtt"
+              label="Mqtt Client Password"
+              type="password"
+              fullWidth
+              variant="standard"
+              value={mqttNodeClientPassword}
+              onChange={(event) => setMqttNodeClientPassword(event.target.value)}
+            />
+          }
 
         </DialogContent>
         <DialogActions>

@@ -34,7 +34,7 @@ const MapEmbed = ({ Nodes }) => {
         18.215311781299874
       ],
       maxBounds: [[-68.34863711943092, 16.788333451001122], [-65.28422465966874, 18.60716956104943]],
-      zoom: 9,
+      zoom: 4,
       dragPan: false,
       dragRotate: false,
       scrollZoom: false
