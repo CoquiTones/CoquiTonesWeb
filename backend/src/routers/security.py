@@ -15,7 +15,7 @@ import mqtt
 router = APIRouter()
 
 ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 30
+ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24  # 1 day of valid session
 
 
 class Token(BaseModel):

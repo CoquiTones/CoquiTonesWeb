@@ -28,7 +28,7 @@ class GlobalStateManager {
 
     static setAuthenticationToken(session_token) {
         Cookies.set(this.SESSION_TOKEN_KEY, session_token, {
-            expires: this.ACCESS_TOKEN_EXPIRE_MINUTES,
+            expires: this.ACCESS_TOKEN_EXPIRE_MINUTES / 24 / 60,
             secure: true,
             sameSite: 'strict'
         })

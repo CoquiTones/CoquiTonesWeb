@@ -14,12 +14,16 @@ from pydantic import SecretStr
 from routers.security import get_current_user, LightWeightUser
 from routers.security import router as security_router
 from standaloneops import classify_and_save
+from Requests.RecordToBeDeleted import RecordTimestampIndex
 import dao
 import mqtt
 import dao as dao
 import os
 import io
 import asyncio
+import dotenv
+import ssl
+import json
 
 from datetime import datetime, timedelta
 
@@ -160,9 +164,9 @@ async def audio_all(
     return await dao.AudioFile.get_all(current_user.auid, db)
 
 
-@app.get(path="/api/audio/{afid}", response_class=Response)
+@app.post(path="/api/audio", response_class=Response)
 async def audio_get(
-    afid: int,
+    afid: Annotated[int, Form()],
     current_user: Annotated[LightWeightUser, Depends(get_current_user)],
     db=Depends(get_db_connection),
 ):
@@ -346,6 +350,29 @@ async def recent_reports(
     return dao.Dashboard.recent_reports(
         **locals()
     )  # pass all keyword args as unpacked dictionary
+
+
+@app.post(path="/api/dashboard/recent-data")
+async def recent_data(
+    current_user: Annotated[LightWeightUser, Depends(get_current_user)],
+    minTimestamp: Annotated[datetime, Form()],  # default to yesterday
+    maxTimestamp: Annotated[datetime, Form()],  # default to present
+    db=Depends(get_db_connection),
+):
+
+    return dao.Dashboard.recent_data(current_user.auid, minTimestamp, maxTimestamp, db)
+
+
+@app.delete(path="/api/dashboard/delete")
+async def delete_record(
+    current_user: Annotated[LightWeightUser, Depends(get_current_user)],
+    list_of_records_to_be_deleted: list[RecordTimestampIndex],
+    db=Depends(get_db_connection),
+):
+
+    return dao.Dashboard.delete_records(
+        current_user.auid, list_of_records_to_be_deleted, db
+    )
 
 
 @app.get("/{full_path:path}", response_class=HTMLResponse)

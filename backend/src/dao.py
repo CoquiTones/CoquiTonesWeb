@@ -1,13 +1,21 @@
-import psycopg2
 from psycopg2 import sql
 from psycopg2.extensions import connection
+from psycopg2.extras import execute_batch
 from dataclasses import dataclass
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from dbutil import default_HTTP_exception
-
 from itertools import starmap
+from Requests.RecordToBeDeleted import RecordTimestampIndex
+import psycopg2
+import logging
 
 node_type = str
+
+logging.basicConfig(
+    level=logging.DEBUG,
+    format="%(asctime)s - [%(funcName)s]: %(levelname)s - %(message)s",
+)
+LOGGER = logging.getLogger("DAO Service Component")
 
 
 class DAO:
@@ -41,7 +49,7 @@ SELECT * FROM {my_table} NATURAL INNER JOIN owner_matches
                     (owner,),
                 )
             except psycopg2.Error as e:
-                print("Error executing SQL query:", e)
+                LOGGER.error("Error executing SQL query:", e)
                 raise default_HTTP_exception(e.pgcode, "get all query")  # type: ignore
 
             # Unpack the tuples into constructor
@@ -73,7 +81,7 @@ WHERE {my_id} = %s
                     ),
                 )
             except psycopg2.Error as e:
-                print("Error executing SQL query:", e)
+                LOGGER.error("Error executing SQL query:", e)
                 raise default_HTTP_exception(e.pgcode, "get query")  # type: ignore
 
             entity = curs.fetchone()
@@ -119,7 +127,7 @@ RETURNING {my_id}
                     {"my_id": id, "owner_id": owner},
                 )
             except psycopg2.Error as e:
-                print("Error executing SQL query:", e)
+                LOGGER.error("Error executing SQL query:", e)
                 raise default_HTTP_exception(e.pgcode, "delete query")  # type: ignore
             db_response = curs.fetchone()
 
@@ -146,7 +154,7 @@ class User(DAO):
             try:
                 curs.execute(
                     sql.SQL(
-"""
+                        """
 SELECT auid, username, salt, pwhash
 FROM appuser
 """
@@ -157,8 +165,8 @@ FROM appuser
 
             except psycopg2.Error as e:
                 print("Error executing SQL query:", e)
-                raise default_HTTP_exception(e.pgcode, "Get all users query") # type: ignore
-            
+                raise default_HTTP_exception(e.pgcode, "Get all users query")  # type: ignore
+
         return [cls(*row) for row in db_response]
 
     @staticmethod
@@ -182,7 +190,7 @@ FROM appuser
                 else:
                     return None
             except psycopg2.Error as e:
-                print("Error executing SQL query:", e)
+                LOGGER.error("Error executing SQL query:", e)
                 raise default_HTTP_exception(e.pgcode, "Get user query")  # type: ignore
 
     @staticmethod
@@ -209,7 +217,7 @@ RETURNING auid
             except psycopg2.Error as e:
                 if isinstance(e, psycopg2.errors.UniqueViolation):
                     return None
-                print("Error executing SQL query:", e)
+                LOGGER.error("Error executing SQL query:", e)
                 raise default_HTTP_exception(e.pgcode, "Insert user query")  # type: ignore
 
 
@@ -257,9 +265,11 @@ class Node(DAO):
                 db_response = curs.fetchone()
                 if db_response is not None:
                     nid = db_response[0]
-                    return cls(nid, ownerid, nname, ntype, nlatitude, nlongitude, ndescription)
+                    return cls(
+                        nid, ownerid, nname, ntype, nlatitude, nlongitude, ndescription
+                    )
             except psycopg2.Error as e:
-                print("Error executing SQL query:", e)
+                LOGGER.error("Error executing SQL query:", e)
                 raise default_HTTP_exception(e.pgcode, "insert node query")  # type: ignore
 
 
@@ -299,7 +309,7 @@ class TimestampIndex(DAO):
                 else:
                     return None
             except psycopg2.Error as e:
-                print("Error executing SQL query:", e)
+                LOGGER.error("Error executing SQL query:", e)
                 raise default_HTTP_exception(e.pgcode, "insert timestamp query")  # type: ignore
 
 
@@ -354,8 +364,8 @@ class AudioSlice(DAO):
                 )
                 return curs.fetchone()
             except psycopg2.Error as e:
-                print("Error executing SQL query:", e)
-                raise default_HTTP_exception(e.pgcode, "insert audio slice query")  # type: ignore
+                LOGGER.error("Error executing SQL query:", e)
+                raise default_HTTP_exception(e.pgcode, "inser audio slice query")  # type: ignore
 
     @classmethod
     async def get_classified(cls, afid: int, db: connection):
@@ -388,27 +398,34 @@ class WeatherData(DAO):
     owner_table = sql.SQL(
         "weatherdata NATURAL INNER JOIN timestampindex NATURAL INNER JOIN node"
     )
+
     @classmethod
-    async def insert(cls, db: connection, tid: int, wdtemperature: float, wdhumidity: float, wdpressure: float, wddid_rain: bool):
+    async def insert(
+        cls,
+        db: connection,
+        tid: int,
+        wdtemperature: float,
+        wdhumidity: float,
+        wdpressure: float,
+        wddid_rain: bool,
+    ):
         with db.cursor() as curs:
             try:
                 curs.execute(
                     sql.SQL(
-"""
+                        """
 INSERT INTO {table} (tid, wdtemperature, wdhumidity, wdpressure, wddid_rain)
 VALUES (%(tid)s, %(wdtemperature)s, %(wdhumidity)s, %(wdpressure)s, %(wddid_rain)s)
 RETURNING {id_column}
 """
-                    ).format(
-                        table=cls.table,
-                        id_column=cls.id_column
-                    ), {
+                    ).format(table=cls.table, id_column=cls.id_column),
+                    {
                         "tid": tid,
                         "wdtemperature": wdtemperature,
                         "wdhumidity": wdhumidity,
                         "wdpressure": wdpressure,
-                        "wddid_rain": wddid_rain
-                    }
+                        "wddid_rain": wddid_rain,
+                    },
                 )
 
                 db_response = curs.fetchone()
@@ -450,39 +467,44 @@ class AudioFile(DAO):
                     (owner,),
                 )
             except psycopg2.Error as e:
-                print("Error executing SQL query:", e)
+                LOGGER.error("Error executing SQL query:", e)
                 raise default_HTTP_exception(e.pgcode, "get audio file query")  # type: ignore
 
             # Not pulling the audio data.
             return [cls(row[0], row[1], row[2], None) for row in curs.fetchall()]
 
     @classmethod
-    async def insert(cls, db:connection, file, nid: int, tid: int):
+    async def insert(cls, db: connection, file, nid: int, tid: int):
         with db.cursor() as curs:
             try:
                 if isinstance(file, bytes):
                     data = file
                 else:
                     data = await file.read()
-                    
-                curs.execute(sql.SQL(
-"""
+
+                curs.execute(
+                    sql.SQL(
+                        """
 INSERT INTO {} (tid, data)
 VALUES (%s, %s)
 RETURNING afid
 """
-                ).format(cls.table), (tid, data))
+                    ).format(cls.table),
+                    (tid, data),
+                )
 
                 db_response = curs.fetchone()
                 if db_response is not None:
                     return db_response[0]
-            
+
             except psycopg2.Error as e:
                 print("Error executing SQL query:", e)
                 raise default_HTTP_exception(e.pgcode, "insert audio file query")
-        
+
     @classmethod
-    async def insert_and_timestamp(cls, db: connection, owner: int, file, nid: int, timestamp: datetime):
+    async def insert_and_timestamp(
+        cls, db: connection, owner: int, file, nid: int, timestamp: datetime
+    ):
 
         with db.cursor() as curs:
             try:
@@ -506,7 +528,7 @@ RETURNING afid
                 else:
                     return None
             except psycopg2.Error as e:
-                print("Error executing SQL query:", e)
+                LOGGER.error("Error executing SQL query:", e)
                 raise default_HTTP_exception(e.pgcode, "insert audio file query")  # type: ignore
 
     @classmethod
@@ -529,7 +551,7 @@ RETURNING afid
                 if db_response is not None:
                     return db_response[0]
         except psycopg2.Error as e:
-            print("Error executing SQL query:", e)
+            LOGGER.error("Error executing SQL query:", e)
             raise default_HTTP_exception(e.pgcode, "verify file is classified query")  # type: ignore
 
     @classmethod
@@ -550,12 +572,112 @@ RETURNING afid
                 )
                 return curs.fetchone()[0]  # type: ignore
         except psycopg2.Error as e:
-            print("Error executing SQL query:", e)
+            LOGGER.error("Error executing SQL query:", e)
             raise default_HTTP_exception(e.pgcode, "verify file exists query")  # type: ignore
 
 
 class Dashboard:
     """Collection of queries for dashboard endpoints"""
+
+    @staticmethod
+    def recent_data(
+        owner: int, minTimestamp: datetime, maxTimestamp: datetime, db: connection
+    ):
+        """Returns Recent Data form DB, [nid, afid, ...weatherdata]"""
+
+        @dataclass
+        class RecentData:
+            nid: int
+            afid: int
+            humidity: float
+            temperature: float
+            pressure: float
+            rain: float
+            time: float
+            tid: int
+
+        with db.cursor() as curs:
+            try:
+                # Ensure timestamps are timezone-aware UTC
+                if minTimestamp.tzinfo is None:
+                    minTimestamp = minTimestamp.replace(tzinfo=timezone.utc)
+                if maxTimestamp.tzinfo is None:
+                    maxTimestamp = maxTimestamp.replace(tzinfo=timezone.utc)
+
+                curs.execute(
+                    sql.SQL(
+                        """
+                    SELECT n.nid, af.afid, wd.wdhumidity AS humidity, wd.wdtemperature AS temperature, 
+                        wd.wdpressure AS pressure, wd.wddid_rain AS rain, ti.ttime AS time, ti.tid as tid
+                    FROM node n 
+                    INNER JOIN timestampindex ti ON ti.nid = n.nid
+                    INNER JOIN audiofile af ON af.tid = ti.tid
+                    INNER JOIN weatherdata wd ON wd.tid = ti.tid
+                    WHERE n.ownerid = %s AND ti.ttime > %s AND ti.ttime < %s
+                    ORDER BY ti.ttime DESC
+                    LIMIT 1000
+                    """
+                    ),
+                    (owner, minTimestamp, maxTimestamp),
+                )
+                db_output = curs.fetchall()
+
+                if len(db_output) == 0:
+                    return []
+                return list(starmap(RecentData, db_output))
+
+            except psycopg2.Error as e:
+                LOGGER.error("Error executing SQL query:", e)
+                raise default_HTTP_exception(e.pgcode, "dashboard recent data query")  # type: ignore
+
+    @staticmethod
+    def delete_records(owner: int, records: list[RecordTimestampIndex], db: connection):
+        """Deletes a list of records  based on join from @recent_data record
+
+        Args:
+            list including: [
+                owner (int)
+                timetsamp (datetime)
+                node_id (int)
+                db (connection) ]
+        """
+
+        MAX_BATCH_SIZE = 1000
+        number_of_records = len(records)
+        necessary_statements = (number_of_records // MAX_BATCH_SIZE) + 1
+        number_of_records_left = number_of_records
+        record_index = 0
+
+        with db.cursor() as curs:
+            try:
+                for i in range(necessary_statements):
+                    number_of_rows_to_insert = (
+                        number_of_records_left
+                        if (number_of_records_left < MAX_BATCH_SIZE)
+                        else MAX_BATCH_SIZE
+                    )
+                    batch_values = [
+                        (records[j].timestamp_index_id,)
+                        for j in range(
+                            record_index, number_of_rows_to_insert + record_index, 1
+                        )
+                    ]
+                    curs.execute(
+                        """
+                        DELETE FROM timestampindex WHERE tid = ANY(%s) 
+                        AND 
+                        nid IN (SELECT nid FROM node  WHERE ownerid = %s)
+                            """,
+                        (batch_values, owner),
+                    )
+                    number_of_records_left -= number_of_rows_to_insert
+                    record_index += number_of_rows_to_insert
+                    db.commit()
+
+                return curs.rowcount
+            except psycopg2.Error as e:
+                LOGGER.error("Error Executing SQL Query ot delte rows: ", e)
+                raise default_HTTP_exception(e.pgcode, "Dashboard Delete Record query")  # type: ignore
 
     @staticmethod
     def week_species_summary(owner: int, db: connection) -> dict[str, list]:
@@ -583,15 +705,15 @@ classifierreport AS (
     GROUP BY afid 
 )
 SELECT 
-    sum(coqui_hits) AS total_coqui,
-    sum(wightmanae_hits) AS total_wightmanae,
-    sum(gryllus_hits) AS total_gryllus,
-    sum(portoricensis_hits) AS total_portoricensis,
-    sum(unicolor_hits) AS total_unicolor,
-    sum(hedricki_hits) AS total_hedricki,
-    sum(locustus_hits) AS total_locustus,
-    sum(richmondi_hits) AS total_richmondi, 
-    date_bin('1 day', ttime AT LOCAL, CURRENT_TIMESTAMP) as bin
+    SUM(coqui_hits) AS total_coqui,
+    SUM(wightmanae_hits) AS total_wightmanae,
+    SUM(gryllus_hits) AS total_gryllus,
+    SUM(portoricensis_hits) AS total_portoricensis,
+    SUM(unicolor_hits) AS total_unicolor,
+    SUM(hedricki_hits) AS total_hedricki,
+    SUM(locustus_hits) AS total_locustus,
+    SUM(richmondi_hits) AS total_richmondi, 
+    DATE_BIN('1 day', ttime AT LOCAL, CURRENT_TIMESTAMP) AS bin
 FROM classifierreport NATURAL INNER JOIN timestampindex
 WHERE ttime > (CURRENT_TIMESTAMP - '7 days'::INTERVAL)
 GROUP BY "bin" 
@@ -617,9 +739,9 @@ ORDER BY "bin"
                     "date_bin": column_transposed[8],
                 }
             except psycopg2.Error as e:
-                print("Error executing SQL query:", e)
+                LOGGER.error("Error executing SQL query:", e)
                 raise default_HTTP_exception(
-                    e.pgcode, "dashboard species weekly summary query"
+                    e.pgcode, "dashboard species weekly summary query"  # type: ignore
                 )
 
     @staticmethod
@@ -633,6 +755,7 @@ ORDER BY "bin"
             latest_time: datetime
             ndescription: str
             ntype: str
+
         with db.cursor() as curs:
             try:
                 curs.execute(
@@ -653,7 +776,7 @@ ORDER by n.ntype
                 return list(starmap(NodeReport, curs.fetchall()))
 
             except psycopg2.Error as e:
-                print("Error executing SQL query:", e)
+                LOGGER.error("Error executing SQL query:", e)
                 raise default_HTTP_exception(e.pgcode, "dashboard node health check query")  # type: ignore
 
     @staticmethod
@@ -815,5 +938,5 @@ LIMIT %(limit)s
                 return list(starmap(ReportTableEntry, curs.fetchall()))
 
             except psycopg2.Error as e:
-                print("Error executing SQL query:", e)
-                raise default_HTTP_exception(e.pgcode, "dashboard recent reports query")
+                LOGGER.error("Error executing SQL query:", e)
+                raise default_HTTP_exception(e.pgcode, "dashboard recent reports query")  # type: ignore
