@@ -3,7 +3,6 @@ from fastapi import HTTPException, Depends
 from urllib.parse import urlparse
 from constants import ENVIRONMENT_DATABASE_CONFIG
 from pydantic import BaseModel, ValidationError
-from aiocache import cached
 from psycopg_pool import AsyncConnectionPool
 from psycopg import AsyncConnection, AsyncTransaction, Error, errors 
 import json
@@ -67,7 +66,7 @@ def get_connection_from_development_config() -> ConnInfo:
         ConnInfo: configuration for a new connection
     """
     config_file_path = "backend/src/testdbconfig.json"
-    print("defaulting to local config for db connection in ", config_file_path)
+    print("defaulting to local config for db connection in", config_file_path)
     with open(config_file_path, "r") as f:
         db_config = json.loads(f.read())
         try:
@@ -94,8 +93,8 @@ async def init_connection_pool():
         conninfo = get_connection_from_environment()
     else:
         conninfo = get_connection_from_development_config()
-
-    pool: AsyncConnectionPool = AsyncConnectionPool(conninfo, open=False)
+    global pool
+    pool = AsyncConnectionPool(conninfo, open=False)
     await pool.open()
 
 async def kill_connection_pool():
