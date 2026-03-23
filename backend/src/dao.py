@@ -7,15 +7,10 @@ from dbutil import default_HTTP_exception
 from itertools import starmap
 from Requests.RecordToBeDeleted import RecordTimestampIndex
 import psycopg2
-import logging
+from Logger import Logger
 
 node_type = str
-
-logging.basicConfig(
-    level=logging.DEBUG,
-    format="%(asctime)s - [%(funcName)s]: %(levelname)s - %(message)s",
-)
-LOGGER = logging.getLogger("DAO Service Component")
+LOGGER = Logger.getInstance("DAO Service Component")
 
 
 class DAO:
@@ -164,7 +159,7 @@ FROM appuser
                 db_response = curs.fetchall()
 
             except psycopg2.Error as e:
-                print("Error executing SQL query:", e)
+                LOGGER.error("Error executing SQL query:", e)
                 raise default_HTTP_exception(e.pgcode, "Get all users query")  # type: ignore
 
         return [cls(*row) for row in db_response]
@@ -435,7 +430,7 @@ RETURNING {id_column}
 
             except psycopg2.Error as e:
 
-                print("Error executing SQL query: e")
+                LOGGER.error("Error executing SQL query: e")
 
                 raise default_HTTP_exception(e.pgcode, "insert weather data query")
 
@@ -498,7 +493,7 @@ RETURNING afid
                     return db_response[0]
 
             except psycopg2.Error as e:
-                print("Error executing SQL query:", e)
+                LOGGER.error("Error executing SQL query:", e)
                 raise default_HTTP_exception(e.pgcode, "insert audio file query")
 
     @classmethod

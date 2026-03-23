@@ -26,6 +26,7 @@ import ssl
 import json
 
 from datetime import datetime, timedelta
+from Logger import Logger
 
 
 # Define our lifespan so we can start the mqtt client together with the server
@@ -37,6 +38,7 @@ async def lifespan(app: FastAPI):
     mqtt.end()
 
 
+LOGGER = Logger.getInstance("Main App Component")
 app = FastAPI(lifespan=lifespan)
 origins = [
     "https://localhost:5173",
@@ -260,7 +262,7 @@ async def node_insert(
         try:
             await mqtt.create_node(current_user.auid, nname, node_client_password)
         except mqtt.CommandExcept as e:
-            print(
+            LOGGER.error(
                 f"ERROR: Failed to create client: \n\t{e.detail.error}\n\tCommand: {e.detail.command}"
             )
             raise HTTPException(500, "Failed to set up node's MQTT client")
@@ -277,7 +279,7 @@ async def node_insert(
     try:
         await mqtt.add_topic_access(current_user.auid, newNode.nid)
     except mqtt.CommandExcept as e:
-        print(
+        LOGGER.error(
             f"ERROR: Failed to add topic access: \n\t{e.detail.error}\n\tCommand: {e.detail.command}"
         )
         raise HTTPException(500, "Failed to set up MQTT permissions for node")

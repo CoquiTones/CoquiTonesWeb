@@ -20,7 +20,9 @@ from standaloneops import classify_and_save
 from mlutil import get_model
 from queue import Queue
 from random import randint
+from Logger import Logger
 
+LOGGER = Logger.getInstance("MQTT Service Component")
 ADMIN_PASSWORD = os.environ["MOSQUITTO_DYNSEC_PASSWORD"]
 LISTENER_PASSWORD = os.environ["SECRET_KEY"]
 
@@ -287,14 +289,14 @@ async def listen_for_reports():
         await client.subscribe("reports/#")
         async for message in client.messages:
             if not isinstance(message.payload, bytes):
-                print("ERROR: Bad message received", message)
+                LOGGER.error("ERROR: Bad message received", message)
                 continue
             try:
                 report = parse_report(message.payload)
                 await handle_report(report, model)
 
             except ValidationError:
-                print("ERROR: Bad message received", message)
+                LOGGER.error("ERROR: Bad message received", message)
 
 
 def parse_report(report_raw: bytes) -> Report:
@@ -302,16 +304,16 @@ def parse_report(report_raw: bytes) -> Report:
 
 
 async def handle_report(report: Report, model):
-    print(f"INFO: New report from node {report.node_id}")
+    LOGGER.info(f"INFO: New report from node {report.node_id}")
     db = get_database_connection()
     if db is None:
-        print("ERROR: Couldn't save report\n\tFailed to connect to database")
+        LOGGER.error("ERROR: Couldn't save report\n\tFailed to connect to database")
         return
     timestamp_index = await dao.TimestampIndex.insert(
         db, report.node_id, report.timestamp
     )
     if timestamp_index is None:
-        print(
+        LOGGER.error(
             f"ERROR: Couldn't save report\n\tFailed to save timestamp {report.timestamp}"
         )
         return
@@ -325,8 +327,8 @@ async def handle_report(report: Report, model):
         report.weather_data.did_rain,
     )
     afid, wdid = await asyncio.gather(f1, f2)
-    print(f"INFO: Created new audiofile {afid}")
-    print(f"INFO: Created new weatherdata {wdid}")
+    LOGGER.info(f"INFO: Created new audiofile {afid}")
+    LOGGER.info(f"INFO: Created new weatherdata {wdid}")
 
     # We need an object that exposes a file-like interface to give to the classify function
     fake_file = BytesIO(report.audio.data)
@@ -417,7 +419,7 @@ async def broker_sync():
 
             # Create listener client if necessary.
             if "reports-listener" not in clients.keys():
-                print("INFO: Creating listener client")
+                LOGGER.info("INFO: Creating listener client")
                 command_tasks.create_task(_create_listener(client))
 
             # Create roles for each user that doesn't have one.
@@ -429,7 +431,7 @@ async def broker_sync():
                 role_exists = asyncio.Event()
                 role_name = f"user{user.auid}"
                 if role_name not in roles.keys():
-                    print(f"INFO: Creating role {role_name}")
+                    LOGGER.info(f"INFO: Creating role {role_name}")
                     role_creation_tasks.append(
                         command_tasks.create_task(
                             _create_user_role(client, user.auid)
@@ -456,7 +458,7 @@ async def broker_sync():
                     lambda node: node.nid not in allowed_node_ids,
                     await dao.Node.get_all(user.auid, db),
                 ):
-                    print(
+                    LOGGER.info(
                         f"INFO: adding topic access to node {node.nid} for user {user.username}"
                     )
                     command_tasks.create_task(

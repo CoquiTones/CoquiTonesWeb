@@ -5,6 +5,11 @@ from psycopg2.extensions import connection
 import psycopg2
 import json
 import os
+from Logger import Logger
+
+
+LOGGER = Logger.getInstance("Database Util Component")
+
 
 def get_connection_from_environment() -> connection | None:
     """
@@ -23,7 +28,7 @@ def get_connection_from_environment() -> connection | None:
         hostname = result.hostname
         port = result.port
 
-        print("Connecting using Environment Variables: ", result)
+        LOGGER.info("Connecting using Environment Variables")
         connection = psycopg2.connect(
             database=database,
             user=username,
@@ -33,7 +38,7 @@ def get_connection_from_environment() -> connection | None:
         )
         return connection
     except psycopg2.Error as e:
-        print("Error Creating Connection Object to database:", e.pgerror)
+        LOGGER.error("Error Creating Connection Object to database:", e.pgerror)
         return None
 
 
@@ -45,14 +50,14 @@ def get_connection_from_development_config() -> connection | None:
         connection: psycopg2 connection
     """
     config_file_path = "backend/src/testdbconfig.json"
-    print("defaulting to local config for db connection in ", config_file_path)
+    LOGGER.error("defaulting to local config for db connection in ", config_file_path)
     with open(config_file_path, "r") as f:
         db_config = json.loads(f.read())
         try:
             connection = psycopg2.connect(**db_config)
             return connection
         except psycopg2.Error as e:
-            print("Error connecting to database:", e.pgerror)
+            LOGGER.error("Error connecting to database:", e.pgerror)
             return None
 
 
@@ -80,7 +85,9 @@ def get_db_connection():
     """
     connection = get_database_connection()
     if connection is None:
-        raise HTTPException(status_code=500, detail="Database connection error while making connection")
+        raise HTTPException(
+            status_code=500, detail="Database connection error while making connection"
+        )
     try:
         yield connection
     finally:
@@ -88,7 +95,11 @@ def get_db_connection():
 
 
 def default_HTTP_exception(code: str | None, additional_info: str) -> HTTPException:
-    return HTTPException(status_code=500, detail=
-                         f"Database error {code}: {psycopg2.errors.lookup(code)}\n While doing {additional_info}"
-                         if code else 
-                         f"Database error while doing {additional_info}")
+    return HTTPException(
+        status_code=500,
+        detail=(
+            f"Database error {code}: {psycopg2.errors.lookup(code)}\n While doing {additional_info}"
+            if code
+            else f"Database error while doing {additional_info}"
+        ),
+    )
