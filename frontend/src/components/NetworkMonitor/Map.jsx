@@ -33,11 +33,7 @@ const MapEmbed = ({ Nodes }) => {
         -66.48590156897816,
         18.215311781299874
       ],
-      maxBounds: [[-68.34863711943092, 16.788333451001122], [-65.28422465966874, 18.60716956104943]],
-      zoom: 4,
-      dragPan: false,
-      dragRotate: false,
-      scrollZoom: false
+      zoom: 9,
     });
 
     mapRef.current.on('move', () => {
@@ -58,7 +54,7 @@ const MapEmbed = ({ Nodes }) => {
   return (
     <>
 
-      <div id="map-container" ref={mapContainerRef} style={{ width: "100%", height: "100vh", position: "relative", padding: "1em" }} >
+      <div id="map-container" ref={mapContainerRef} style={{ width: "100%", height: "100vh" }} >
         {(mapRef.current && Nodes) && Nodes.map((Node) => {
           return <Marker key={Node.nid}
             map={mapRef.current}

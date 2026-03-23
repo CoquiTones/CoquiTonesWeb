@@ -17,7 +17,7 @@ import { APIHandlerNetworkMonitor } from "../services/rest/APIHandler/APIHandler
 import NewNodeDialog from "../components/shared/NewNodeDialog";
 import HeroSectionCDN from "../components/shared/HeroSectionCDN";
 import MapEmbed from "../components/NetworkMonitor/Map";
-import { Typography } from "@mui/material";
+import { Container, Typography } from "@mui/material";
 const NetworkMonitor = () => {
   const [nodes, setNodes] = useState([]);
 
@@ -89,23 +89,22 @@ const NetworkMonitor = () => {
         </NodeWrapper>
       </NodeContainer>
 
-      <Grid item lg={8}>
-        <Paper
-          elevation={4}
-          sx={{
-            p: 2,
-            display: "flex",
-            flexDirection: "column",
-            height: "75vh",
-          }}
-        >
-          <div style={{ height: "100%" }}>
-            {" "}
-            {/* Ensure map container fills parent's height */}
+      <Container sx={{ mt: 4, mb: 4, width: "100%" }}>
+        <Grid item lg={8}>
+          <Paper
+            elevation={4}
+            sx={{
+              p: 2,
+              display: "flex",
+              flexDirection: "column",
+              height: "95%",
+              width: "95%"
+            }}
+          >
             <MapEmbed Nodes={nodes} />
-          </div>
-        </Paper>
-      </Grid>
+          </Paper>
+        </Grid>
+      </Container>
 
       {/* </Container>
                 </Box>

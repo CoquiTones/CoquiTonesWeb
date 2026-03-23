@@ -3,7 +3,7 @@ import { createPortal } from "react-dom"
 import mapboxgl from 'mapbox-gl'
 import { Node } from "../../services/rest/ResponseORM/NetworkMonitor/NodeResponse"
 
-
+import 'mapbox-gl/dist/mapbox-gl.css';
 /**
  * 
  * @param {*} mapRef

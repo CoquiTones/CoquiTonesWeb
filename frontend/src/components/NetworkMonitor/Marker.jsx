@@ -1,21 +1,21 @@
 import { useEffect, useRef } from "react";
 import mapboxgl from "mapbox-gl";
 import { createPortal } from "react-dom";
-
+import 'mapbox-gl/dist/mapbox-gl.css';
 const Marker = ({ map, Node, isActive, onClick }) => {
     const markerRef = useRef(null);
     const contentRef = useRef(document.createElement("div"));
     const nlongitude = Node.nlongitude;
     const nlatitude = Node.nlatitude;
     useEffect(() => {
-        markerRef.current = new mapboxgl.Marker(contentRef.current)
+        markerRef.current = new mapboxgl.Marker(contentRef.current, { offset: [0, -50 / 2] })
             .setLngLat([nlongitude, nlatitude])
             .addTo(map);
 
         return () => {
             markerRef.current.remove();
         };
-    }, []);
+    }, [Node]);
 
     return (
         <>
