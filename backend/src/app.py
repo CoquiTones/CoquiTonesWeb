@@ -129,7 +129,7 @@ async def audio_get(
     if audio_file is None:
         raise HTTPException(status_code=404, detail="Audio file not found")
     data = audio_file.data
-
+    assert(data is not None)
     return Response(content=bytes(data), media_type="audio/mpeg")
 
 
