@@ -111,7 +111,6 @@ async def db_dep() -> AsyncGenerator[AsyncConnection]:
     Yields:
         connection: psycopg connection object
     """
-    global pool
     assert(type(pool) is AsyncConnectionPool)
     async with pool.connection() as connection:
         yield connection
