@@ -482,14 +482,14 @@ class ReportTableEntry:
     """Recent reports table entry"""
     ndescription: str
     ttime: datetime
-    coqui: int
-    wightmanae: int
-    gryllus: int
-    portoricensis: int
-    unicolor: int
-    hedricki: int
-    locustus: int
-    richmondi: int
+    coqui_hits: int
+    wightmanae_hits: int
+    gryllus_hits: int
+    portoricensis_hits: int
+    unicolor_hits: int
+    hedricki_hits: int
+    locustus_hits: int
+    richmondi_hits: int
     wdhumidity: float
     wdtemperature: float
     wdpressure: float

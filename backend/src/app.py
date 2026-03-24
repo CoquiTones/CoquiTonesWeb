@@ -288,9 +288,11 @@ async def recent_reports(
     limit: int = 10,
     orderby: int = 1,  # This could be changed to an enum, but passing through the query might be weird.
 ):
+    arguments = locals() | {"db": transaction.connection}  # pass all keyword args as unpacked dictionary, special case for db connection
+    arguments.pop("transaction")
     return await dao.Dashboard.recent_reports(
-        **locals() | {"db": transaction.connection}
-    )  # pass all keyword args as unpacked dictionary, special case for db connection
+        **arguments
+    ) 
 
 
 @app.post(path="/api/dashboard/recent-data")
