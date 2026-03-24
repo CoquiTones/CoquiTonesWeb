@@ -116,10 +116,7 @@ async def db_dep() -> AsyncGenerator[AsyncConnection]:
     global pool
     assert(type(pool) is AsyncConnectionPool)
     async with pool.connection() as connection:
-        try:
-            yield connection
-        finally:
-            await connection.close()
+        yield connection
 
 async def transaction_dep(database_connection: Annotated[AsyncConnection, Depends(db_dep)]):
     """
