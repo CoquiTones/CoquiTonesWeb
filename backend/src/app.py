@@ -125,12 +125,12 @@ async def audio_get(
     current_user: Annotated[LightWeightUser, Depends(get_current_user)],
     transaction: DBTransactionDependency,
 ):
-    audio_file = await dao.AudioFile.get(current_user.auid, afid, transaction.connection)
+    audio_file: dao.AudioFile | None = await dao.AudioFile.get(current_user.auid, afid, transaction.connection)
     if audio_file is None:
         raise HTTPException(status_code=404, detail="Audio file not found")
     data = audio_file.data
 
-    return Response(content=bytes(data), media_type="audio/mpeg")  # type: ignore
+    return Response(content=bytes(data), media_type="audio/mpeg")
 
 
 @app.get("/api/audioslices/all")
@@ -222,7 +222,7 @@ async def node_insert(
     transaction: DBTransactionDependency,
 ):
     ownerid = current_user.auid
-    newNode = dao.Node.insert(transaction.connection, ownerid, ntype, nlatitude, nlongitude, ndescription)
+    newNode = await dao.Node.insert(transaction.connection, ownerid, ntype, nlatitude, nlongitude, ndescription)
     return newNode
 
 
@@ -232,7 +232,7 @@ async def node_delete(
     current_user: Annotated[LightWeightUser, Depends(get_current_user)],
     transaction: DBTransactionDependency,
 ):
-    return dao.Node.delete(current_user.auid, nid, transaction.connection)
+    return await dao.Node.delete(current_user.auid, nid, transaction.connection)
 
 
 @app.post(path="/api/classifier/classify")
@@ -246,7 +246,7 @@ async def week_species_summary(
     current_user: Annotated[LightWeightUser, Depends(get_current_user)],
     transaction: DBTransactionDependency,
 ):
-    return dao.Dashboard.week_species_summary(current_user.auid, transaction.connection)
+    return await dao.Dashboard.week_species_summary(current_user.auid, transaction.connection)
 
 
 @app.get(path="/api/dashboard/node-health-check")
@@ -254,7 +254,7 @@ async def node_health_check(
     current_user: Annotated[LightWeightUser, Depends(get_current_user)],
     transaction: DBTransactionDependency,
 ):
-    return dao.Dashboard.node_health_check(current_user.auid, transaction.connection)
+    return await dao.Dashboard.node_health_check(current_user.auid, transaction.connection)
 
 
 @app.get(path="/api/dashboard/recent-reports")
@@ -288,7 +288,7 @@ async def recent_reports(
     limit: int = 10,
     orderby: int = 1,  # This could be changed to an enum, but passing through the query might be weird.
 ):
-    return dao.Dashboard.recent_reports(
+    return await dao.Dashboard.recent_reports(
         **locals() | {"db": transaction.connection}
     )  # pass all keyword args as unpacked dictionary, special case for db connection
 
@@ -301,7 +301,7 @@ async def recent_data(
     transaction: DBTransactionDependency,
 ):
 
-    return dao.Dashboard.recent_data(current_user.auid, minTimestamp, maxTimestamp, transaction.connection)
+    return await dao.Dashboard.recent_data(current_user.auid, minTimestamp, maxTimestamp, transaction.connection)
 
 
 @app.delete(path="/api/dashboard/delete")
@@ -311,7 +311,7 @@ async def delete_record(
     transaction: DBTransactionDependency,
 ):
 
-    return dao.Dashboard.delete_records(
+    return await dao.Dashboard.delete_records(
         current_user.auid, list_of_records_to_be_deleted, transaction.connection
     )
 
