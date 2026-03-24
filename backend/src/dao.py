@@ -482,14 +482,14 @@ class ReportTableEntry:
     """Recent reports table entry"""
     ndescription: str
     ttime: datetime
-    coqui_hits: int
-    wightmanae_hits: int
-    gryllus_hits: int
-    portoricensis_hits: int
-    unicolor_hits: int
-    hedricki_hits: int
-    locustus_hits: int
-    richmondi_hits: int
+    coqui: int
+    wightmanae: int
+    gryllus: int
+    portoricensis: int
+    unicolor: int
+    hedricki: int
+    locustus: int
+    richmondi: int
     wdhumidity: float
     wdtemperature: float
     wdpressure: float
@@ -753,27 +753,27 @@ owner_matches AS (
 ),
 cr AS (
     SELECT afid, 
-        SUM(coqui::int) AS coqui_hits,
-        SUM(wightmanae::int) AS wightmanae_hits,
-        SUM(gryllus::int) AS gryllus_hits,
-        SUM(portoricensis::int) AS portoricensis_hits,
-        SUM(unicolor::int) AS unicolor_hits,
-        SUM(hedricki::int) AS hedricki_hits,
-        SUM(locustus::int) AS locustus_hits,
-        SUM(richmondi::int) AS richmondi_hits
+        SUM(coqui::int) AS coqui,
+        SUM(wightmanae::int) AS wightmanae,
+        SUM(gryllus::int) AS gryllus,
+        SUM(portoricensis::int) AS portoricensis,
+        SUM(unicolor::int) AS unicolor,
+        SUM(hedricki::int) AS hedricki,
+        SUM(locustus::int) AS locustus,
+        SUM(richmondi::int) AS richmondi
     FROM audioslice a NATURAL INNER JOIN owner_matches
     GROUP BY afid 
 )
 SELECT n.ndescription,
         t.ttime, 
-        c.coqui_hits, 
-        c.wightmanae_hits, 
-        c.gryllus_hits, 
-        c.portoricensis_hits, 
-        c.unicolor_hits, 
-        c.hedricki_hits, 
-        c.locustus_hits, 
-        c.richmondi_hits, 
+        c.coqui, 
+        c.wightmanae, 
+        c.gryllus, 
+        c.portoricensis, 
+        c.unicolor, 
+        c.hedricki, 
+        c.locustus, 
+        c.richmondi, 
         w.wdhumidity, w.wdtemperature, w.wdpressure, w.wddid_rain, 
         a.afid
 FROM timestampindex t NATURAL INNER JOIN cr c NATURAL INNER JOIN weatherdata w NATURAL INNER JOIN audiofile a NATURAL INNER JOIN node n
@@ -781,14 +781,14 @@ WHERE
 %(lowhum)s <= w.wdhumidity AND w.wdhumidity <= %(highhum)s AND 
 %(lowtemp)s <= w.wdtemperature AND w.wdtemperature <= %(hightemp)s AND 
 %(lowpress)s <= w.wdpressure AND w.wdpressure <= %(highpress)s AND 
-%(lowcoqui)s <= c.coqui_hits AND c.coqui_hits <= %(highcoqui)s and
-%(lowwightmanae)s <= c.wightmanae_hits AND c.wightmanae_hits <= %(highwightmanae)s AND
-%(lowgryllus)s <= c.gryllus_hits AND c.gryllus_hits <= %(highgryllus)s AND
-%(lowportoricensis)s <= c.portoricensis_hits AND c.portoricensis_hits <= %(highportoricensis)s AND
-%(lowunicolor)s <= c.unicolor_hits AND c.unicolor_hits <= %(highunicolor)s AND
-%(lowhedricki)s <= c.hedricki_hits AND c.hedricki_hits <= %(highhedricki)s AND
-%(lowlocustus)s <= c.locustus_hits AND c.locustus_hits <= %(highlocustus)s AND
-%(lowrichmondi)s <= c.richmondi_hits AND c.richmondi_hits <= %(highrichmondi)s AND
+%(lowcoqui)s <= c.coqui AND c.coqui <= %(highcoqui)s and
+%(lowwightmanae)s <= c.wightmanae AND c.wightmanae <= %(highwightmanae)s AND
+%(lowgryllus)s <= c.gryllus AND c.gryllus <= %(highgryllus)s AND
+%(lowportoricensis)s <= c.portoricensis AND c.portoricensis <= %(highportoricensis)s AND
+%(lowunicolor)s <= c.unicolor AND c.unicolor <= %(highunicolor)s AND
+%(lowhedricki)s <= c.hedricki AND c.hedricki <= %(highhedricki)s AND
+%(lowlocustus)s <= c.locustus AND c.locustus <= %(highlocustus)s AND
+%(lowrichmondi)s <= c.richmondi AND c.richmondi <= %(highrichmondi)s AND
 n.ndescription LIKE %(descriptionfilter)s
 ORDER BY 
     CASE %(orderby)s
@@ -796,14 +796,14 @@ ORDER BY
         ELSE NULL
     END,
     CASE %(orderby)s
-        WHEN 2 THEN c.coqui_hits
-        WHEN 3 THEN c.wightmanae_hits
-        WHEN 4 THEN c.gryllus_hits
-        WHEN 5 THEN c.portoricensis_hits
-        WHEN 6 THEN c.unicolor_hits
-        WHEN 7 THEN c.hedricki_hits
-        WHEN 8 THEN c.locustus_hits
-        WHEN 9 THEN c.richmondi_hits
+        WHEN 2 THEN c.coqui
+        WHEN 3 THEN c.wightmanae
+        WHEN 4 THEN c.gryllus
+        WHEN 5 THEN c.portoricensis
+        WHEN 6 THEN c.unicolor
+        WHEN 7 THEN c.hedricki
+        WHEN 8 THEN c.locustus
+        WHEN 9 THEN c.richmondi
         ELSE NULL
     END,
     CASE %(orderby)s
