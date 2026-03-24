@@ -21,10 +21,8 @@ class Conn(BaseModel):
 
     def __str__(self) -> str:
         return make_conninfo(**self.model_dump())
-    
-type ConnInfo = str
 
-def get_connection_from_environment() -> ConnInfo:
+def get_connection_from_environment() -> str:
     """
     Uses Environment variable database url for getting database parameters.
     See docker-compose.yml for example of what this looks like
@@ -58,7 +56,7 @@ def get_connection_from_environment() -> ConnInfo:
         print("ERROR: Couldn't create connection to database:\n", e)
         raise e
 
-def get_connection_from_development_config() -> ConnInfo:
+def get_connection_from_development_config() -> str:
     """
     Uses hardcoded config file to get database parameters.
 
