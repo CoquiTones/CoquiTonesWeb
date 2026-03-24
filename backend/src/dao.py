@@ -85,7 +85,7 @@ WHERE {my_id} = %s
                 LOGGER.error("Error executing SQL query:", e)
                 raise default_HTTP_exception(e, "get query")
 
-            entity = curs.fetchone()
+            return await curs.fetchone()
             
             
 
@@ -367,7 +367,7 @@ class AudioFile(DAO):
     afid: int
     tid: int
     ownerid: int
-    data: bytes | None
+    data: bytes | None = None
 
     table = sql.Identifier("audiofile")
     id_column = sql.Identifier("afid")
@@ -418,7 +418,7 @@ RETURNING afid
                     ).format(cls.table),
                     (tid.result(), owner, data.result()),
                 )
-                return curs.fetchone()
+                return await curs.fetchone()
             except PGError as e:
                 LOGGER.error("Error executing SQL query:", e)
                 raise default_HTTP_exception(e, "insert audio file query")
