@@ -245,7 +245,7 @@ async def classify(file: UploadFile = File(...), model=Depends(get_model)):
 async def week_species_summary(
     current_user: Annotated[LightWeightUser, Depends(get_current_user)],
     transaction: DBTransactionDependency,
-):
+) -> dao.WeeklySummaryTable:
     return await dao.Dashboard.week_species_summary(current_user.auid, transaction.connection)
 
 

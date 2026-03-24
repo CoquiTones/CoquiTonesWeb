@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from dbutil import default_HTTP_exception
 from Requests.RecordToBeDeleted import RecordTimestampIndex
+from pydantic import Field
 import logging
 
 node_type = str
@@ -478,7 +479,7 @@ class RecentData:
 
 @dataclass
 class ReportTableEntry:
-    """Week species summary table entry"""
+    """Recent reports table entry"""
     ndescription: str
     ttime: datetime
     coqui: int
@@ -496,6 +497,31 @@ class ReportTableEntry:
     afid: int  # Front end should generate URL to audio file by using get audio file endpoint
 
 @dataclass
+class WeeklySummaryEntry:
+    """Row of weekly summary table"""
+    total_coqui: int
+    total_wightmanae: int
+    total_gryllus: int
+    total_portoricensis: int
+    total_unicolor: int
+    total_hedricki: int
+    total_locustus: int
+    total_richmondi: int
+    bin: datetime
+@dataclass
+class WeeklySummaryTable:
+    """All the time series of the weekly summary"""
+    total_coqui: list[int] = Field(default_factory=lambda: list())
+    total_wightmanae: list[int] = Field(default_factory=lambda: list())
+    total_gryllus: list[int] = Field(default_factory=lambda: list())
+    total_portoricensis: list[int] = Field(default_factory=lambda: list())
+    total_unicolor: list[int] = Field(default_factory=lambda: list())
+    total_hedricki: list[int] = Field(default_factory=lambda: list())
+    total_locustus: list[int] = Field(default_factory=lambda: list())
+    total_richmondi: list[int] = Field(default_factory=lambda: list())
+    date_bin: list[datetime] = Field(default_factory=lambda: list())
+
+@dataclass
 class NodeReport:
     """Node health report response object"""
 
@@ -509,7 +535,7 @@ class Dashboard:
     @staticmethod
     async def recent_data(
         owner: int, minTimestamp: datetime, maxTimestamp: datetime, db: AsyncConnection
-    ):
+    ) -> list[RecentData]:
         """Returns Recent Data form DB, [nid, afid, ...weatherdata]"""
         async with db.cursor(row_factory=class_row(RecentData)) as curs:
             try:
@@ -543,7 +569,7 @@ class Dashboard:
 
     @staticmethod
     async def delete_records(owner: int, records: list[RecordTimestampIndex], db: AsyncConnection):
-        """Deletes a list of records  based on join from @recent_data record
+        """Deletes a list of records based on join from @recent_data record
 
         Args:
             list including: [
@@ -590,9 +616,9 @@ class Dashboard:
                 raise default_HTTP_exception(e, "Dashboard Delete Record query")
 
     @staticmethod
-    async def week_species_summary(owner: int, db: AsyncConnection) -> dict[str, list]:
+    async def week_species_summary(owner: int, db: AsyncConnection) -> WeeklySummaryTable:
         """Returns time series with sums of classifier hits of each species from all nodes, binned into days"""
-        async with db.cursor(row_factory=class_row(ReportTableEntry)) as curs:
+        async with db.cursor(row_factory=class_row(WeeklySummaryEntry)) as curs:
             try:
                 await curs.execute(
                     sql.SQL(
@@ -635,19 +661,21 @@ ORDER BY "bin"
                 db_output = await curs.fetchall()
                 if len(db_output) == 0:
                     # If there are no afids to group by the query will just turn up empty, so we should respond with an empty dict.
-                    return {}
-                column_transposed = list(map(list, zip(*db_output)))
-                return {
-                    "total_coqui": column_transposed[0],
-                    "total_wightmanae": column_transposed[1],
-                    "total_gryllus": column_transposed[2],
-                    "total_portoricensis": column_transposed[3],
-                    "total_unicolor": column_transposed[4],
-                    "total_hedricki": column_transposed[5],
-                    "total_locustus": column_transposed[6],
-                    "total_richmondi": column_transposed[7],
-                    "date_bin": column_transposed[8],
-                }
+                    return WeeklySummaryTable()
+
+                # Transpose the rows into time series (which are effectively "columns").
+                return WeeklySummaryTable(
+                    total_coqui=[row.total_coqui for row in db_output],
+                    total_wightmanae=[row.total_wightmanae for row in db_output],
+                    total_gryllus=[row.total_gryllus for row in db_output],
+                    total_hedricki=[row.total_hedricki for row in db_output],
+                    total_locustus=[row.total_locustus for row in db_output],
+                    total_portoricensis=[row.total_portoricensis for row in db_output],
+                    total_richmondi=[row.total_richmondi for row in db_output],
+                    total_unicolor=[row.total_unicolor for row in db_output],
+                    date_bin=[row.bin for row in db_output]
+                )
+            
             except PGError as e:
                 LOGGER.error("Error executing SQL query:", e)
                 raise default_HTTP_exception(
