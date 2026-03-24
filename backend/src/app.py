@@ -15,6 +15,7 @@ from routers.security import get_current_user, LightWeightUser
 from routers.security import router as security_router
 from standaloneops import classify_and_save
 from Requests.RecordToBeDeleted import RecordTimestampIndex
+from Requests.Node import Node
 import dao
 import mqtt
 import dao as dao
@@ -79,16 +80,16 @@ async def node_all(
     return await dao.Node.get_all(current_user.auid, db)
 
 
-@app.get("/api/node/{nid}")
+@app.get("/api/node")
 async def node_get(
     current_user: Annotated[LightWeightUser, Depends(get_current_user)],
-    nid: int,
+    nid: Annotated[int, Form()],
     db=Depends(get_db_connection),
 ):
     return await dao.Node.get(current_user.auid, nid, db)
 
 
-@app.post("api/node/mqtt/{nid}")
+@app.post("api/node/mqtt")
 async def create_node_client(
     current_user: Annotated[LightWeightUser, Depends(get_current_user)],
     nid: int,
@@ -132,7 +133,7 @@ async def timestamp_all(
     return await dao.TimestampIndex.get_all(current_user.auid, db)
 
 
-@app.get("/api/timestamp/{tid}")
+@app.get("/api/timestamp")
 async def timestamp_get(
     tid: int,
     current_user: Annotated[LightWeightUser, Depends(get_current_user)],
@@ -149,7 +150,7 @@ async def weather_all(
     return await dao.WeatherData.get_all(current_user.auid, db)
 
 
-@app.get("/api/weather/{wdid}")
+@app.get("/api/weather")
 async def weather_get(
     wdid: int,
     current_user: Annotated[LightWeightUser, Depends(get_current_user)],
@@ -188,7 +189,7 @@ async def audio_slice_all(
     return await dao.AudioSlice.get_all(current_user.auid, db)
 
 
-@app.get(path="/api/audioslices/{asid}")
+@app.get(path="/api/audioslices")
 async def audio_slice_get(
     asid: int,
     current_user: Annotated[LightWeightUser, Depends(get_current_user)],
@@ -218,7 +219,7 @@ async def audio_post(
     return audio_file_id
 
 
-@app.get(path="/api/classify/by-id/{afid}")
+@app.get(path="/api/classify/by-id")
 async def classify_by_afid(
     afid: int,
     current_user: Annotated[LightWeightUser, Depends(get_current_user)],
@@ -287,9 +288,9 @@ async def node_insert(
     return newNode
 
 
-@app.delete(path="/api/node/delete/{nid}")
+@app.delete(path="/api/node/delete")
 async def node_delete(
-    nid: int,
+    nid: Annotated[int, Form()],
     current_user: Annotated[LightWeightUser, Depends(get_current_user)],
     db=Depends(get_db_connection),
 ):

@@ -13,7 +13,7 @@ import DialogTitle from "@mui/material/DialogTitle";
 import { InsertNewNodeRequest } from "../../services/rest/RequestORM/NetworkMonitor/NewNodeRequest";
 import { APIHandlerNetworkMonitor } from "../../services/rest/APIHandler/APIHandlerNetworkMonitor";
 
-export default function NewNodeDialog({ setDucks }) {
+export default function NewNodeDialog() {
   const [open, setOpen] = useState(false);
   const [nodeType, setNodeType] = useState("primary");
   const [latitude, setLatitude] = useState("");

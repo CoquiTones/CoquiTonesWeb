@@ -15,11 +15,12 @@ export class Node {
         console.log(`Node Location: (lat,lon): [", ${this.lat}, ${this.lon}]`);
         console.log("Node Description: ", this.ndescription);
     }
+
 }
 
 export class NodeList {
     constructor(apiResponse) {
-        console.log(apiResponse)
+        this.nodeList = []
         this.nodeList = apiResponse.map((nodeObject) => (
             new Node(nodeObject.nid, nodeObject.ntype, nodeObject.nlatitude, nodeObject.nlongitude, nodeObject.ndescription, nodeObject.nname)
         ))
@@ -27,5 +28,9 @@ export class NodeList {
 
     map(callback) {
         return this.nodeList.map(callback)
+    }
+
+    isEmpty() {
+        return this.nodeList.length === 0;
     }
 }

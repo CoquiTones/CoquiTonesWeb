@@ -1,7 +1,7 @@
 import Cookies from 'js-cookie';
 import { APIHandlerAuthentication } from '../rest/APIHandler/APIHandlerAuthentication';
 class GlobalStateManager {
-    static ACCESS_TOKEN_EXPIRE_MINUTES = 30;
+    static ACCESS_TOKEN_EXPIRE_HOURS = 24;
     static SESSION_TOKEN_KEY = 'session_token'
 
     /**
@@ -28,7 +28,7 @@ class GlobalStateManager {
 
     static setAuthenticationToken(session_token) {
         Cookies.set(this.SESSION_TOKEN_KEY, session_token, {
-            expires: this.ACCESS_TOKEN_EXPIRE_MINUTES / 24 / 60,
+            expires: this.ACCESS_TOKEN_EXPIRE_HOURS / 24,
             secure: true,
             sameSite: 'strict'
         })

@@ -121,6 +121,7 @@ RETURNING {my_id}
                     ),
                     {"my_id": id, "owner_id": owner},
                 )
+                db.commit()
             except psycopg2.Error as e:
                 LOGGER.error("Error executing SQL query:", e)
                 raise default_HTTP_exception(e.pgcode, "delete query")  # type: ignore
