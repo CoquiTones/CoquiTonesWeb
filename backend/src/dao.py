@@ -222,8 +222,8 @@ class Node(DAO):
     """Node DAO"""
 
     nid: int
-    ownerid: int
     nname: str
+    ownerid: int
     ntype: node_type
     nlatitude: float
     nlongitude: float
@@ -249,12 +249,12 @@ class Node(DAO):
                 curs.execute(
                     sql.SQL(
                         """
-                            INSERT INTO {} (ownerid, nname, ntype, nlatitude, nlongitude, ndescription)
+                            INSERT INTO {} (nname, ownerid, ntype, nlatitude, nlongitude, ndescription)
                             VALUES (%s, %s, %s, %s, %s, %s)
                             RETURNING nid
                             """
                     ).format(cls.table),
-                    (ownerid, nname, ntype, nlatitude, nlongitude, ndescription),
+                    (nname, ownerid, ntype, nlatitude, nlongitude, ndescription),
                 )
 
                 db.commit()
@@ -262,7 +262,7 @@ class Node(DAO):
                 if db_response is not None:
                     nid = db_response[0]
                     return cls(
-                        nid, ownerid, nname, ntype, nlatitude, nlongitude, ndescription
+                        nid, nname, ownerid, ntype, nlatitude, nlongitude, ndescription
                     )
             except psycopg2.Error as e:
                 LOGGER.error("Error executing SQL query:", e)
