@@ -25,7 +25,7 @@ class DashboardTest(unittest.TestCase):
     
     def test_recent_reports(self):
         session = login()
-        url = host_url + 'api/dashboard/recent-reports/'
+        url = host_url + 'api/dashboard/recent-reports'
 
         response = session.get(url)
         self.assertEqual(response.status_code, 200, 'response OK')
