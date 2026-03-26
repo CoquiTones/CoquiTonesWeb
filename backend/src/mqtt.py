@@ -26,7 +26,7 @@ LOGGER = Logger.getInstance("MQTT Service Component")
 ADMIN_PASSWORD = os.environ["MOSQUITTO_DYNSEC_PASSWORD"]
 LISTENER_PASSWORD = os.environ["SECRET_KEY"]
 
-MQTT_BROKER_HOSTNAME = "mqtt-broker"
+MQTT_BROKER_HOSTNAME = "localhost"
 MQTT_BROKER_PORT = 2043
 CONTROL_TOPIC = "$CONTROL/dynamic-security/v1"
 CONTROL_RESPONSE_TOPIC = "$CONTROL/dynamic-security/v1/response"
