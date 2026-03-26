@@ -15,7 +15,6 @@ from routers.security import get_current_user, LightWeightUser
 from routers.security import router as security_router
 from standaloneops import classify_and_save
 from Requests.RecordToBeDeleted import RecordTimestampIndex
-from Requests.Node import Node
 import dao
 import mqtt
 import dao as dao
@@ -92,7 +91,7 @@ async def node_get(
 @app.post("api/node/mqtt")
 async def create_node_client(
     current_user: Annotated[LightWeightUser, Depends(get_current_user)],
-    nid: int,
+    nid: Annotated[int, Form()],
     password: Annotated[SecretStr, Form()],
     db=Depends(get_db_connection),
 ):
@@ -135,7 +134,7 @@ async def timestamp_all(
 
 @app.get("/api/timestamp")
 async def timestamp_get(
-    tid: int,
+    tid: Annotated[int, Form()],
     current_user: Annotated[LightWeightUser, Depends(get_current_user)],
     db=Depends(get_db_connection),
 ):
@@ -152,7 +151,7 @@ async def weather_all(
 
 @app.get("/api/weather")
 async def weather_get(
-    wdid: int,
+    wdid: Annotated[int, Form()],
     current_user: Annotated[LightWeightUser, Depends(get_current_user)],
     db=Depends(get_db_connection),
 ):
@@ -191,7 +190,7 @@ async def audio_slice_all(
 
 @app.get(path="/api/audioslices")
 async def audio_slice_get(
-    asid: int,
+    asid: Annotated[int, Form()],
     current_user: Annotated[LightWeightUser, Depends(get_current_user)],
     db=Depends(get_db_connection),
 ):
@@ -221,7 +220,7 @@ async def audio_post(
 
 @app.get(path="/api/classify/by-id")
 async def classify_by_afid(
-    afid: int,
+    afid: Annotated[int, Form()],
     current_user: Annotated[LightWeightUser, Depends(get_current_user)],
     override: Annotated[bool, Form()] = False,
     db=Depends(get_db_connection),
