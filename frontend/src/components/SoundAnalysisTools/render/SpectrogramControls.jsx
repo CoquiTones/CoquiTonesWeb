@@ -133,7 +133,6 @@ export default function SpectrogramControls({
           step={1}
         />
       </Box>
-      x
     </Box>
   );
 }
