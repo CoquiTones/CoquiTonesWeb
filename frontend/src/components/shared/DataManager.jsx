@@ -11,7 +11,6 @@ import DialogTitle from "@mui/material/DialogTitle";
 
 import FileUpload from "./FileUpload";
 import { APIHandlerSpectralAnalysis } from "../../services/rest/APIHandler/APIHandlerSpectralAnalysis";
-import { insertAudioRequest } from "../../services/rest/RequestORM/SpectralAnalysis/insertAudioRequest";
 
 const DataManager = ({ audioFile, setAudioFile, setDefaultX, setDefaultY, setStats }) => {
   const [open, setOpen] = useState(false);

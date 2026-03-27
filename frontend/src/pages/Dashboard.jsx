@@ -15,6 +15,7 @@ import Navbar from "../components/shared/Navbar";
 import Footer from "../components/shared/Footer";
 import theme from "../components/shared/Theme";
 import Sidebar from "../components/shared/Sidebar";
+import DataTable from "../components/shared/DataTable";
 
 export default function Dashboard() {
   const [isOpen, setIsOpen] = useState(false);
@@ -76,7 +77,7 @@ export default function Dashboard() {
                       width: "100%",
                     }}
                   >
-                    <RecentEntries />
+                    <DataTable />
                   </Paper>
                 </Grid>
               </Grid>

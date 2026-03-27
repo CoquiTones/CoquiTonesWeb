@@ -21,7 +21,7 @@ class TestMLUtil(unittest.TestCase):
     def predictor_assertions(self, predictor):
         self.assertIsNotNone(predictor, "Predictor is something")
         self.assertTrue(
-            sklearn.multiclass.is_classifier(predictor), 
+            sklearn.base.is_classifier(predictor), 
             "Predictor is multiclass classifier"
             )
         self.assertEqual(
