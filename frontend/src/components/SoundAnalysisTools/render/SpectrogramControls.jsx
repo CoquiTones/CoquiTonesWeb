@@ -27,8 +27,6 @@ ValueLabelComponent.propTypes = {
 };
 
 export default function SpectrogramControls({
-  type,
-  setType,
   colorscale,
   setColorscale,
   xrange,
@@ -60,26 +58,6 @@ export default function SpectrogramControls({
 
   return (
     <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
-      <FormControl fullWidth>
-        <InputLabel id="chart-type-label">Chart Type</InputLabel>
-        <Select
-          labelId="chart-type-label"
-          value={type}
-          label="Chart Type"
-          onChange={(event) => setType(event.target.value)}
-          MenuProps={{
-            PaperProps: {
-              sx: {
-                backgroundColor: "#121212",
-                opacity: 1,
-              }
-            }
-          }}
-        >
-          <MenuItem value={"mel-spectrogram"}>Mel Spectrogram</MenuItem>
-          <MenuItem value={"basic-spectrogram"}>Basic Spectrogram</MenuItem>
-        </Select>
-      </FormControl>
       <FormControl fullWidth>
         <InputLabel id="colorscale-label">Color Scale</InputLabel>
         <Select
