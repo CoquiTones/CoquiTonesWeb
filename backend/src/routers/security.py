@@ -10,6 +10,7 @@ from dbutil import get_db_connection
 import hashlib
 import dao
 import os
+import mqtt
 
 router = APIRouter()
 
@@ -143,7 +144,13 @@ async def create_user(
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Username too long")
     salt = os.urandom(16)
     pwhash = hash_password(password, salt)
-    if await dao.User.insert(db, username, pwhash, salt) is None:
+    
+    auid = await dao.User.insert(db, username, pwhash, salt) 
+    if auid is None:
         raise HTTPException(status.HTTP_409_CONFLICT, "Username taken")
+    
+    if not await mqtt.create_user_role(auid):
+        raise HTTPException(status.HTTP_500_INTERNAL_SERVER_ERROR, 
+                            "Created user but failed to create their MQTT role.")
 
     return {"message": "success"}

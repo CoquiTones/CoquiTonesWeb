@@ -1,14 +1,23 @@
+import dotenv
+
+dotenv.load_dotenv(dotenv_path="backend/src/.env")
+
+from contextlib import asynccontextmanager
 from typing import Annotated
 from fastapi import FastAPI, File, UploadFile, staticfiles, Depends, HTTPException, Form
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, Response
+from fastapi import status
 from dbutil import get_db_connection
 from mlutil import get_model, classify_audio_file
-from Spectrogram import sendMelSpectrogram, sendBasicSpectrogram
+from pydantic import SecretStr
 from routers.security import get_current_user, LightWeightUser
 from routers.security import router as security_router
+from standaloneops import classify_and_save
 from Requests.RecordToBeDeleted import RecordTimestampIndex
 import dao
+import mqtt
+import dao as dao
 import os
 import io
 import asyncio
@@ -17,12 +26,20 @@ import ssl
 import json
 
 from datetime import datetime, timedelta
+from Logger import Logger
 
-dotenv.load_dotenv(dotenv_path="backend/src/.env")
 
-app = FastAPI()
-app = FastAPI()
+# Define our lifespan so we can start the mqtt client together with the server
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # MQTT client startup
+    mqtt.start()
+    yield
+    mqtt.end()
 
+
+LOGGER = Logger.getInstance("Main App Component")
+app = FastAPI(lifespan=lifespan)
 origins = [
     "https://localhost:5173",
     "https://localhost:8080",
@@ -62,13 +79,49 @@ async def node_all(
     return await dao.Node.get_all(current_user.auid, db)
 
 
-@app.get("/api/node/{nid}")
+@app.get("/api/node")
 async def node_get(
     current_user: Annotated[LightWeightUser, Depends(get_current_user)],
-    nid: int,
+    nid: Annotated[int, Form()],
     db=Depends(get_db_connection),
 ):
     return await dao.Node.get(current_user.auid, nid, db)
+
+
+@app.post("api/node/mqtt")
+async def create_node_client(
+    current_user: Annotated[LightWeightUser, Depends(get_current_user)],
+    nid: Annotated[int, Form()],
+    password: Annotated[SecretStr, Form()],
+    db=Depends(get_db_connection),
+):
+    """Creates an MQTT client for a node that doesn't have one."""
+    node = await dao.Node.get(current_user.auid, nid, db)
+    if node is None:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Node doesn't exist")
+    if not await mqtt.create_node(current_user.auid, node.nname, password):
+        raise HTTPException(
+            status.HTTP_500_INTERNAL_SERVER_ERROR, "Failed to create client"
+        )
+
+
+@app.get("/api/node/noclient")
+async def nodes_with_no_client(
+    current_user: Annotated[LightWeightUser, Depends(get_current_user)],
+    db=Depends(get_db_connection),
+) -> list[dao.Node]:
+    """
+    Lists which of the user's primary nodes are missing a client.
+    """
+    async with asyncio.TaskGroup() as tg:
+        all_mqtt_clients = tg.create_task(mqtt.all_clients())
+        user_nodes = tg.create_task(dao.Node.get_all(current_user.auid, db))
+    primary_nodes: list[dao.Node] = list(
+        filter(lambda node: node.ntype == "primary", user_nodes.result())
+    )
+    client_names = all_mqtt_clients.result().keys()
+    missing_nodes = filter(lambda node: node.nname in client_names, primary_nodes)
+    return list(missing_nodes)
 
 
 @app.get("/api/timestamp/all")
@@ -79,9 +132,9 @@ async def timestamp_all(
     return await dao.TimestampIndex.get_all(current_user.auid, db)
 
 
-@app.get("/api/timestamp/{tid}")
+@app.get("/api/timestamp")
 async def timestamp_get(
-    tid: int,
+    tid: Annotated[int, Form()],
     current_user: Annotated[LightWeightUser, Depends(get_current_user)],
     db=Depends(get_db_connection),
 ):
@@ -96,9 +149,9 @@ async def weather_all(
     return await dao.WeatherData.get_all(current_user.auid, db)
 
 
-@app.get("/api/weather/{wdid}")
+@app.get("/api/weather")
 async def weather_get(
-    wdid: int,
+    wdid: Annotated[int, Form()],
     current_user: Annotated[LightWeightUser, Depends(get_current_user)],
     db=Depends(get_db_connection),
 ):
@@ -135,32 +188,13 @@ async def audio_slice_all(
     return await dao.AudioSlice.get_all(current_user.auid, db)
 
 
-@app.get(path="/api/audioslices/{asid}")
+@app.get(path="/api/audioslices")
 async def audio_slice_get(
-    asid: int,
+    asid: Annotated[int, Form()],
     current_user: Annotated[LightWeightUser, Depends(get_current_user)],
     db=Depends(get_db_connection),
 ):
     return await dao.AudioSlice.get(current_user.auid, asid, db)
-
-
-async def classify_and_save(audio, audio_file_id, db, model):
-    classifier_output = classify_audio_file(audio, model)
-    slice_insert_tasks = []
-    for classified_slice_name, classified_slice in classifier_output.items():
-        classified_slice["starttime"] = classified_slice.pop("start_time")
-        classified_slice["endtime"] = classified_slice.pop("end_time")
-        slice_insert_tasks.append(
-            asyncio.create_task(
-                dao.AudioSlice.insert(db, audio_file_id, **classified_slice),  # type: ignore
-                name=classified_slice_name,
-            )
-        )
-
-    done, pending = await asyncio.wait(slice_insert_tasks)
-    results = map(lambda task: task.result(), done)
-    db.commit()
-    return results
 
 
 @app.post(path="/api/audio/insert")
@@ -173,7 +207,7 @@ async def audio_post(
     db=Depends(get_db_connection),
     model=Depends(get_model),
 ):
-    audio_file_id = await dao.AudioFile.insert(
+    audio_file_id = await dao.AudioFile.insert_and_timestamp(
         db, current_user.auid, file, nid, timestamp
     )
 
@@ -184,9 +218,9 @@ async def audio_post(
     return audio_file_id
 
 
-@app.get(path="/api/classify/by-id/{afid}")
+@app.get(path="/api/classify/by-id")
 async def classify_by_afid(
-    afid: int,
+    afid: Annotated[int, Form()],
     current_user: Annotated[LightWeightUser, Depends(get_current_user)],
     override: Annotated[bool, Form()] = False,
     db=Depends(get_db_connection),
@@ -209,20 +243,53 @@ async def classify_by_afid(
 @app.post(path="/api/node/insert")
 async def node_insert(
     ntype: Annotated[str, Form()],
+    nname: Annotated[str, Form()],
     nlatitude: Annotated[float, Form()],
     nlongitude: Annotated[float, Form()],
     ndescription: Annotated[str, Form()],
     current_user: Annotated[LightWeightUser, Depends(get_current_user)],
+    node_client_password: Annotated[SecretStr | None, Form()] = None,
     db=Depends(get_db_connection),
 ):
+    # TODO: make insert async with psycopg3 and make this concurrent
+    if ntype == "primary":
+        if node_client_password is None:
+            raise HTTPException(
+                status_code=400, detail="Must provide password for new primary nodes"
+            )
+
+        # Primary node must have a client with the broker
+        try:
+            await mqtt.create_node(current_user.auid, nname, node_client_password)
+        except mqtt.CommandExcept as e:
+            LOGGER.error(
+                f"ERROR: Failed to create client: \n\t{e.detail.error}\n\tCommand: {e.detail.command}"
+            )
+            raise HTTPException(500, "Failed to set up node's MQTT client")
+
     ownerid = current_user.auid
-    newNode = dao.Node.insert(db, ownerid, ntype, nlatitude, nlongitude, ndescription)
+    newNode = dao.Node.insert(
+        db, ownerid, nname, ntype, nlatitude, nlongitude, ndescription
+    )
+    if newNode is None:
+        raise HTTPException(500, "Failed to create new node")
+
+    # All the user's primary nodes must have access to a topic corresponding to the new node
+    # This allows them to upload reports from the new node into the appropriate topic
+    try:
+        await mqtt.add_topic_access(current_user.auid, newNode.nid)
+    except mqtt.CommandExcept as e:
+        LOGGER.error(
+            f"ERROR: Failed to add topic access: \n\t{e.detail.error}\n\tCommand: {e.detail.command}"
+        )
+        raise HTTPException(500, "Failed to set up MQTT permissions for node")
+
     return newNode
 
 
-@app.delete(path="/api/node/delete/{nid}")
+@app.delete(path="/api/node/delete")
 async def node_delete(
-    nid: int,
+    nid: Annotated[int, Form()],
     current_user: Annotated[LightWeightUser, Depends(get_current_user)],
     db=Depends(get_db_connection),
 ):

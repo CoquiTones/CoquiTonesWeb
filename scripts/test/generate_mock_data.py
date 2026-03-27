@@ -111,10 +111,11 @@ def populate_appusers(connection):
 
 def populate_node(connection, number_of_inserts):
 
-    latitude_range = (-90, 90)
-    longitude_range = (-90, 90)
+    longitude_range = (-69.1057, -66.1057)
+    latitude_range = (16.4655, 19.4655)
+    name_length = 10
     description_length = 10
-    prepared_statement = "INSERT INTO node (ntype, ownerid, nlatitude, nlongitude, ndescription) VALUES (%s, %s, %s, %s, %s)"
+    prepared_statement = "INSERT INTO node (ntype, ownerid, nname, nlatitude, nlongitude, ndescription) VALUES (%s, %s, %s, %s, %s, %s)"
 
     necessary_statements = (number_of_inserts // MAX_BATCH_SIZE) + 1
     number_of_inserts_left = number_of_inserts
@@ -129,6 +130,7 @@ def populate_node(connection, number_of_inserts):
                 (
                     random_node_type(),
                     1,  # owner id
+                    random_string(name_length),
                     random_float(*latitude_range),  # asterisk means unpacking
                     random_float(*longitude_range),
                     random_string(description_length),

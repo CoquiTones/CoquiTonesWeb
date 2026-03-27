@@ -1,12 +1,17 @@
 from fastapi import HTTPException
 from urllib.parse import urlparse
 from constants import ENVIRONMENT_DATABASE_CONFIG
+from psycopg2.extensions import connection
 import psycopg2
 import json
 import os
+from Logger import Logger
 
 
-def get_connection_from_environment():
+LOGGER = Logger.getInstance("Database Util Component")
+
+
+def get_connection_from_environment() -> connection | None:
     """
     Uses Environment variable database url for getting database parameters.
     See docker-compose.yml for example of what this looks like
@@ -23,7 +28,7 @@ def get_connection_from_environment():
         hostname = result.hostname
         port = result.port
 
-        print("Connecting using Environment Variables: ", result)
+        LOGGER.info("Connecting using Environment Variables")
         connection = psycopg2.connect(
             database=database,
             user=username,
@@ -33,11 +38,11 @@ def get_connection_from_environment():
         )
         return connection
     except psycopg2.Error as e:
-        print("Error Creating Connection Object to database:", e.pgerror)
+        LOGGER.error("Error Creating Connection Object to database:", e.pgerror)
         return None
 
 
-def get_connection_from_development_config():
+def get_connection_from_development_config() -> connection | None:
     """
     Uses config hardcoded config file to connect to database.
 
@@ -45,18 +50,18 @@ def get_connection_from_development_config():
         connection: psycopg2 connection
     """
     config_file_path = "backend/src/testdbconfig.json"
-    print("defaulting to local config for db connection in ", config_file_path)
+    LOGGER.error("defaulting to local config for db connection in ", config_file_path)
     with open(config_file_path, "r") as f:
         db_config = json.loads(f.read())
         try:
             connection = psycopg2.connect(**db_config)
             return connection
         except psycopg2.Error as e:
-            print("Error connecting to database:", e.pgerror)
+            LOGGER.error("Error connecting to database:", e.pgerror)
             return None
 
 
-def get_database_connection():
+def get_database_connection() -> connection | None:
     """Returns psycopg2 connection object based on current configuration.
     Uses Environment variables or hardcoded development config json
 
@@ -80,12 +85,21 @@ def get_db_connection():
     """
     connection = get_database_connection()
     if connection is None:
-        raise HTTPException(status_code=500, detail="Database connection error while making connection")
+        raise HTTPException(
+            status_code=500, detail="Database connection error while making connection"
+        )
     try:
         yield connection
     finally:
         connection.close()
 
 
-def default_HTTP_exception(code: str, additional_info: str) -> HTTPException:
-    return HTTPException(status_code=500, detail=f"Database error {code}: {psycopg2.errors.lookup(code)}\n While doing " + additional_info)
+def default_HTTP_exception(code: str | None, additional_info: str) -> HTTPException:
+    return HTTPException(
+        status_code=500,
+        detail=(
+            f"Database error {code}: {psycopg2.errors.lookup(code)}\n While doing {additional_info}"
+            if code
+            else f"Database error while doing {additional_info}"
+        ),
+    )

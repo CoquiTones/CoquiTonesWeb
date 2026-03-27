@@ -34,8 +34,8 @@ class TestClassifyEndpoint(unittest.TestCase):
             self.assertEqual(response.status_code, 200)
             afid = int(response.text)
 
-            url = f'https://localhost:8080/api/classify/by-id/{afid}'
-            response = session.get(url)
+            url = f'https://localhost:8080/api/classify/by-id'
+            response = session.get(url, data={"afid": afid})
 
             self.assertEqual(response.status_code, 200)
     
@@ -55,8 +55,8 @@ class TestClassifyEndpoint(unittest.TestCase):
             self.assertEqual(response.status_code, 200)
             afid = int(response.text)
 
-            url = f'https://localhost:8080/api/classify/by-id/{afid}'
-            response = session.get(url)
+            url = f'https://localhost:8080/api/classify/by-id'
+            response = session.get(url, data={"afid": afid})
 
             self.assertEqual(response.status_code, 200)
     
@@ -75,9 +75,10 @@ class TestClassifyEndpoint(unittest.TestCase):
             self.assertEqual(response.status_code, 200)
             afid = int(response.text)
 
-            url = f'https://localhost:8080/api/classify/by-id/{afid}'
-            response = session.get(url, params={
-                'override': True
+            url = f'https://localhost:8080/api/classify/by-id'
+            response = session.get(url, data={
+                'override': True,
+                'afid': afid
             })
 
             self.assertEqual(response.status_code, 200)
@@ -85,8 +86,8 @@ class TestClassifyEndpoint(unittest.TestCase):
     def test_404(self):
         session = login()
         afid = -1917
-        url = f'https://localhost:8080/api/classify/by-id/{afid}'
-        response = session.get(url)
+        url = f'https://localhost:8080/api/classify/by-id'
+        response = session.get(url, data={'afid': afid})
         self.assertEqual(response.status_code, 404)
 
 if __name__ == '__main__':
