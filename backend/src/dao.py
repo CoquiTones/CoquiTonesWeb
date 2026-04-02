@@ -642,14 +642,14 @@ classifierreport AS (
     GROUP BY afid 
 )
 SELECT 
-    SUM(coqui_hits) AS total_coqui,
-    SUM(wightmanae_hits) AS total_wightmanae,
-    SUM(gryllus_hits) AS total_gryllus,
-    SUM(portoricensis_hits) AS total_portoricensis,
-    SUM(unicolor_hits) AS total_unicolor,
-    SUM(hedricki_hits) AS total_hedricki,
-    SUM(locustus_hits) AS total_locustus,
-    SUM(richmondi_hits) AS total_richmondi, 
+    SUM(coqui_hits)::int AS total_coqui,
+    SUM(wightmanae_hits)::int AS total_wightmanae,
+    SUM(gryllus_hits)::int AS total_gryllus,
+    SUM(portoricensis_hits)::int AS total_portoricensis,
+    SUM(unicolor_hits)::int AS total_unicolor,
+    SUM(hedricki_hits)::int AS total_hedricki,
+    SUM(locustus_hits)::int AS total_locustus,
+    SUM(richmondi_hits)::int AS total_richmondi, 
     DATE_BIN('1 day', ttime AT LOCAL, CURRENT_TIMESTAMP) AS bin
 FROM classifierreport NATURAL INNER JOIN timestampindex
 WHERE ttime > (CURRENT_TIMESTAMP - '7 days'::INTERVAL)
