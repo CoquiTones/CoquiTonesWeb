@@ -38,7 +38,7 @@ def get_connection_from_environment() -> str:
         assert(type(result.password) is str)
         assert(type(result.path) is str)
         assert(type(result.hostname) is str)
-        assert(type(result.port) is str)
+        assert(type(result.port) is int)
     except AssertionError as e:
         print("ERROR: Couldn't parse database url")
         raise e
@@ -101,7 +101,7 @@ async def kill_connection_pool():
         await pool.close()
 
 
-async def db_dep() -> AsyncGenerator[AsyncConnection]:
+async def db_dep() -> AsyncGenerator[AsyncConnection, None]:
     """
     Generator Function to provide database connection object.
 
