@@ -8,6 +8,7 @@ from datetime import datetime, timedelta, timezone
 from dbutil import default_HTTP_exception
 from Requests.RecordToBeDeleted import RecordTimestampIndex
 from pydantic import Field
+from itertools import repeat
 import logging
 
 node_type = str
@@ -594,25 +595,25 @@ class Dashboard:
                         else MAX_BATCH_SIZE
                     )
                     batch_values = [
-                        (records[j].timestamp_index_id,)
+                        records[j].timestamp_index_id
                         for j in range(
                             record_index, number_of_rows_to_insert + record_index, 1
                         )
                     ]
-                    await curs.execute(
+                    await curs.executemany(
                         """
-                        DELETE FROM timestampindex WHERE tid = ANY(%s) 
+                        DELETE FROM timestampindex WHERE tid = %s 
                         AND 
                         nid IN (SELECT nid FROM node  WHERE ownerid = %s)
                             """,
-                        (batch_values, owner),
+                        zip(batch_values, repeat(owner)),
                     )
                     number_of_records_left -= number_of_rows_to_insert
                     record_index += number_of_rows_to_insert
 
                 return curs.rowcount
             except PGError as e:
-                LOGGER.error("Error Executing SQL Query ot delte rows: ", e)
+                LOGGER.error("Error Executing SQL Query to delete rows: ", e)
                 raise default_HTTP_exception(e, "Dashboard Delete Record query")
 
     @staticmethod
