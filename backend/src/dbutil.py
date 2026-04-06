@@ -1,91 +1,147 @@
-from fastapi import HTTPException
+from typing import AsyncGenerator, Annotated
+from fastapi import HTTPException, Depends
 from urllib.parse import urlparse
 from constants import ENVIRONMENT_DATABASE_CONFIG
-import psycopg2
+from pydantic import BaseModel, ValidationError
+from psycopg_pool import AsyncConnectionPool
+from psycopg import AsyncConnection, AsyncTransaction, Error, errors 
 import json
 import os
 
+from psycopg.conninfo import make_conninfo
 
-def get_connection_from_environment():
+pool: None | AsyncConnectionPool = None
+
+class Conn(BaseModel):
+    dbname: str
+    user: str
+    password: str # Has to be a str or else it won't dump
+    host: str
+    port: int
+
+    def __str__(self) -> str:
+        return make_conninfo(**self.model_dump())
+
+def get_connection_from_environment() -> str:
     """
     Uses Environment variable database url for getting database parameters.
     See docker-compose.yml for example of what this looks like
 
     Returns:
-        connection: psycopg2 connection object
+        ConnInfo: configuration for a new connection
     """
+
 
     try:
         result = urlparse(os.getenv("DATABASE_URL"))
-        username = result.username
-        password = result.password
-        database = result.path[1:]
-        hostname = result.hostname
-        port = result.port
+        assert(type(result.username) is str)
+        assert(type(result.password) is str)
+        assert(type(result.path) is str)
+        assert(type(result.hostname) is str)
+        assert(type(result.port) is int)
+    except AssertionError as e:
+        print("ERROR: Couldn't parse database url")
+        raise e
 
-        print("Connecting using Environment Variables: ", result)
-        connection = psycopg2.connect(
-            database=database,
-            user=username,
-            password=password,
-            host=hostname,
-            port=port,
+    try:
+        conn = Conn(
+            user = result.username,
+            password = result.password,
+            dbname = result.path[1:],
+            host = result.hostname,
+            port = result.port,
         )
-        return connection
-    except psycopg2.Error as e:
-        print("Error Creating Connection Object to database:", e.pgerror)
-        return None
+        return str(conn)
+    except Error as e:
+        print("ERROR: Couldn't create connection to database:\n", e)
+        raise e
 
-
-def get_connection_from_development_config():
+def get_connection_from_development_config() -> str:
     """
-    Uses config hardcoded config file to connect to database.
+    Uses hardcoded config file to get database parameters.
 
     Returns:
-        connection: psycopg2 connection
+        ConnInfo: configuration for a new connection
     """
     config_file_path = "backend/src/testdbconfig.json"
-    print("defaulting to local config for db connection in ", config_file_path)
+    print("defaulting to local config for db connection in", config_file_path)
     with open(config_file_path, "r") as f:
         db_config = json.loads(f.read())
         try:
-            connection = psycopg2.connect(**db_config)
-            return connection
-        except psycopg2.Error as e:
-            print("Error connecting to database:", e.pgerror)
-            return None
+            conn = Conn.model_validate(db_config)
+        except ValidationError as e:
+            print("ERROR: Couldn't load db connection config:\n", e)
+            raise e
+        try:
+            return str(conn)
+        
+        except Error as e:
+            print("ERROR: Couldn't create connection to database:\n", e)
+            raise e
 
+async def init_connection_pool():
+    """
+    Starts the psycopg async connection pool based on current configuration.
+    Uses Environment variables or hardcoded development config json.
+    Also opens the pool.
 
-def get_database_connection():
-    """Returns psycopg2 connection object based on current configuration.
-    Uses Environment variables or hardcoded development config json
-
-    Returns:
-        connection: psycopg2 connection object or None
+    Note: this returns nothing, it just starts the pool.
     """
     if os.getenv(ENVIRONMENT_DATABASE_CONFIG):
-        return get_connection_from_environment()
-    return get_connection_from_development_config()
+        conninfo = get_connection_from_environment()
+    else:
+        conninfo = get_connection_from_development_config()
+    global pool
+    pool = AsyncConnectionPool(conninfo, open=False)
+    await pool.open()
+
+async def kill_connection_pool():
+    """Closes the connection pool."""
+    if pool is not None:
+        await pool.close()
 
 
-def get_db_connection():
+async def db_dep() -> AsyncGenerator[AsyncConnection, None]:
     """
     Generator Function to provide database connection object.
 
     Raises:
-        HTTPException: When psycopg2 fails to create connection
+        HTTPException: When connection fails
 
     Yields:
-        connection: psycopg2 connection object
+        connection: psycopg connection object
     """
-    connection = get_database_connection()
-    if connection is None:
-        raise HTTPException(status_code=500, detail="Database connection error while making connection")
-    try:
+    assert(type(pool) is AsyncConnectionPool)
+    async with pool.connection() as connection:
         yield connection
-    finally:
-        connection.close()
 
+async def transaction_dep(database_connection: Annotated[AsyncConnection, Depends(db_dep)]):
+    """
+    Injectable transaction dependency.
 
-def default_HTTP_exception(code: str, additional_info: str) -> HTTPException:
-    return HTTPException(status_code=500, detail=f"Database error {code}: {psycopg2.errors.lookup(code)}\n While doing " + additional_info)
+    Raises:
+        HTTPException: When connection fails
+
+    Yields:
+        transaction: psycopg transaction
+    """
+    async with database_connection.transaction() as transaction:
+        yield transaction
+
+DBConnectionDependency = Annotated[AsyncConnection, Depends(db_dep)] 
+DBTransactionDependency = Annotated[AsyncTransaction, Depends(transaction_dep)]
+
+def default_HTTP_exception(error: Error | None, additional_info: str) -> HTTPException:
+    """
+    Creates a HTTP exception that gives the general idea of why an error occured without exposing the diagnostics.
+
+    Args:
+        - error: psycopg Error
+        - additional_info: description of what operation triggered the error
+
+    Returns HTTPException that has the sqlstate and small description of what caused the error, safe to display to the user.
+    """
+    if error is None or error.sqlstate is None:
+        return HTTPException(status_code=500, detail="Unknown database error while doing " + additional_info)
+    else:
+        return HTTPException(status_code=500, detail=f"Database error {error.sqlstate}: {errors.lookup(error.sqlstate)}\n While doing " + additional_info)
