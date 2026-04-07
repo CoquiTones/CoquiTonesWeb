@@ -273,40 +273,51 @@ async def node_insert(
     transaction: DBTransactionDependency,
     node_client_password: Annotated[SecretStr | None, Form()] = None,
 ):
-    # TODO: make insert async with psycopg3 and make this concurrent
-    if ntype == "primary":
-        if node_client_password is None:
-            raise HTTPException(
-                status_code=400, detail="Must provide password for new primary nodes"
+    async with asyncio.TaskGroup() as group:
+        if ntype == "primary":
+            if node_client_password is None:
+                raise HTTPException(
+                    status_code=400, detail="Must provide password for new primary nodes"
+                )
+
+            # Primary node must have a client with the broker
+            # We'll do this as a task so it can be concurrent with creating the entry in the database.
+            # If an exception is raised it will cancel the transaction and nothing will happen.
+            async def mqtt_client_creation():
+                try:
+                    await mqtt.create_node(current_user.auid, nname, node_client_password)
+                except mqtt.CommandExcept as e:
+                    LOGGER.error(
+                        f"ERROR: Failed to create client: \n\t{e.detail.error}\n\tCommand: {e.detail.command}"
+                    )
+                    raise HTTPException(500, "Failed to set up node's MQTT client")
+        
+            group.create_task(mqtt_client_creation())
+
+        async def database_operation() -> dao.Node:
+            ownerid = current_user.auid
+            newNode = await dao.Node.insert(
+                transaction.connection, ownerid, nname, ntype, nlatitude, nlongitude, ndescription
             )
+            if newNode is None:
+                raise HTTPException(500, "Failed to create new node")
 
-        # Primary node must have a client with the broker
-        try:
-            await mqtt.create_node(current_user.auid, nname, node_client_password)
-        except mqtt.CommandExcept as e:
-            LOGGER.error(
-                f"ERROR: Failed to create client: \n\t{e.detail.error}\n\tCommand: {e.detail.command}"
-            )
-            raise HTTPException(500, "Failed to set up node's MQTT client")
+            # All the user's primary nodes must have access to a topic corresponding to the new node
+            # This allows them to upload reports from the new node into the appropriate topic
+            try:
+                await mqtt.add_topic_access(current_user.auid, newNode.nid)
+            except mqtt.CommandExcept as e:
+                LOGGER.error(
+                    f"ERROR: Failed to add topic access: \n\t{e.detail.error}\n\tCommand: {e.detail.command}"
+                )
+                raise HTTPException(500, "Failed to set up MQTT permissions for node")
 
-    ownerid = current_user.auid
-    newNode = await dao.Node.insert(
-        transaction.connection, ownerid, nname, ntype, nlatitude, nlongitude, ndescription
-    )
-    if newNode is None:
-        raise HTTPException(500, "Failed to create new node")
+            return newNode
+        
+        node_task = group.create_task(database_operation())
 
-    # All the user's primary nodes must have access to a topic corresponding to the new node
-    # This allows them to upload reports from the new node into the appropriate topic
-    try:
-        await mqtt.add_topic_access(current_user.auid, newNode.nid)
-    except mqtt.CommandExcept as e:
-        LOGGER.error(
-            f"ERROR: Failed to add topic access: \n\t{e.detail.error}\n\tCommand: {e.detail.command}"
-        )
-        raise HTTPException(500, "Failed to set up MQTT permissions for node")
-
-    return newNode
+    return node_task.result()
+        
 
 
 @app.delete(path="/api/node/delete")
