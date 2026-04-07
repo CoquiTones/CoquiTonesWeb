@@ -5,7 +5,7 @@ import dao
 import os
 import re
 from io import BytesIO
-from dbutil import get_database_connection
+from dbutil import get_transaction
 from typing import Any, List, Union
 from pydantic import (
     BaseModel,
@@ -305,36 +305,37 @@ def parse_report(report_raw: bytes) -> Report:
 
 async def handle_report(report: Report, model):
     LOGGER.info(f"INFO: New report from node {report.node_id}")
-    db = get_database_connection()
-    if db is None:
-        LOGGER.error("ERROR: Couldn't save report\n\tFailed to connect to database")
-        return
-    timestamp_index = await dao.TimestampIndex.insert(
-        db, report.node_id, report.timestamp
-    )
-    if timestamp_index is None:
-        LOGGER.error(
-            f"ERROR: Couldn't save report\n\tFailed to save timestamp {report.timestamp}"
+    async with get_transaction() as transaction:
+        db = transaction.connection
+        if db is None:
+            LOGGER.error("Failed to connect to database")
+            return
+        timestamp_index = await dao.TimestampIndex.insert(
+            db, report.node_id, report.timestamp
         )
-        return
-    f1 = dao.AudioFile.insert(db, report.audio.data, report.node_id, timestamp_index)
-    f2 = dao.WeatherData.insert(
-        db,
-        timestamp_index,
-        report.weather_data.temperature,
-        report.weather_data.humidity,
-        report.weather_data.pressure,
-        report.weather_data.did_rain,
-    )
-    afid, wdid = await asyncio.gather(f1, f2)
-    LOGGER.info(f"INFO: Created new audiofile {afid}")
-    LOGGER.info(f"INFO: Created new weatherdata {wdid}")
+        if timestamp_index is None:
+            LOGGER.error(
+                f"Failed to save timestamp {report.timestamp}"
+            )
+            return
+        f1 = dao.AudioFile.insert(db, report.audio.data, report.node_id, timestamp_index)
+        f2 = dao.WeatherData.insert(
+            db,
+            timestamp_index,
+            report.weather_data.temperature,
+            report.weather_data.humidity,
+            report.weather_data.pressure,
+            report.weather_data.did_rain,
+        )
+        afid, wdid = await asyncio.gather(f1, f2)
+        LOGGER.info(f"INFO: Created new audiofile {afid}")
+        LOGGER.info(f"INFO: Created new weatherdata {wdid}")
 
-    # We need an object that exposes a file-like interface to give to the classify function
-    fake_file = BytesIO(report.audio.data)
-    fake_file.seek(0)
+        # We need an object that exposes a file-like interface to give to the classify function
+        fake_file = BytesIO(report.audio.data)
+        fake_file.seek(0)
 
-    await classify_and_save(fake_file, afid, db, model)
+        await classify_and_save(fake_file, afid, db, model)
 
 
 def clients_from_command(
@@ -395,75 +396,74 @@ async def broker_sync():
         username="admin",
         password=ADMIN_PASSWORD,
     ) as client:
-        db = get_database_connection()
-        assert db is not None
+        async with get_transaction() as transaction:
+            db = transaction.connection
+            async with asyncio.TaskGroup() as get_tasks:
+                list_clients_task = get_tasks.create_task(
+                    _execute_command(client, ListClientsArgs())
+                )
+                list_roles_task = get_tasks.create_task(
+                    _execute_command(client, ListRolesArgs(verbose=True))
+                )
+                get_users_task = get_tasks.create_task(dao.User.get_all_no_owner(db=db))
+            # Get clients from broker
+            clients = clients_from_command(list_clients_task.result())
 
-        async with asyncio.TaskGroup() as get_tasks:
-            list_clients_task = get_tasks.create_task(
-                _execute_command(client, ListClientsArgs())
-            )
-            list_roles_task = get_tasks.create_task(
-                _execute_command(client, ListRolesArgs(verbose=True))
-            )
-            get_users_task = get_tasks.create_task(dao.User.get_all_no_owner(db=db))
-        # Get clients from broker
-        clients = clients_from_command(list_clients_task.result())
+            # Get roles from broker
+            roles = roles_from_command(list_roles_task.result())
 
-        # Get roles from broker
-        roles = roles_from_command(list_roles_task.result())
+            # Get users from DB
+            users = get_users_task.result()
 
-        # Get users from DB
-        users = get_users_task.result()
+            async with asyncio.TaskGroup() as command_tasks:
 
-        async with asyncio.TaskGroup() as command_tasks:
+                # Create listener client if necessary.
+                if "reports-listener" not in clients.keys():
+                    LOGGER.info("INFO: Creating listener client")
+                    command_tasks.create_task(_create_listener(client))
 
-            # Create listener client if necessary.
-            if "reports-listener" not in clients.keys():
-                LOGGER.info("INFO: Creating listener client")
-                command_tasks.create_task(_create_listener(client))
+                # Create roles for each user that doesn't have one.
+                role_creation_tasks = []
+                for user in users:
+                    # Each user may or may not have a role before this part of the code runs.
+                    # Since we need to know that the role exists before we start adding permissions to it,
+                    # we will use this event to let the task that adds the permissions know when the role is created.
+                    role_exists = asyncio.Event()
+                    role_name = f"user{user.auid}"
+                    if role_name not in roles.keys():
+                        LOGGER.info(f"INFO: Creating role {role_name}")
+                        role_creation_tasks.append(
+                            command_tasks.create_task(
+                                _create_user_role(client, user.auid)
+                            ).add_done_callback(lambda _: role_exists.set())
+                        )
+                    else:
+                        # If the role already exists we mark it as such.
+                        role_exists.set()
 
-            # Create roles for each user that doesn't have one.
-            role_creation_tasks = []
-            for user in users:
-                # Each user may or may not have a role before this part of the code runs.
-                # Since we need to know that the role exists before we start adding permissions to it,
-                # we will use this event to let the task that adds the permissions know when the role is created.
-                role_exists = asyncio.Event()
-                role_name = f"user{user.auid}"
-                if role_name not in roles.keys():
-                    LOGGER.info(f"INFO: Creating role {role_name}")
-                    role_creation_tasks.append(
+                    # Until we know the role exists we can't proceed.
+                    await role_exists.wait()
+                    # Check to see what nodes are allowed by the role.
+                    try:
+                        allowed_node_ids = {
+                            _node_id_from_topic(acl.topic)
+                            for acl in roles[role_name].acls
+                            if acl.acltype == AclType.publish_client_send and acl.allow
+                        }
+                    except KeyError:
+                        # If the role isn't in roles that means it has no acls but we created it right now so we may proceed.
+                        allowed_node_ids = {}
+                    # Modify roles by getting all nodes owned by each user and ensuring user's role has permission to send to all nodes' topics.
+                    for node in filter(
+                        lambda node: node.nid not in allowed_node_ids,
+                        await dao.Node.get_all(user.auid, db),
+                    ):
+                        LOGGER.info(
+                            f"INFO: adding topic access to node {node.nid} for user {user.username}"
+                        )
                         command_tasks.create_task(
-                            _create_user_role(client, user.auid)
-                        ).add_done_callback(lambda _: role_exists.set())
-                    )
-                else:
-                    # If the role already exists we mark it as such.
-                    role_exists.set()
-
-                # Until we know the role exists we can't proceed.
-                await role_exists.wait()
-                # Check to see what nodes are allowed by the role.
-                try:
-                    allowed_node_ids = {
-                        _node_id_from_topic(acl.topic)
-                        for acl in roles[role_name].acls
-                        if acl.acltype == AclType.publish_client_send and acl.allow
-                    }
-                except KeyError:
-                    # If the role isn't in roles that means it has no acls but we created it right now so we may proceed.
-                    allowed_node_ids = {}
-                # Modify roles by getting all nodes owned by each user and ensuring user's role has permission to send to all nodes' topics.
-                for node in filter(
-                    lambda node: node.nid not in allowed_node_ids,
-                    await dao.Node.get_all(user.auid, db),
-                ):
-                    LOGGER.info(
-                        f"INFO: adding topic access to node {node.nid} for user {user.username}"
-                    )
-                    command_tasks.create_task(
-                        _add_topic_access(client, user.auid, node.nid)
-                    )
+                            _add_topic_access(client, user.auid, node.nid)
+                        )
 
 
 def _node_id_from_topic(topic: str) -> int:

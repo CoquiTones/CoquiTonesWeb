@@ -1,11 +1,10 @@
-import psycopg2
+import psycopg
 import json
 import random
 import string
 import tempfile
 import os
 import datetime
-import psycopg2.extras
 import io
 import hashlib
 import logging
@@ -13,7 +12,6 @@ import logging
 """
 Python Program to populate existing database with mocked data
 """
-MAX_BATCH_SIZE = 5
 logging.basicConfig(
     level=logging.DEBUG,
     format="%(asctime)s - [%(funcName)s]: %(levelname)s - %(message)s",
@@ -32,9 +30,9 @@ def get_connection_from_development_config(config_file_path):
     with open(config_file_path, "r") as f:
         db_config = json.loads(f.read())
         try:
-            connection = psycopg2.connect(**db_config)
+            connection = psycopg.connect(**db_config)
             return connection
-        except psycopg2.Error as e:
+        except psycopg.Error as e:
             LOGGER.error("Error connecting to database:", e)
             return None
 
@@ -117,15 +115,8 @@ def populate_node(connection, number_of_inserts):
     description_length = 10
     prepared_statement = "INSERT INTO node (ntype, ownerid, nname, nlatitude, nlongitude, ndescription) VALUES (%s, %s, %s, %s, %s, %s)"
 
-    necessary_statements = (number_of_inserts // MAX_BATCH_SIZE) + 1
-    number_of_inserts_left = number_of_inserts
     with connection.cursor() as cursor:
-        for i in range(necessary_statements):
-            number_of_rows_to_insert = (
-                number_of_inserts_left
-                if (number_of_inserts_left < MAX_BATCH_SIZE)
-                else MAX_BATCH_SIZE
-            )
+            
             batch_values = [
                 (
                     random_node_type(),
@@ -135,12 +126,11 @@ def populate_node(connection, number_of_inserts):
                     random_float(*longitude_range),
                     random_string(description_length),
                 )
-                for i in range(number_of_rows_to_insert)
+                for _ in range(number_of_inserts)
             ]
-            psycopg2.extras.execute_batch(
-                cursor, prepared_statement, batch_values, page_size=MAX_BATCH_SIZE
+            cursor.executemany(
+                prepared_statement, batch_values
             )
-            number_of_inserts_left -= number_of_rows_to_insert
 
     connection.commit()
 
@@ -151,8 +141,6 @@ def populate_timestamp(connection, number_of_inserts, number_of_nodes):
     Returns list of (tid, ttime) tuples for recent records.
     """
     prepared_statement = "INSERT INTO timestampindex (nid, ttime) VALUES (%s, %s)"
-    necessary_statements = (number_of_inserts // MAX_BATCH_SIZE) + 1
-    number_of_inserts_left = number_of_inserts
 
     # Calculate split: 40% recent data, 60% older data
     recent_count = int(number_of_inserts * 0.4)
@@ -162,56 +150,36 @@ def populate_timestamp(connection, number_of_inserts, number_of_nodes):
 
     with connection.cursor() as cursor:
         # Insert recent records (last 7 days)
-        remaining_recent = recent_count
-        for i in range((recent_count // MAX_BATCH_SIZE) + 1):
-            if remaining_recent <= 0:
-                break
-            number_of_rows_to_insert = (
-                remaining_recent
-                if (remaining_recent < MAX_BATCH_SIZE)
-                else MAX_BATCH_SIZE
+        batch_values = [
+            (
+                random_integer(1, number_of_nodes),
+                datetime.datetime.now(datetime.timezone.utc)
+                - datetime.timedelta(
+                    days=random_integer(0, 7),
+                    seconds=random_integer(0, 60 * 60 * 24),
+                ),
             )
-            batch_values = [
-                (
-                    random_integer(1, number_of_nodes),
-                    datetime.datetime.now(datetime.timezone.utc)
-                    - datetime.timedelta(
-                        days=random_integer(0, 7),
-                        seconds=random_integer(0, 60 * 60 * 24),
-                    ),
-                )
-                for j in range(number_of_rows_to_insert)
-            ]
-            psycopg2.extras.execute_batch(
-                cursor, prepared_statement, batch_values, page_size=MAX_BATCH_SIZE
-            )
-            remaining_recent -= number_of_rows_to_insert
+            for _ in range(recent_count)
+        ]
+        cursor.executemany(
+            prepared_statement, batch_values
+        )
 
         # Insert older records (8-30 days ago)
-        remaining_older = older_count
-        for i in range((older_count // MAX_BATCH_SIZE) + 1):
-            if remaining_older <= 0:
-                break
-            number_of_rows_to_insert = (
-                remaining_older
-                if (remaining_older < MAX_BATCH_SIZE)
-                else MAX_BATCH_SIZE
+        batch_values = [
+            (
+                random_integer(1, number_of_nodes),
+                datetime.datetime.now(datetime.timezone.utc)
+                - datetime.timedelta(
+                    days=random_integer(8, 30),
+                    seconds=random_integer(0, 60 * 60 * 24),
+                ),
             )
-            batch_values = [
-                (
-                    random_integer(1, number_of_nodes),
-                    datetime.datetime.now(datetime.timezone.utc)
-                    - datetime.timedelta(
-                        days=random_integer(8, 30),
-                        seconds=random_integer(0, 60 * 60 * 24),
-                    ),
-                )
-                for j in range(number_of_rows_to_insert)
-            ]
-            psycopg2.extras.execute_batch(
-                cursor, prepared_statement, batch_values, page_size=MAX_BATCH_SIZE
-            )
-            remaining_older -= number_of_rows_to_insert
+            for _ in range(older_count)
+        ]
+        cursor.executemany(
+            prepared_statement, batch_values
+        )
 
     connection.commit()
 
@@ -247,29 +215,17 @@ def populate_audio(connection, number_of_inserts):
             random.shuffle(all_tids)
             selected_tids = all_tids[:number_of_inserts]
 
-            necessary_statements = (number_of_inserts // MAX_BATCH_SIZE) + 1
-            number_of_inserts_left = number_of_inserts
-
-            for i in range(necessary_statements):
-                number_of_rows_to_insert = (
-                    number_of_inserts_left
-                    if (number_of_inserts_left < MAX_BATCH_SIZE)
-                    else MAX_BATCH_SIZE
+            batch_values = [
+                (
+                    1,  # owner id
+                    selected_tids[i],  # Use unique tid for each audio file
+                    file_bytes,
                 )
-                batch_values = [
-                    (
-                        1,  # owner id
-                        selected_tids[
-                            i * MAX_BATCH_SIZE + j
-                        ],  # Use unique tid for each audio file
-                        file_bytes,
-                    )
-                    for j in range(number_of_rows_to_insert)
-                ]
-                psycopg2.extras.execute_batch(
-                    cursor, prepared_statement, batch_values, page_size=MAX_BATCH_SIZE
-                )
-                number_of_inserts_left -= number_of_rows_to_insert
+                for i in range(number_of_inserts)
+            ]
+            cursor.executemany(
+                prepared_statement, batch_values,
+            )
 
     LOGGER.info(
         "Successfully Populated Audiofile data. Proceeding to Generate audioslices "
@@ -283,36 +239,26 @@ def populate_audio(connection, number_of_inserts):
 
 def populate_audioslice(connection, audio_file_id, number_of_inserts):
     prepared_statement = "INSERT INTO audioslice (afid, starttime, endtime, coqui, wightmanae, gryllus, portoricensis, unicolor, hedricki, locustus, richmondi) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)"
-    necessary_statements = (number_of_inserts // MAX_BATCH_SIZE) + 1
-    number_of_inserts_left = number_of_inserts
-
     with connection.cursor() as cursor:
-        for i in range(necessary_statements):
-            number_of_rows_to_insert = (
-                number_of_inserts_left
-                if (number_of_inserts_left < MAX_BATCH_SIZE)
-                else MAX_BATCH_SIZE
+        batch_values = [
+            (
+                audio_file_id,  # afid
+                f"00:00:{random_integer(1, 50):02d}",  # start time
+                f"00:00:{random_integer(1, 50):02d}",  # end time
+                random.choice((True, False)),  # coqui
+                random.choice((True, False)),  # wightmanae
+                random.choice((True, False)),  # gryllus
+                random.choice((True, False)),  # portoricensis
+                random.choice((True, False)),  # unicolor
+                random.choice((True, False)),  # hedricki
+                random.choice((True, False)),  # locustus
+                random.choice((True, False)),  # richmondi
             )
-            batch_values = [
-                (
-                    audio_file_id,  # afid
-                    f"00:00:{random_integer(1, 50):02d}",  # start time
-                    f"00:00:{random_integer(1, 50):02d}",  # end time
-                    random.choice((True, False)),  # coqui
-                    random.choice((True, False)),  # wightmanae
-                    random.choice((True, False)),  # gryllus
-                    random.choice((True, False)),  # portoricensis
-                    random.choice((True, False)),  # unicolor
-                    random.choice((True, False)),  # hedricki
-                    random.choice((True, False)),  # locustus
-                    random.choice((True, False)),  # richmondi
-                )
-                for j in range(number_of_rows_to_insert)
-            ]
-            psycopg2.extras.execute_batch(
-                cursor, prepared_statement, batch_values, page_size=MAX_BATCH_SIZE
-            )
-            number_of_inserts_left -= number_of_rows_to_insert
+            for _ in range(number_of_inserts)
+        ]
+        cursor.executemany(
+            prepared_statement, batch_values
+        )
 
 
 def populate_weatherdata(connection, number_of_inserts):
@@ -344,38 +290,21 @@ def populate_weatherdata(connection, number_of_inserts):
             )
             return
 
-        number_of_inserts_left = len(valid_tids)
-        necessary_statements = (len(valid_tids) // MAX_BATCH_SIZE) + 1
 
-        for i in range(necessary_statements):
-            if number_of_inserts_left <= 0:
-                break
-
-            number_of_rows_to_insert = (
-                number_of_inserts_left
-                if (number_of_inserts_left < MAX_BATCH_SIZE)
-                else MAX_BATCH_SIZE
+        batch_values = [
+            (
+                tid,  # Use actual tid that has audio file
+                random_float(40, 115),  # temp
+                random_float(20, 100),  # humidity
+                random_float(40, 115),  # pressure
+                random_bool(),
             )
+            for tid in valid_tids
+        ]
 
-            # Use the valid tids sequentially to ensure coverage
-            batch_tids = valid_tids[
-                i * MAX_BATCH_SIZE : i * MAX_BATCH_SIZE + number_of_rows_to_insert
-            ]
-
-            batch_values = [
-                (
-                    tid,  # Use actual tid that has audio file
-                    random_float(40, 115),  # temp
-                    random_float(20, 100),  # humidity
-                    random_float(40, 115),  # pressure
-                    random_bool(),
-                )
-                for tid in batch_tids
-            ]
-            psycopg2.extras.execute_batch(
-                cursor, prepared_statement, batch_values, page_size=MAX_BATCH_SIZE
-            )
-            number_of_inserts_left -= number_of_rows_to_insert
+        cursor.executemany(
+            prepared_statement, batch_values
+        )
 
     connection.commit()
 
@@ -400,7 +329,7 @@ def main():
         populate_weatherdata(connection, number_of_records)
         LOGGER.info("Done!")
 
-    except psycopg2.Error as e:
+    except psycopg.Error as e:
         LOGGER.error("Error With Generation of Mock Data\n", e)
 
 
