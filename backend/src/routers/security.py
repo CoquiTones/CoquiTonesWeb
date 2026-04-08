@@ -13,6 +13,8 @@ import dao
 import os
 import mqtt
 
+from constants import SECRET_KEY_FOR_JWT
+
 router = APIRouter()
 
 ALGORITHM = "HS256"
@@ -45,7 +47,7 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="api/token")
 
 
 def create_access_token(data: dict, expires_delta: timedelta | None = None):
-    secret_key = os.environ["SECRET_KEY"]
+    secret_key = os.environ[SECRET_KEY_FOR_JWT]
     to_encode = data.copy()
     if expires_delta:
         expire = datetime.now(timezone.utc) + expires_delta
@@ -66,7 +68,9 @@ async def get_current_user(
     )
 
     try:
-        payload = jwt.decode(token, os.environ["SECRET_KEY"], algorithms=[ALGORITHM])
+        payload = jwt.decode(
+            token, os.environ[SECRET_KEY_FOR_JWT], algorithms=[ALGORITHM]
+        )
         (_, _, username) = payload.get("sub").partition(":")
         auid = payload.get("auid")
     except InvalidTokenError:
@@ -85,11 +89,15 @@ def validate_username(username: str) -> bool:
 
 
 async def authenticate_user(
-    submitted_username: str, submitted_password: SecretStr, transaction: AsyncTransaction
+    submitted_username: str,
+    submitted_password: SecretStr,
+    transaction: AsyncTransaction,
 ) -> dao.User | None:
     if not validate_username(submitted_username):
         return None
-    user: dao.User | None = await dao.User.get_by_username(transaction.connection, submitted_username)
+    user: dao.User | None = await dao.User.get_by_username(
+        transaction.connection, submitted_username
+    )
     if not user:
         return None
 
@@ -148,9 +156,11 @@ async def create_user(
     auid = await dao.User.insert(transaction.connection, username, pwhash, salt)
     if auid is None:
         raise HTTPException(status.HTTP_409_CONFLICT, "Username taken")
-    
+
     if not await mqtt.create_user_role(auid):
-        raise HTTPException(status.HTTP_500_INTERNAL_SERVER_ERROR, 
-                            "Created user but failed to create their MQTT role.")
+        raise HTTPException(
+            status.HTTP_500_INTERNAL_SERVER_ERROR,
+            "Created user but failed to create their MQTT role.",
+        )
 
     return {"message": "success"}

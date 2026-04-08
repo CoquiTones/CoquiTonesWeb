@@ -16,6 +16,10 @@ export class Node {
         console.log("Node Description: ", this.ndescription);
     }
 
+    getNodeIdFormData() {
+        let formData = new FormData();
+        formData.append("nid", this.nid);
+    }
 }
 
 export class NodeList {

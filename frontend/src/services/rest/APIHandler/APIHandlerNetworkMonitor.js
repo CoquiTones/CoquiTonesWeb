@@ -1,7 +1,7 @@
 
 import APIHandlerBase from "./APIHandlerBase";
 import { APIHandlerError, BackendError } from "./Errors";
-import { NodeList } from "../ResponseORM/NetworkMonitor/NodeResponse";
+import { Node, NodeList } from "../ResponseORM/NetworkMonitor/NodeResponse";
 import { InsertNewNodeRequest } from "../RequestORM/NetworkMonitor/NewNodeRequest"
 // import NodeDeleteRequest from "../RequestORM/NetworkMonitor/NodeDeleteRequest";
 export class APIHandlerNetworkMonitor extends APIHandlerBase {
@@ -60,6 +60,30 @@ export class APIHandlerNetworkMonitor extends APIHandlerBase {
         } catch (error) {
             console.error("Error with Getting Node Sync with MQTT");
             throw new APIHandlerError("Error with Getting Node Sync with MQTT" + error.message);
+        }
+    }
+
+    /**
+     * 
+     * @param {Node} node 
+     */
+    async create_client_for_node(node) {
+        try {
+            const response = await fetch(this.web_url + "/api/node/mqtt", {
+                method: "POST",
+                headers: this.getAuthenticationHeader(),
+                body: node.getNodeIdFormData()
+            });
+
+            if (!response.ok) {
+                throw new BackendError("Network error when attempting to add client for node  with no mqtt client");
+            }
+
+            const apiResponseObject = await response.json();
+            return true;
+        } catch (error) {
+            console.error("Error with Creating client for node");
+            throw new APIHandlerError("Error with creating client for node" + node.nid);
         }
     }
 }

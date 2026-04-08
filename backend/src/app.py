@@ -1,7 +1,3 @@
-import dotenv
-
-dotenv.load_dotenv(dotenv_path="backend/src/.env")
-
 from contextlib import asynccontextmanager
 from typing import Annotated
 from fastapi import FastAPI, File, UploadFile, staticfiles, Depends, HTTPException, Form
@@ -29,6 +25,8 @@ import json
 from datetime import datetime, timedelta
 from Logger import Logger
 
+dotenv.load_dotenv(dotenv_path="backend/src/.env")
+
 
 # Define our lifespan so we can start the mqtt client together with the server
 @asynccontextmanager
@@ -49,7 +47,6 @@ origins = [
 ]
 
 # Safely handle environment variable
-web_url = os.getenv("WEB_URL")
 if web_url:
     origins.append(web_url)
 
@@ -118,7 +115,9 @@ async def nodes_with_no_client(
     """
     async with asyncio.TaskGroup() as tg:
         all_mqtt_clients = tg.create_task(mqtt.all_clients())
-        user_nodes = tg.create_task(dao.Node.get_all(current_user.auid, transaction.connection))
+        user_nodes = tg.create_task(
+            dao.Node.get_all(current_user.auid, transaction.connection)
+        )
     primary_nodes: list[dao.Node] = list(
         filter(lambda node: node.ntype == "primary", user_nodes.result())
     )
@@ -175,11 +174,13 @@ async def audio_get(
     current_user: Annotated[LightWeightUser, Depends(get_current_user)],
     transaction: DBTransactionDependency,
 ):
-    audio_file: dao.AudioFile | None = await dao.AudioFile.get(current_user.auid, afid, transaction.connection)
+    audio_file: dao.AudioFile | None = await dao.AudioFile.get(
+        current_user.auid, afid, transaction.connection
+    )
     if audio_file is None:
         raise HTTPException(status_code=404, detail="Audio file not found")
     data = audio_file.data
-    assert(data is not None)
+    assert data is not None
     return Response(content=bytes(data), media_type="audio/mpeg")
 
 
@@ -257,7 +258,9 @@ async def classify_by_afid(
         if audio is None or audio.data is None:
             raise HTTPException(status_code=404, detail="Audio file does not exist")
 
-        await classify_and_save(io.BytesIO(audio.data), afid, transaction.connection, model)
+        await classify_and_save(
+            io.BytesIO(audio.data), afid, transaction.connection, model
+        )
 
     return await dao.AudioSlice.get_classified(afid, transaction.connection)
 
@@ -277,7 +280,8 @@ async def node_insert(
         if ntype == "primary":
             if node_client_password is None:
                 raise HTTPException(
-                    status_code=400, detail="Must provide password for new primary nodes"
+                    status_code=400,
+                    detail="Must provide password for new primary nodes",
                 )
 
             # Primary node must have a client with the broker
@@ -285,19 +289,27 @@ async def node_insert(
             # If an exception is raised it will cancel the transaction and nothing will happen.
             async def mqtt_client_creation():
                 try:
-                    await mqtt.create_node(current_user.auid, nname, node_client_password)
+                    await mqtt.create_node(
+                        current_user.auid, nname, node_client_password
+                    )
                 except mqtt.CommandExcept as e:
                     LOGGER.error(
                         f"ERROR: Failed to create client: \n\t{e.detail.error}\n\tCommand: {e.detail.command}"
                     )
                     raise HTTPException(500, "Failed to set up node's MQTT client")
-        
+
             group.create_task(mqtt_client_creation())
 
         async def database_operation() -> dao.Node:
             ownerid = current_user.auid
             newNode = await dao.Node.insert(
-                transaction.connection, ownerid, nname, ntype, nlatitude, nlongitude, ndescription
+                transaction.connection,
+                ownerid,
+                nname,
+                ntype,
+                nlatitude,
+                nlongitude,
+                ndescription,
             )
             if newNode is None:
                 raise HTTPException(500, "Failed to create new node")
@@ -313,11 +325,10 @@ async def node_insert(
                 raise HTTPException(500, "Failed to set up MQTT permissions for node")
 
             return newNode
-        
+
         node_task = group.create_task(database_operation())
 
     return node_task.result()
-        
 
 
 @app.delete(path="/api/node/delete")
@@ -340,7 +351,9 @@ async def week_species_summary(
     current_user: Annotated[LightWeightUser, Depends(get_current_user)],
     transaction: DBTransactionDependency,
 ) -> dao.WeeklySummaryTable:
-    return await dao.Dashboard.week_species_summary(current_user.auid, transaction.connection)
+    return await dao.Dashboard.week_species_summary(
+        current_user.auid, transaction.connection
+    )
 
 
 @app.get(path="/api/dashboard/node-health-check")
@@ -348,7 +361,9 @@ async def node_health_check(
     current_user: Annotated[LightWeightUser, Depends(get_current_user)],
     transaction: DBTransactionDependency,
 ):
-    return await dao.Dashboard.node_health_check(current_user.auid, transaction.connection)
+    return await dao.Dashboard.node_health_check(
+        current_user.auid, transaction.connection
+    )
 
 
 @app.get(path="/api/dashboard/recent-reports")
@@ -382,11 +397,11 @@ async def recent_reports(
     limit: int = 10,
     orderby: int = 1,  # This could be changed to an enum, but passing through the query might be weird.
 ):
-    arguments = locals() | {"db": transaction.connection}  # pass all keyword args as unpacked dictionary, special case for db connection
+    arguments = locals() | {
+        "db": transaction.connection
+    }  # pass all keyword args as unpacked dictionary, special case for db connection
     arguments.pop("transaction")
-    return await dao.Dashboard.recent_reports(
-        **arguments
-    ) 
+    return await dao.Dashboard.recent_reports(**arguments)
 
 
 @app.post(path="/api/dashboard/recent-data")
@@ -397,7 +412,9 @@ async def recent_data(
     transaction: DBTransactionDependency,
 ):
 
-    return await dao.Dashboard.recent_data(current_user.auid, minTimestamp, maxTimestamp, transaction.connection)
+    return await dao.Dashboard.recent_data(
+        current_user.auid, minTimestamp, maxTimestamp, transaction.connection
+    )
 
 
 @app.delete(path="/api/dashboard/delete")
