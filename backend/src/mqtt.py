@@ -4,6 +4,7 @@ import threading
 import dao
 import os
 import re
+import dotenv
 from io import BytesIO
 from dbutil import get_transaction
 from typing import Any, List, Union
@@ -21,12 +22,15 @@ from mlutil import get_model
 from queue import Queue
 from random import randint
 from Logger import Logger
+from constants import MQTT_LISTENER_PASSWORD, MQTT_ADNIN_PASSWORD, MQTT_BROKER_HOSTNAME
 
 LOGGER = Logger.getInstance("MQTT Service Component")
-ADMIN_PASSWORD = os.environ["MOSQUITTO_DYNSEC_PASSWORD"]
-LISTENER_PASSWORD = os.environ["SECRET_KEY"]
 
-MQTT_BROKER_HOSTNAME = "localhost"
+dotenv.load_dotenv(dotenv_path="backend/src/.env")
+ADMIN_PASSWORD = os.environ[MQTT_ADNIN_PASSWORD]
+LISTENER_PASSWORD = os.environ[MQTT_LISTENER_PASSWORD]
+
+MQTT_BROKER_HOSTNAME = os.environ[MQTT_BROKER_HOSTNAME]
 MQTT_BROKER_PORT = 2043
 CONTROL_TOPIC = "$CONTROL/dynamic-security/v1"
 CONTROL_RESPONSE_TOPIC = "$CONTROL/dynamic-security/v1/response"
@@ -314,11 +318,11 @@ async def handle_report(report: Report, model):
             db, report.node_id, report.timestamp
         )
         if timestamp_index is None:
-            LOGGER.error(
-                f"Failed to save timestamp {report.timestamp}"
-            )
+            LOGGER.error(f"Failed to save timestamp {report.timestamp}")
             return
-        f1 = dao.AudioFile.insert(db, report.audio.data, report.node_id, timestamp_index)
+        f1 = dao.AudioFile.insert(
+            db, report.audio.data, report.node_id, timestamp_index
+        )
         f2 = dao.WeatherData.insert(
             db,
             timestamp_index,

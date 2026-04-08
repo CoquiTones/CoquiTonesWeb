@@ -1,7 +1,7 @@
 from typing import AsyncGenerator, Annotated
 from fastapi import HTTPException, Depends
 from urllib.parse import urlparse
-from constants import ENVIRONMENT_DATABASE_CONFIG
+from constants import ENVIRONMENT_CONFIG_DATABASE_URL
 from pydantic import BaseModel, ValidationError
 from psycopg_pool import AsyncConnectionPool, PoolTimeout
 from psycopg import AsyncConnection, AsyncTransaction, Error, errors
@@ -17,15 +17,17 @@ from psycopg.conninfo import make_conninfo
 
 pool: None | AsyncConnectionPool = None
 
+
 class Conn(BaseModel):
     dbname: str
     user: str
-    password: str # Has to be a str or else it won't dump
+    password: str  # Has to be a str or else it won't dump
     host: str
     port: int
 
     def __str__(self) -> str:
         return make_conninfo(**self.model_dump())
+
 
 def get_connection_from_environment() -> str:
     """
@@ -36,30 +38,30 @@ def get_connection_from_environment() -> str:
         ConnInfo: configuration for a new connection
     """
 
-
     try:
-        result = urlparse(os.getenv("DATABASE_URL"))
-        assert(type(result.username) is str)
-        assert(type(result.password) is str)
-        assert(type(result.path) is str)
-        assert(type(result.hostname) is str)
-        assert(type(result.port) is int)
+        result = urlparse(os.environ[ENVIRONMENT_CONFIG_DATABASE_URL])
+        assert type(result.username) is str
+        assert type(result.password) is str
+        assert type(result.path) is str
+        assert type(result.hostname) is str
+        assert type(result.port) is int
     except AssertionError as e:
         LOGGER.error("Couldn't parse database url")
         raise e
 
     try:
         conn = Conn(
-            user = result.username,
-            password = result.password,
-            dbname = result.path[1:],
-            host = result.hostname,
-            port = result.port,
+            user=result.username,
+            password=result.password,
+            dbname=result.path[1:],
+            host=result.hostname,
+            port=result.port,
         )
         return str(conn)
     except Error as e:
         LOGGER.error("Couldn't create connection to database:\n", e)
         raise e
+
 
 def get_connection_from_development_config() -> str:
     """
@@ -79,10 +81,11 @@ def get_connection_from_development_config() -> str:
             raise e
         try:
             return str(conn)
-        
+
         except Error as e:
             LOGGER.error("Couldn't create connection to database:\n", e)
             raise e
+
 
 async def init_connection_pool():
     """
@@ -92,13 +95,14 @@ async def init_connection_pool():
 
     Note: this returns nothing, it just starts the pool.
     """
-    if os.getenv(ENVIRONMENT_DATABASE_CONFIG):
+    if os.environ[ENVIRONMENT_CONFIG_DATABASE_URL]:
         conninfo = get_connection_from_environment()
     else:
         conninfo = get_connection_from_development_config()
     global pool
     pool = AsyncConnectionPool(conninfo, open=False)
     await pool.open()
+
 
 async def kill_connection_pool():
     """Closes the connection pool."""
@@ -116,11 +120,14 @@ async def db_dep() -> AsyncGenerator[AsyncConnection, None]:
     Yields:
         connection: psycopg connection object
     """
-    assert(type(pool) is AsyncConnectionPool)
+    assert type(pool) is AsyncConnectionPool
     async with pool.connection() as connection:
         yield connection
 
-async def transaction_dep(database_connection: Annotated[AsyncConnection, Depends(db_dep)]):
+
+async def transaction_dep(
+    database_connection: Annotated[AsyncConnection, Depends(db_dep)],
+):
     """
     Injectable transaction dependency.
 
@@ -133,8 +140,9 @@ async def transaction_dep(database_connection: Annotated[AsyncConnection, Depend
     async with database_connection.transaction() as transaction:
         yield transaction
 
+
 @asynccontextmanager
-async def get_transaction() -> AsyncGenerator[AsyncTransaction]:
+async def get_transaction() -> AsyncGenerator[AsyncTransaction, None]:
     """
     Simply gets a transaction context, assuming the connection pool has started.
 
@@ -142,14 +150,16 @@ async def get_transaction() -> AsyncGenerator[AsyncTransaction]:
         AsyncTransaction: psycopg transaction
     """
     global pool
-    assert(pool is not None)
-    
+    assert pool is not None
+
     timeout = 1.0
     try:
         connection = await pool.getconn(timeout=timeout)
     except PoolTimeout:
         LOGGER.error("Pool timed out while connecting")
-        await pool._add_connection(None) # workaround from https://stackoverflow.com/questions/76334209/connections-leak-from-a-psycopg-connection-pool
+        await pool._add_connection(
+            None
+        )  # workaround from https://stackoverflow.com/questions/76334209/connections-leak-from-a-psycopg-connection-pool
         connection = await pool.getconn(timeout=timeout)
     try:
         async with connection.transaction() as transaction:
@@ -157,10 +167,11 @@ async def get_transaction() -> AsyncGenerator[AsyncTransaction]:
     finally:
         # cleanup
         await pool.putconn(connection)
-    
 
-DBConnectionDependency = Annotated[AsyncConnection, Depends(db_dep)] 
+
+DBConnectionDependency = Annotated[AsyncConnection, Depends(db_dep)]
 DBTransactionDependency = Annotated[AsyncTransaction, Depends(transaction_dep)]
+
 
 def default_HTTP_exception(error: Error | None, additional_info: str) -> HTTPException:
     """
@@ -173,6 +184,13 @@ def default_HTTP_exception(error: Error | None, additional_info: str) -> HTTPExc
     Returns HTTPException that has the sqlstate and small description of what caused the error, safe to display to the user.
     """
     if error is None or error.sqlstate is None:
-        return HTTPException(status_code=500, detail="Unknown database error while doing " + additional_info)
+        return HTTPException(
+            status_code=500,
+            detail="Unknown database error while doing " + additional_info,
+        )
     else:
-        return HTTPException(status_code=500, detail=f"Database error {error.sqlstate}: {errors.lookup(error.sqlstate)}\n While doing " + additional_info)
+        return HTTPException(
+            status_code=500,
+            detail=f"Database error {error.sqlstate}: {errors.lookup(error.sqlstate)}\n While doing "
+            + additional_info,
+        )
