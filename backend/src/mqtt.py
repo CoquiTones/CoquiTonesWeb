@@ -22,15 +22,15 @@ from mlutil import get_model
 from queue import Queue
 from random import randint
 from Logger import Logger
-from constants import MQTT_LISTENER_PASSWORD, MQTT_ADNIN_PASSWORD, MQTT_BROKER_HOSTNAME
+from constants import MQTT_LISTENER_PASSWORD_ENV, MQTT_ADMIN_PASSWORD_ENV, MQTT_BROKER_HOSTNAME_ENV
 
 LOGGER = Logger.getInstance("MQTT Service Component")
 
 dotenv.load_dotenv(dotenv_path="backend/src/.env")
-ADMIN_PASSWORD = os.environ[MQTT_ADNIN_PASSWORD]
-LISTENER_PASSWORD = os.environ[MQTT_LISTENER_PASSWORD]
+ADMIN_PASSWORD = os.environ[MQTT_ADMIN_PASSWORD_ENV]
+LISTENER_PASSWORD = os.environ[MQTT_LISTENER_PASSWORD_ENV]
 
-MQTT_BROKER_HOSTNAME = os.environ[MQTT_BROKER_HOSTNAME]
+MQTT_BROKER_HOSTNAME_ENV = os.environ[MQTT_BROKER_HOSTNAME_ENV]
 MQTT_BROKER_PORT = 2043
 CONTROL_TOPIC = "$CONTROL/dynamic-security/v1"
 CONTROL_RESPONSE_TOPIC = "$CONTROL/dynamic-security/v1/response"
@@ -258,7 +258,7 @@ def end():
 
 async def listen_for_commands():
     async with Client(
-        hostname=MQTT_BROKER_HOSTNAME,
+        hostname=MQTT_BROKER_HOSTNAME_ENV,
         port=MQTT_BROKER_PORT,
         identifier="commands-listener",
         username="admin",
@@ -285,7 +285,7 @@ def reports_main():
 async def listen_for_reports():
     model = next(get_model())
     async with Client(
-        hostname=MQTT_BROKER_HOSTNAME,
+        hostname=MQTT_BROKER_HOSTNAME_ENV,
         port=MQTT_BROKER_PORT,
         username="reports-listener",
         password=LISTENER_PASSWORD,
@@ -377,7 +377,7 @@ async def all_clients() -> dict[str, MQTTClientDescription]:
     """Returns dict from name of each client to their description."""
     args = ListClientsArgs()
     async with Client(
-        hostname=MQTT_BROKER_HOSTNAME,
+        hostname=MQTT_BROKER_HOSTNAME_ENV,
         port=MQTT_BROKER_PORT,
         identifier="admin",
         username="admin",
@@ -394,7 +394,7 @@ async def broker_sync():
     """
 
     async with Client(
-        hostname=MQTT_BROKER_HOSTNAME,
+        hostname=MQTT_BROKER_HOSTNAME_ENV,
         port=MQTT_BROKER_PORT,
         identifier="admin",
         username="admin",
@@ -501,7 +501,7 @@ async def create_node(user_id: int, node_username: str, node_password: SecretStr
         roles=[role],
     )
     async with Client(
-        hostname=MQTT_BROKER_HOSTNAME,
+        hostname=MQTT_BROKER_HOSTNAME_ENV,
         port=MQTT_BROKER_PORT,
         identifier="admin",
         username="admin",
@@ -522,7 +522,7 @@ async def add_topic_access(user_id: int, node_id: int):
         CommandExcept: if command fails
     """
     async with Client(
-        hostname=MQTT_BROKER_HOSTNAME,
+        hostname=MQTT_BROKER_HOSTNAME_ENV,
         port=MQTT_BROKER_PORT,
         identifier="admin",
         username="admin",
@@ -576,7 +576,7 @@ async def create_user_role(user_id: int):
     """
 
     async with Client(
-        hostname=MQTT_BROKER_HOSTNAME,
+        hostname=MQTT_BROKER_HOSTNAME_ENV,
         port=MQTT_BROKER_PORT,
         identifier="admin",
         username="admin",
