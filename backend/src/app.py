@@ -268,33 +268,26 @@ async def node_insert(
     transaction: DBTransactionDependency,
     node_client_password: Annotated[SecretStr | None, Form()] = None,
 ):
-    async with asyncio.TaskGroup() as group:
-        if ntype == "primary":
-            if node_client_password is None:
-                raise HTTPException(
-                    status_code=400,
-                    detail="Must provide password for new primary nodes",
-                )
-
-            # Primary node must have a client with the broker
-            # We'll do this as a task so it can be concurrent with creating the entry in the database.
-            # If an exception is raised it will cancel the transaction and nothing will happen.
-            async def mqtt_client_creation():
-                try:
-                    await mqtt.create_node(
-                        current_user.auid, nname, node_client_password
-                    )
-                except mqtt.CommandExcept as e:
-                    LOGGER.error(
-                        f"ERROR: Failed to create client: \n\t{e.detail.error}\n\tCommand: {e.detail.command}"
-                    )
-                    raise HTTPException(500, "Failed to set up node's MQTT client")
-
-            group.create_task(mqtt_client_creation())
-
-        async def database_operation() -> dao.Node:
-            ownerid = current_user.auid
-            newNode = await dao.Node.insert(
+    # Primary node must have a client with the broker
+    # We'll do this as a task so it can be concurrent with creating the entry in the database.
+    # If an exception is raised it will return False, otherwise it will cause everything to break.
+    async def mqtt_client_creation() -> bool:
+        assert(node_client_password is not None)
+        try:
+            await mqtt.create_node(
+                current_user.auid, nname, node_client_password
+            )
+            return True
+        except mqtt.CommandExcept as e:
+            LOGGER.error(
+                f"ERROR: Failed to create client: \n\t{e.detail.error}\n\tCommand: {e.detail.command}"
+            )
+            return False
+    
+    async def database_operation() -> dao.Node | None:
+        ownerid = current_user.auid
+        try:
+            new_node = await dao.Node.insert(
                 transaction.connection,
                 ownerid,
                 nname,
@@ -303,24 +296,65 @@ async def node_insert(
                 nlongitude,
                 ndescription,
             )
-            if newNode is None:
-                raise HTTPException(500, "Failed to create new node")
+        except HTTPException:
+            return None
+        return new_node
+    
+    async def mqtt_topic_access(new_node: dao.Node) -> bool:
+        # All the user's primary nodes must have access to a topic corresponding to the new node
+        # This allows them to upload reports from the new node into the appropriate topic
+        try:
+            await mqtt.add_topic_access(current_user.auid, new_node.nid)
+        except mqtt.CommandExcept as e:
+            LOGGER.error(
+                f"ERROR: Failed to add topic access: \n\t{e.detail.error}\n\tCommand: {e.detail.command}"
+            )
+            return False
 
-            # All the user's primary nodes must have access to a topic corresponding to the new node
-            # This allows them to upload reports from the new node into the appropriate topic
-            try:
-                await mqtt.add_topic_access(current_user.auid, newNode.nid)
-            except mqtt.CommandExcept as e:
-                LOGGER.error(
-                    f"ERROR: Failed to add topic access: \n\t{e.detail.error}\n\tCommand: {e.detail.command}"
+        return True
+    
+    async with asyncio.TaskGroup() as group:
+        client_task = None
+        client_error = None
+        if ntype == "primary":
+            if node_client_password is None:
+                client_error = HTTPException(
+                    status_code=400,
+                    detail="Must provide password for new primary nodes",
                 )
-                raise HTTPException(500, "Failed to set up MQTT permissions for node")
+            else:
+                client_task = group.create_task(mqtt_client_creation())
 
-            return newNode
 
         node_task = group.create_task(database_operation())
+        await node_task
+        new_node = node_task.result()
+        if new_node is None:
+            topic_task = None
+        else:
+            topic_task = group.create_task(mqtt_topic_access(new_node))
 
-    return node_task.result()
+    if client_error is not None:
+        raise client_error
+    if client_task is None or not client_task.result():
+        raise HTTPException(
+                    status_code=500,
+                    detail="Failed to create MQTT client for primary node.",
+                )
+    if topic_task is None or not topic_task.result():
+        raise HTTPException(
+                    status_code=500,
+                    detail="Failed to give access to the node's MQTT topic.",
+                )
+    if node_task.result() is None:
+        raise HTTPException(
+                    status_code=500,
+                    detail="Failed to create node.",
+                )
+    else:
+        return node_task.result()
+
+    
 
 
 @app.delete(path="/api/node/delete")
