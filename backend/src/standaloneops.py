@@ -17,5 +17,4 @@ async def classify_and_save(audio, audio_file_id, db, model):
 
     done, _ = await asyncio.wait(slice_insert_tasks)
     results = map(lambda task: task.result(), done)
-    db.commit()
     return results
