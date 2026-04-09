@@ -36,13 +36,6 @@ services:
     ports:
       - 5432:5432
 
-  # This will just be a dependency that fixes the ownership of the files the broker will need write access for.
-  mqtt-init:
-    image: alpine
-    volumes: 
-    - ./mosquitto/config:/mosquitto/config
-    command: chown -R 1883:1883 /mosquitto/config && chmod -R 775 /data
-
   mqtt-broker:
     image: eclipse-mosquitto:latest
     container_name: mosquitto
@@ -55,6 +48,4 @@ services:
       - 2043:2043
     stdin_open: true
     tty: true
-    depends_on:
-      - mqtt-init
     env_file: "./backend/src/.env"
