@@ -3,7 +3,6 @@ from fastapi import HTTPException, Depends
 from urllib.parse import urlparse
 from constants import ENVIRONMENT_CONFIG_DATABASE_URL
 from pydantic import BaseModel, ValidationError
-from psycopg_pool import AsyncConnectionPool, PoolTimeout
 from psycopg import AsyncConnection, AsyncTransaction, Error, errors
 from contextlib import asynccontextmanager
 import json
@@ -14,9 +13,6 @@ from Logger import Logger
 LOGGER = Logger.getInstance("Database Util Component")
 
 from psycopg.conninfo import make_conninfo
-
-pool: None | AsyncConnectionPool = None
-
 
 class Conn(BaseModel):
     dbname: str
@@ -87,28 +83,17 @@ def get_connection_from_development_config() -> str:
             raise e
 
 
-async def init_connection_pool():
+async def get_connection() -> AsyncConnection:
     """
-    Starts the psycopg async connection pool based on current configuration.
+    Starts the psycopg async connection based on current configuration.
     Uses Environment variables or hardcoded development config json.
-    Also opens the pool.
-
-    Note: this returns nothing, it just starts the pool.
     """
     if os.environ[ENVIRONMENT_CONFIG_DATABASE_URL]:
         conninfo = get_connection_from_environment()
     else:
         conninfo = get_connection_from_development_config()
-    global pool
-    pool = AsyncConnectionPool(conninfo, open=False)
-    await pool.open()
-
-
-async def kill_connection_pool():
-    """Closes the connection pool."""
-    if pool is not None:
-        await pool.close()
-
+    
+    return await AsyncConnection.connect(conninfo=conninfo)
 
 async def db_dep() -> AsyncGenerator[AsyncConnection, None]:
     """
@@ -120,9 +105,9 @@ async def db_dep() -> AsyncGenerator[AsyncConnection, None]:
     Yields:
         connection: psycopg connection object
     """
-    assert type(pool) is AsyncConnectionPool
-    async with pool.connection() as connection:
-        yield connection
+    connection = await get_connection()
+    yield connection
+    await connection.close()
 
 
 async def transaction_dep(
@@ -144,29 +129,18 @@ async def transaction_dep(
 @asynccontextmanager
 async def get_transaction() -> AsyncGenerator[AsyncTransaction, None]:
     """
-    Simply gets a transaction context, assuming the connection pool has started.
-
+    Simply gets a transaction context.
     Returns:
         AsyncTransaction: psycopg transaction
     """
-    global pool
-    assert pool is not None
-
-    timeout = 1.0
-    try:
-        connection = await pool.getconn(timeout=timeout)
-    except PoolTimeout:
-        LOGGER.error("Pool timed out while connecting")
-        await pool._add_connection(
-            None
-        )  # workaround from https://stackoverflow.com/questions/76334209/connections-leak-from-a-psycopg-connection-pool
-        connection = await pool.getconn(timeout=timeout)
+   
+    connection = await get_connection()
     try:
         async with connection.transaction() as transaction:
             yield transaction
     finally:
         # cleanup
-        await pool.putconn(connection)
+        await connection.close()
 
 
 DBConnectionDependency = Annotated[AsyncConnection, Depends(db_dep)]

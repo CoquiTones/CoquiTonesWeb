@@ -4,7 +4,7 @@ from fastapi import FastAPI, File, UploadFile, staticfiles, Depends, HTTPExcepti
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, Response
 from fastapi import status
-from dbutil import DBTransactionDependency, init_connection_pool, kill_connection_pool
+from dbutil import DBTransactionDependency
 from mlutil import get_model, classify_audio_file
 from pydantic import SecretStr
 from routers.security import get_current_user, LightWeightUser
@@ -30,12 +30,9 @@ dotenv.load_dotenv(dotenv_path="backend/src/.env")
 # Define our lifespan so we can start the mqtt client together with the server
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # MQTT client startup
-    await init_connection_pool()
-    mqtt.start()
+    handles = await mqtt.start()
     yield
-    mqtt.end()
-    await kill_connection_pool()
+    mqtt.end(handles)
 
 
 LOGGER = Logger.getInstance("Main App Component")

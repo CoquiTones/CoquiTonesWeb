@@ -1,6 +1,5 @@
 from aiomqtt import Client
 import asyncio
-import threading
 import dao
 import os
 import re
@@ -8,6 +7,7 @@ import dotenv
 from io import BytesIO
 from dbutil import get_transaction
 from typing import Any, List, Union
+from dataclasses import dataclass
 from pydantic import (
     BaseModel,
     ValidationError,
@@ -30,7 +30,7 @@ dotenv.load_dotenv(dotenv_path="backend/src/.env")
 ADMIN_PASSWORD = os.environ[MQTT_ADMIN_PASSWORD_ENV]
 LISTENER_PASSWORD = os.environ[MQTT_LISTENER_PASSWORD_ENV]
 
-MQTT_BROKER_HOSTNAME_ENV = os.environ[MQTT_BROKER_HOSTNAME_ENV]
+MQTT_BROKER_HOSTNAME = os.environ[MQTT_BROKER_HOSTNAME_ENV]
 MQTT_BROKER_PORT = 2043
 CONTROL_TOPIC = "$CONTROL/dynamic-security/v1"
 CONTROL_RESPONSE_TOPIC = "$CONTROL/dynamic-security/v1/response"
@@ -217,48 +217,46 @@ class CommandExcept(BaseException):
 
     def __str__(self) -> str:
         return self.detail.error
+    
+@dataclass
+class TaskHandles:
+    command_listener_task: asyncio.Task
+    report_listener_task: asyncio.Task
 
-
-report_listener_thread = None
-command_listener_thread = None
 command_sender_info_queue: Queue[tuple[CommandHandle, asyncio.Event]] = Queue(
     MAX_COMMAND_QUEUE_SIZE
 )
 receive_command_output_channel: dict[CommandHandle, bytes] = {}
-global_command_lock = threading.Lock()
+global_command_lock = asyncio.Lock()
 listener_ready = asyncio.Event()
 
 
-def start():
+async def start() -> TaskHandles:
     """
-    Syncs broker with DB then creates a thread where the mqtt operations will run.
+    Syncs broker with DB then creates a task where the mqtt operations will run.
+    Returns a handle which will be necessary to call end()
     """
-    command_listener_thread = threading.Thread(
-        target=lambda: asyncio.run(listen_for_commands())
-    )
-    command_listener_thread.start()
-    syncing_thread = threading.Thread(target=lambda: asyncio.run(broker_sync()))
-    syncing_thread.start()
-    syncing_thread.join()
-    report_listener_thread = threading.Thread(target=reports_main)
-    report_listener_thread.start()
+    command_listener_task = asyncio.create_task(listen_for_commands())
+    await broker_sync()
+    report_listener_task = asyncio.create_task(listen_for_reports())
+    return TaskHandles(
+        command_listener_task=command_listener_task,
+        report_listener_task=report_listener_task,
+        )
 
 
-def end():
+def end(handles: TaskHandles):
     """
-    Join the thread if it exists
+    Cleans up tasks.
     """
-    if report_listener_thread is None:
-        return
-    report_listener_thread.join()
-    if command_listener_thread is None:
-        return
-    command_listener_thread.join()
+    handles.report_listener_task.cancel()
+    handles.command_listener_task.cancel()
 
 
 async def listen_for_commands():
+    LOGGER.info("Listening for commands")
     async with Client(
-        hostname=MQTT_BROKER_HOSTNAME_ENV,
+        hostname=MQTT_BROKER_HOSTNAME,
         port=MQTT_BROKER_PORT,
         identifier="commands-listener",
         username="admin",
@@ -285,7 +283,7 @@ def reports_main():
 async def listen_for_reports():
     model = next(get_model())
     async with Client(
-        hostname=MQTT_BROKER_HOSTNAME_ENV,
+        hostname=MQTT_BROKER_HOSTNAME,
         port=MQTT_BROKER_PORT,
         username="reports-listener",
         password=LISTENER_PASSWORD,
@@ -377,7 +375,7 @@ async def all_clients() -> dict[str, MQTTClientDescription]:
     """Returns dict from name of each client to their description."""
     args = ListClientsArgs()
     async with Client(
-        hostname=MQTT_BROKER_HOSTNAME_ENV,
+        hostname=MQTT_BROKER_HOSTNAME,
         port=MQTT_BROKER_PORT,
         identifier="admin",
         username="admin",
@@ -394,7 +392,7 @@ async def broker_sync():
     """
 
     async with Client(
-        hostname=MQTT_BROKER_HOSTNAME_ENV,
+        hostname=MQTT_BROKER_HOSTNAME,
         port=MQTT_BROKER_PORT,
         identifier="admin",
         username="admin",
@@ -501,7 +499,7 @@ async def create_node(user_id: int, node_username: str, node_password: SecretStr
         roles=[role],
     )
     async with Client(
-        hostname=MQTT_BROKER_HOSTNAME_ENV,
+        hostname=MQTT_BROKER_HOSTNAME,
         port=MQTT_BROKER_PORT,
         identifier="admin",
         username="admin",
@@ -522,7 +520,7 @@ async def add_topic_access(user_id: int, node_id: int):
         CommandExcept: if command fails
     """
     async with Client(
-        hostname=MQTT_BROKER_HOSTNAME_ENV,
+        hostname=MQTT_BROKER_HOSTNAME,
         port=MQTT_BROKER_PORT,
         identifier="admin",
         username="admin",
@@ -576,7 +574,7 @@ async def create_user_role(user_id: int):
     """
 
     async with Client(
-        hostname=MQTT_BROKER_HOSTNAME_ENV,
+        hostname=MQTT_BROKER_HOSTNAME,
         port=MQTT_BROKER_PORT,
         identifier="admin",
         username="admin",
@@ -621,11 +619,7 @@ async def _execute_command(admin_client: Client, args: MQTTArgs) -> SuccessfulRe
     Raises:
         CommandExcept when command fails
     """
-    # TODO: Smarter non-blocking lock
-    # This can't be an async lock because the main app runs on a  thread with a different event loop,
-    # which means it can't await events in this thread's event loop.
-    while not global_command_lock.acquire(blocking=False):
-        await asyncio.sleep(COMMAND_CHECK_PERIOD)
+    await global_command_lock.acquire()
     await listener_ready.wait()
     message = MQTTCommands(commands=[args]).model_dump_json(exclude_none=True)
     await admin_client.publish(CONTROL_TOPIC, message)
