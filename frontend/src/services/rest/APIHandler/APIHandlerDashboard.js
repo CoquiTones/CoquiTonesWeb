@@ -105,7 +105,6 @@ export class APIHandlerDashboard extends APIHandlerBase {
             }
 
             const deleteRecordsAPIResponse = await response.json();
-            console.log(deleteRecordsAPIResponse)
             return deleteRecordsAPIResponse
         } catch (error) {
             throw new APIHandlerError('Error with deleting selected reports' + error.message);

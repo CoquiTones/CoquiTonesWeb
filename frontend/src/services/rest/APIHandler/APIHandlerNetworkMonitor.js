@@ -2,7 +2,7 @@
 import APIHandlerBase from "./APIHandlerBase";
 import { APIHandlerError, BackendError } from "./Errors";
 import { NodeList } from "../ResponseORM/NetworkMonitor/NodeResponse";
-import {InsertNewNodeRequest} from "../RequestORM/NetworkMonitor/NewNodeRequest"
+import { InsertNewNodeRequest } from "../RequestORM/NetworkMonitor/NewNodeRequest"
 export class APIHandlerNetworkMonitor extends APIHandlerBase {
     async get_all_nodes() {
         try {
@@ -18,7 +18,6 @@ export class APIHandlerNetworkMonitor extends APIHandlerBase {
             const getNodeAPIResopnse = await response.json()
             return new NodeList(getNodeAPIResopnse);
         } catch (error) {
-            console.error("Error fetching all nodes : ", error);
             throw new APIHandlerError('Error with fetching all nodes from database: ' + error.message);
         }
     }
@@ -34,12 +33,11 @@ export class APIHandlerNetworkMonitor extends APIHandlerBase {
                 headers: this.getAuthenticationHeader(),
                 body: insert_new_node_request.toFormData()
             })
-            
+
             if (!response.ok) {
                 throw new APIHandlerError(response.statusText);
             }
         } catch (error) {
-            console.error("Error Inserting New Node: ", error);
             throw new APIHandlerError("Error Inserting nodes in database for Network Monitor: " + error.message);
         }
     }

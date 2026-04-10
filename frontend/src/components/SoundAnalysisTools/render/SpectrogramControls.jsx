@@ -40,22 +40,32 @@ export default function SpectrogramControls({
   const [tempX, setTempX] = useState(xrange);
   const [tempY, setTempY] = useState(yrange);
 
-  const handleXSliderChange = (event, newValue) => {
-    setTempX(newValue);
+  const handleXSliderChange = (event, newValue, activeThumb) => {
+
+    if (activeThumb === 0) {
+      setTempX([Math.min(newValue[0], tempX[1] - MIN_TIME_DISTANCE_SECONDS), tempX[1]])
+    } else {
+      setTempX([tempX[0], Math.max(newValue[1], tempX[0] + MIN_TIME_DISTANCE_SECONDS)])
+    }
   };
 
   const handleXSliderCommit = (event, newValue) => {
-    setXrange(newValue);
+    setXrange(newValue)
   };
 
-  const handleYSliderChange = (event, newValue) => {
-    setTempY(newValue);
+  const handleYSliderChange = (event, newValue, activeThumb) => {
+    if (activeThumb === 0) {
+      setTempY([Math.min(newValue[0], tempY[1] - MIN_FREQUENCY_DISTANCE), tempY[1]])
+    } else {
+      setTempY([tempY[0], Math.max(newValue[1], tempY[0] + MIN_FREQUENCY_DISTANCE)])
+    }
   };
-
   const handleYSliderCommit = (event, newValue) => {
-    setYrange(newValue);
+    setYrange(newValue)
   };
 
+  const MIN_FREQUENCY_DISTANCE = 1000
+  const MIN_TIME_DISTANCE_SECONDS = 5
   return (
     <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
       <FormControl fullWidth>
@@ -88,6 +98,7 @@ export default function SpectrogramControls({
       <Typography gutterBottom>Time (s) Range</Typography>
       <Box sx={{ display: "flex", alignItems: "center" }}>
         <StyledSlider
+          disableSwap
           sx={{ marginTop: 4, flexGrow: 1 }}
           value={tempX}
           onChange={handleXSliderChange}
@@ -101,6 +112,7 @@ export default function SpectrogramControls({
       <Typography gutterBottom>Frequency (Hz) Range</Typography>
       <Box sx={{ display: "flex", alignItems: "center" }}>
         <StyledSlider
+          disableSwap
           sx={{ marginTop: 4, flexGrow: 1 }}
           value={tempY}
           onChange={handleYSliderChange}

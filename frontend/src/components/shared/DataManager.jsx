@@ -12,42 +12,41 @@ import DialogTitle from "@mui/material/DialogTitle";
 import FileUpload from "./FileUpload";
 import { APIHandlerSpectralAnalysis } from "../../services/rest/APIHandler/APIHandlerSpectralAnalysis";
 
-const DataManager = ({ audioFile, setAudioFile, setDefaultX, setDefaultY, setStats }) => {
+const DataManager = ({ audioFile, setAudioFile, setDefaultX, setDefaultY, setStats, errors, setErrors }) => {
   const [open, setOpen] = useState(false);
   const [nid, setNid] = useState("");
   const [timestamp, setTimestamp] = useState("");
+  const processAudio = async () => {
+    try {
+      const audioContext = new AudioContext();
+      const arrayBuffer = await audioFile.arrayBuffer();
+      const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
+
+      const duration = audioBuffer.duration;
+      const sampleRate = audioBuffer.sampleRate;
+      const numberOfChannels = audioBuffer.numberOfChannels;
+      const size = audioFile.size;
+      const bitrate = duration ? (size * 8) / duration : 0;
+      const codec = audioFile.name.split(".").pop();
+
+      setDefaultX([0, duration.toFixed(1)]);
+      if (setStats) {
+        setStats({
+          duration,
+          sampleRate,
+          number_of_channels: numberOfChannels,
+          bitrate: Math.round(bitrate),
+          codec,
+          size,
+        });
+      }
+    } catch (error) {
+      setErrors([...errors, error])
+    }
+  };
 
   useEffect(() => {
     if (audioFile) {
-      const processAudio = async () => {
-        try {
-          const audioContext = new AudioContext();
-          const arrayBuffer = await audioFile.arrayBuffer();
-          const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
-
-          const duration = audioBuffer.duration;
-          const sampleRate = audioBuffer.sampleRate;
-          const numberOfChannels = audioBuffer.numberOfChannels;
-          const size = audioFile.size;
-          const bitrate = duration ? (size * 8) / duration : 0;
-          const codec = audioFile.name.split(".").pop();
-
-          setDefaultX([0, duration.toFixed(1)]);
-          if (setStats) {
-            setStats({
-              duration,
-              sampleRate,
-              number_of_channels: numberOfChannels,
-              bitrate: Math.round(bitrate),
-              codec,
-              size,
-            });
-          }
-        } catch (error) {
-          console.error("Error processing audio file:", error);
-        }
-      };
-
       processAudio();
     }
   }, [audioFile]);
@@ -55,11 +54,16 @@ const DataManager = ({ audioFile, setAudioFile, setDefaultX, setDefaultY, setSta
   const handleClickOpen = () => setOpen(true);
   const handleClose = () => setOpen(false);
 
-  const handleSubmit = () => {
-    const apiHandler = new APIHandlerSpectralAnalysis();
-    const request = new insertAudioRequest(audioFile, nid, timestamp);
-    apiHandler.insertAudio(request);
-    setOpen(false);
+  const handleSubmit = async () => {
+    try {
+
+      const apiHandler = new APIHandlerSpectralAnalysis();
+      const request = new insertAudioRequest(audioFile, nid, timestamp);
+      await apiHandler.insertAudio(request);
+      setOpen(false);
+    } catch (error) {
+      setErrors([...errors, error])
+    }
   };
 
   return (
