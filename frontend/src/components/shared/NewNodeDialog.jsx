@@ -1,4 +1,4 @@
-import React from "react";
+import React, {useState, useMemo} from "react";
 import Button from "@mui/material/Button";
 import IconButton from "@mui/material/IconButton";
 import AddIcon from "@mui/icons-material/Add";
@@ -13,13 +13,13 @@ import DialogTitle from "@mui/material/DialogTitle";
 import { InsertNewNodeRequest } from "../../services/rest/RequestORM/NetworkMonitor/NewNodeRequest";
 import { APIHandlerNetworkMonitor } from "../../services/rest/APIHandler/APIHandlerNetworkMonitor";
 
-export default function NewNodeDialog({ setDucks }) {
-  const [open, setOpen] = React.useState(false);
-  const [nodeType, setNodeType] = React.useState("primary");
-  const [latitude, setLatitude] = React.useState("");
-  const [longitude, setLongitude] = React.useState("");
-  const [description, setDescription] = React.useState("");
-
+export default function NewNodeDialog({ setDucks, errors, setErrors }) {
+  const [open, setOpen] = useState(false);
+  const [nodeType, setNodeType] = useState("primary");
+  const [latitude, setLatitude] = useState("");
+  const [longitude, setLongitude] = useState("");
+  const [description, setDescription] = useState("");
+  const apiHandler = useMemo(() => new APIHandlerNetworkMonitor());
   const handleClickOpen = () => {
     setOpen(true);
   };
@@ -28,12 +28,16 @@ export default function NewNodeDialog({ setDucks }) {
     setOpen(false);
   };
 
-  const handleSubmit = (event) => {
-    event.preventDefault();
-    const insert_node_request = new InsertNewNodeRequest(nodeType, longitude, latitude, description);
-    const apiHandler = new APIHandlerNetworkMonitor();
-    apiHandler.insert_new_node(insert_node_request);
-    handleClose();
+  const handleSubmit = async (event) => {
+    try {
+
+      event.preventDefault();
+      const insert_node_request = new InsertNewNodeRequest(nodeType, longitude, latitude, description);
+      await apiHandler.insert_new_node(insert_node_request);
+      handleClose();
+    } catch (error) {
+      setErrors([...errors, error]);
+    }
   };
 
   return (

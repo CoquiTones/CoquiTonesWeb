@@ -61,6 +61,8 @@ const NetworkMonitor = () => {
         </Typography>
         <NewNodeDialog
           setDucks={setNodes}
+          errors={errors}
+          setErrors={setErrors}
           style={{
             display: "flex",
             justifyContent: "flex-end",

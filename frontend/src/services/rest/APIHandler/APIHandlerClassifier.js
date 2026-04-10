@@ -17,14 +17,13 @@ export class APIHandlerClassifier extends APIHandlerBase {
             });
 
             if (!response.ok) {
-                throw new BackendError('Unable to classify audio sample due to network error: ' + response.statusText)
+                throw new BackendError(response.statusText)
             }
             const classifierReportResponse = await response.json()
             const report = new ClassifierReport(classifierReportResponse);
             return report;
         } catch (error) {
-            console.error("Error fetching Classification from audio file input : ", error);
-            throw new APIHandlerError('Error with fetchClassification in Handler: ' + error.message);
+            throw new APIHandlerError('Error with classifying audio file: ' + error.message);
         }
     };
 }
