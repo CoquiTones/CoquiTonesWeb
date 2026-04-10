@@ -17,24 +17,27 @@ import { APIHandlerNetworkMonitor } from "../services/rest/APIHandler/APIHandler
 import NewNodeDialog from "../components/shared/NewNodeDialog";
 import HeroSectionCDN from "../components/shared/HeroSectionCDN";
 import MapEmbed from "../components/NetworkMonitor/Map";
-import { Typography } from "@mui/material";
+import { Typography, Stack } from "@mui/material";
+import ErrorAlerts from "../components/shared/ErrorAlerts";
+import { APIHandlerError } from "../services/rest/APIHandler/Errors";
 const NetworkMonitor = () => {
   const [nodes, setNodes] = useState([]);
-
-  useEffect(() => {
-    const fetchNodes = async () => {
-      const dataHandler = new APIHandlerNetworkMonitor();
-      const nodes = await dataHandler.get_all_nodes();
+  const [errors, setErrors] = useState([ new APIHandlerError("Test Error, mang!")]);
+  const [warningsAndActions, setWarningsAndActions] = useState([]);
+  const apiHandler = useMemo(new APIHandlerNetworkMonitor());
+  const fetchNodes = async () => {
+    try {
+      const nodes = await apiHandler.get_all_nodes();
       setNodes(nodes);
-    };
+    } catch (error) {
+      setErrors([...errors, error])
+    }
+  };
+  useEffect(() => {
 
     fetchNodes();
   }, []);
 
-  const calcultaCols = () => {
-    return Math.ceil(Math.sqrt(nodes.length));
-  };
-  const numCols = useMemo(() => calcultaCols(), [nodes]);
 
   const [isOpen, setIsOpen] = useState(false);
   const toggle = () => {
@@ -43,6 +46,8 @@ const NetworkMonitor = () => {
 
   return (
     <ThemeProvider theme={theme}>
+      <ErrorAlerts errors={errors} setErrors={setErrors}/>
+      <Stack>
       <Sidebar isOpen={isOpen} toggle={toggle} />
       <Navbar toggle={toggle} />
       <HeroSectionCDN />
@@ -106,6 +111,7 @@ const NetworkMonitor = () => {
           </div>
         </Paper>
       </Grid>
+      </Stack>
 
       {/* </Container>
                 </Box>
