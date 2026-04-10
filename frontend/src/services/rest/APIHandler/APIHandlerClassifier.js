@@ -1,8 +1,14 @@
 import APIHandlerBase from "./APIHandlerBase";
 import { APIHandlerError, BackendError } from "./Errors";
 import ClassifierReport from "../ResponseORM/Classifier/ClassifierReport";
+import { ClassifyAudioRequest } from "../RequestORM/Classifier/ClassifyAudioRequest";
 export class APIHandlerClassifier extends APIHandlerBase {
 
+    /**
+     * 
+     * @param {ClassifyAudioRequest} classifyAudioRequest 
+     * @returns 
+     */
     async fetchClassification(classifyAudioRequest) {
         try {
             const response = await fetch(this.web_url + "/api/classifier/classify", {

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import { Box } from "@mui/material";
 
 import { APIHandlerDashboard } from "../../services/rest/APIHandler/APIHandlerDashboard";
@@ -12,8 +12,9 @@ import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import DangerousIcon from '@mui/icons-material/Dangerous';
 import { styled } from '@mui/material/styles';
 
-export default function LatestNodeHeartbeat() {
+export default function LatestNodeHeartbeat({errors, setErrors}) {
   const [heartbeatInfo, setHeartbeatInfo] = useState(null);
+  const apiHandler = useMemo(() => new APIHandlerDashboard());
   const MAX_ALLOWED_TIME_IN_HOURS_BEFORE_DECLARED_UNRESPONSIVE = 48 // hours
   const columnHeaders = [
     "Latest Time",
@@ -21,12 +22,17 @@ export default function LatestNodeHeartbeat() {
     "Node Description",
     "Responsive"
   ]
-  useEffect(() => {
-    const fetchHeartbeatInfo = async () => {
+  const fetchHeartbeatInfo = async () => {
+    try {
+
       const apiHandler = new APIHandlerDashboard();
       const heartbeatInfo = await apiHandler.get_node_health_check();
       setHeartbeatInfo(heartbeatInfo);
-    };
+    } catch (error) {
+      setErrors([...errors, error])
+    }
+  };
+  useEffect(() => {
     fetchHeartbeatInfo();
   }, []);
   const isResponsive = (node_info) => {

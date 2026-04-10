@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo} from "react";
 import { ThemeProvider } from "@mui/material/styles";
 import CssBaseline from "@mui/material/CssBaseline";
 import Box from "@mui/material/Box";
@@ -23,6 +23,7 @@ import HeroSectionClassifier from "../components/shared/HeroSectionClassifier";
 
 import { APIHandlerClassifier } from "../services/rest/APIHandler/APIHandlerClassifier";
 import { ClassifyAudioRequest } from "../services/rest/RequestORM/Classifier/ClassifyAudioRequest";
+import ErrorAlerts from "../components/shared/ErrorAlerts";
 const Classifier = () => {
   const species = [
     "coqui",
@@ -40,24 +41,31 @@ const Classifier = () => {
   const toggle = () => {
     setIsOpen(!isOpen);
   };
+  const [errors, setErrors] = useState([]);
+  const apiHandler = useMemo(() => new APIHandlerClassifier());
   const [rawAudioFile, setRawAudioFile] = useState(null);
-  useEffect(() => {
-    const classifyAudiofile = async () => {
+  const classifyAudiofile = async () => {
+    try {
       if (rawAudioFile) {
-        const reportAPIHandler = new APIHandlerClassifier();
         const classifyAudioFileRequest = new ClassifyAudioRequest(rawAudioFile);
-        let report = await reportAPIHandler.fetchClassification(
+        let report = await apiHandler.fetchClassification(
           classifyAudioFileRequest
         );
         setClassifierReport(report);
       }
-    };
+    } catch (error) {
+      setErrors([...errors, error]);
+    }
+  };
+
+  useEffect(() => {
     classifyAudiofile();
   }, [rawAudioFile]);
   const [classifierReport, setClassifierReport] = useState(null);
 
   return (
     <ThemeProvider theme={theme}>
+      <ErrorAlerts errors={errors} setErrors={setErrors} />
       <Sidebar isOpen={isOpen} toggle={toggle} />
       <Navbar toggle={toggle} />
       <HeroSectionClassifier />

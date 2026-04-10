@@ -22,9 +22,9 @@ import ErrorAlerts from "../components/shared/ErrorAlerts";
 import { APIHandlerError } from "../services/rest/APIHandler/Errors";
 const NetworkMonitor = () => {
   const [nodes, setNodes] = useState([]);
-  const [errors, setErrors] = useState([ new APIHandlerError("Test Error, mang!")]);
+  const [errors, setErrors] = useState([]);
   const [warningsAndActions, setWarningsAndActions] = useState([]);
-  const apiHandler = useMemo(new APIHandlerNetworkMonitor());
+  const apiHandler = useMemo(() => new APIHandlerNetworkMonitor());
   const fetchNodes = async () => {
     try {
       const nodes = await apiHandler.get_all_nodes();

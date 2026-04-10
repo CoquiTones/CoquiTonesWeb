@@ -1,5 +1,5 @@
 import React from "react";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { ThemeProvider } from "@mui/material/styles";
 import CssBaseline from "@mui/material/CssBaseline";
 import Box from "@mui/material/Box";
@@ -15,15 +15,17 @@ import Navbar from "../components/shared/Navbar";
 import Footer from "../components/shared/Footer";
 import theme from "../components/shared/Theme";
 import Sidebar from "../components/shared/Sidebar";
+import ErrorAlerts from "../components/shared/ErrorAlerts";
 
 export default function Dashboard() {
   const [isOpen, setIsOpen] = useState(false);
   const toggle = () => {
     setIsOpen(!isOpen);
   };
-
+  const [errors, setErrors] = useState([]);
   return (
     <ThemeProvider theme={theme}>
+      <ErrorAlerts errors={errors} setErrors={setErrors} />
       <Sidebar isOpen={isOpen} toggle={toggle} />
       <Navbar toggle={toggle} />
       {
@@ -51,7 +53,7 @@ export default function Dashboard() {
                       height: 500,
                     }}
                   >
-                    <Chart />
+                    <Chart errors={errors} setErrors={setErrors} />
                   </Paper>
                 </Grid>
 
@@ -64,7 +66,7 @@ export default function Dashboard() {
                       height: 500,
                     }}
                   >
-                    <LatestNodeHeartbeat />
+                    <LatestNodeHeartbeat errors={errors} setErrors={setErrors} />
                   </Paper>
                 </Grid>
 
@@ -76,7 +78,7 @@ export default function Dashboard() {
                       width: "100%",
                     }}
                   >
-                    <RecentEntries />
+                    <RecentEntries errors={errors} setErrors={setErrors} />
                   </Paper>
                 </Grid>
               </Grid>

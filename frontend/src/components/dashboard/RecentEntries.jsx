@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import Link from "@mui/material/Link";
 import Table from "@mui/material/Table";
 import TableBody from "@mui/material/TableBody";
@@ -9,8 +9,9 @@ import Title from "./Title";
 import { APIHandlerDashboard } from "../../services/rest/APIHandler/APIHandlerDashboard";
 import Box from "@mui/material/Box";
 
-export default function RecentEntries() {
+export default function RecentEntries({ errors, setErrors }) {
   const [recentReports, setRecentReports] = useState(null);
+  const apiHandler = useMemo(() => new APIHandlerDashboard());
   const columnHeaders = [
     "Date",
     "Coqui",
@@ -27,12 +28,18 @@ export default function RecentEntries() {
     "Raining",
   ];
 
-  useEffect(() => {
-    const getRecentReports = async () => {
+  const getRecentReports = async () => {
+    try {
+
       const dashboardAPIHandler = new APIHandlerDashboard();
       let recent_reports = await dashboardAPIHandler.get_recent_reports();
       setRecentReports(recent_reports);
-    };
+    } catch (error) {
+      setErrors([...errors, error])
+    }
+  };
+
+  useEffect(() => {
 
     getRecentReports();
   }, []);
