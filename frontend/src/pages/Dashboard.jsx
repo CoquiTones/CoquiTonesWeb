@@ -10,12 +10,12 @@ import Paper from "@mui/material/Paper";
 
 import Chart from "../components/dashboard/WeekLineChart";
 import LatestNodeHeartbeat from "../components/dashboard/NodeHeartbeat";
-import RecentEntries from "../components/dashboard/RecentEntries";
 import Navbar from "../components/shared/Navbar";
 import Footer from "../components/shared/Footer";
 import theme from "../components/shared/Theme";
 import Sidebar from "../components/shared/Sidebar";
 import ErrorAlerts from "../components/shared/ErrorAlerts";
+import DataTable from "../components/shared/DataTable";
 
 export default function Dashboard() {
   const [isOpen, setIsOpen] = useState(false);
@@ -78,7 +78,7 @@ export default function Dashboard() {
                       width: "100%",
                     }}
                   >
-                    <RecentEntries errors={errors} setErrors={setErrors} />
+                    <DataTable errors={errors} setErrors={setErrors}/>
                   </Paper>
                 </Grid>
               </Grid>

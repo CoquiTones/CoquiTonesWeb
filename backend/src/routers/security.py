@@ -6,7 +6,8 @@ from fastapi import Depends, HTTPException, APIRouter, Form
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from pydantic import BaseModel, SecretStr
 from jwt.exceptions import InvalidTokenError
-from dbutil import get_db_connection
+from dbutil import DBTransactionDependency
+from psycopg import AsyncTransaction
 import hashlib
 import dao
 import os
@@ -14,7 +15,7 @@ import os
 router = APIRouter()
 
 ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 30
+ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24  # 1 day of valid session
 
 
 class Token(BaseModel):
@@ -83,11 +84,11 @@ def validate_username(username: str) -> bool:
 
 
 async def authenticate_user(
-    submitted_username: str, submitted_password: SecretStr, db
+    submitted_username: str, submitted_password: SecretStr, transaction: AsyncTransaction
 ) -> dao.User | None:
     if not validate_username(submitted_username):
         return None
-    user: dao.User | None = await dao.User.get_by_username(db, submitted_username)  # type: ignore
+    user: dao.User | None = await dao.User.get_by_username(transaction.connection, submitted_username)
     if not user:
         return None
 
@@ -101,11 +102,11 @@ async def authenticate_user(
 @router.post("/api/token")
 async def login_for_access_token(
     form_data: Annotated[OAuth2PasswordRequestForm, Depends()],
-    db=Depends(get_db_connection),
+    transaction: DBTransactionDependency,
 ) -> Token:
 
     user = await authenticate_user(
-        form_data.username, SecretStr(form_data.password), db
+        form_data.username, SecretStr(form_data.password), transaction
     )
     if not user:
         raise HTTPException(status_code=400, detail="Incorrect username or password")
@@ -137,13 +138,13 @@ async def read_users_me(
 async def create_user(
     username: Annotated[str, Form()],
     password: Annotated[SecretStr, Form()],
-    db=Depends(get_db_connection),
+    transaction: DBTransactionDependency,
 ):
     if len(username) > 30:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Username too long")
     salt = os.urandom(16)
     pwhash = hash_password(password, salt)
-    if await dao.User.insert(db, username, pwhash, salt) is None:
+    if await dao.User.insert(transaction.connection, username, pwhash, salt) is None:
         raise HTTPException(status.HTTP_409_CONFLICT, "Username taken")
 
     return {"message": "success"}
