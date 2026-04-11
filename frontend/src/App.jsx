@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import './App.css';
 import ProtectedRoute from './pages/ProtectedRoute';
@@ -12,22 +12,27 @@ import { ThemeProvider } from '@mui/material/styles';
 import Home from './pages/Home';
 import PageNotFound from './pages/Page404';
 import SignUpPage from './pages/SignUp';
-
+import Navbar from './components/shared/Navbar';
+import Sidebar from './components/shared/Sidebar';
 function App() {
+  const [open, setOpen] = useState(false);
+  const toggle = () => {
+    setOpen(!open);
+  }
   return (
     <div>
       <BrowserRouter>
         <Routes>
-          <Route path='/' element={<ThemeProvider theme={theme} > <Home /> </ThemeProvider>} />
+          <Route path='/' element={<ThemeProvider theme={theme} > <Navbar toggle={toggle} isHome={true} /> <Home /> </ThemeProvider>} />
           <Route element={<ProtectedRoute />} >
-            <Route path='/Dashboard' element={<ThemeProvider theme={theme} > <Dashboard /> </ThemeProvider>} />
-            <Route path='/NetworkMonitor' element={<ThemeProvider theme={theme} > <NetworkMonitor /> </ThemeProvider>} />
+            <Route path='/Dashboard' element={<ThemeProvider theme={theme} > <Navbar toggle={toggle} isHome={false} />  <Sidebar isOpen={open} toggle={toggle} /> <Dashboard /> </ThemeProvider>} />
+            <Route path='/NetworkMonitor' element={<ThemeProvider theme={theme} > <Navbar toggle={toggle} isHome={false} />   <Sidebar isOpen={open} toggle={toggle} /> <NetworkMonitor /> </ThemeProvider>} />
           </Route>
-          <Route path='/About' element={<ThemeProvider theme={theme} > <About /> </ThemeProvider>} />
-          <Route path='/Classifier' element={<ThemeProvider theme={theme} > <Classifier /> </ThemeProvider>} />
-          <Route path='/SpectralAnalysis' element={<ThemeProvider theme={theme} > <SpectralAnalysis /> </ThemeProvider>} />
+          <Route path='/About' element={<ThemeProvider theme={theme} > <Navbar toggle={toggle} isHome={false} />   <Sidebar isOpen={open} toggle={toggle} /> <About /> </ThemeProvider>} />
+          <Route path='/Classifier' element={<ThemeProvider theme={theme} > <Navbar toggle={toggle} isHome={false} />   <Sidebar isOpen={open} toggle={toggle} /> <Classifier /> </ThemeProvider>} />
+          <Route path='/SpectralAnalysis' element={<ThemeProvider theme={theme} > <Navbar toggle={toggle} isHome={false} />   <Sidebar isOpen={open} toggle={toggle} /> <SpectralAnalysis /> </ThemeProvider>} />
           <Route path='/SignUp' element={<ThemeProvider theme={theme} > <SignUpPage /> </ThemeProvider>} />
-          <Route path='*' element={<ThemeProvider theme={theme} > <PageNotFound /> </ThemeProvider>} />
+          <Route path='*' element={<ThemeProvider theme={theme} > <Navbar toggle={toggle} isHome={false} />  <PageNotFound /> </ThemeProvider>} />
         </Routes>
       </BrowserRouter>
 

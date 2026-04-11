@@ -48,8 +48,6 @@ const NetworkMonitor = () => {
     <ThemeProvider theme={theme}>
       <ErrorAlerts errors={errors} setErrors={setErrors}/>
       <Stack>
-      <Sidebar isOpen={isOpen} toggle={toggle} />
-      <Navbar toggle={toggle} />
       <HeroSectionCDN />
       <NodeContainer>
         <Typography

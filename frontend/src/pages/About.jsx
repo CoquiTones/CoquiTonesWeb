@@ -68,8 +68,6 @@ const About = () => {
   const [activeStep, setActiveStep] = useState(0);
   return (
     <ThemeProvider theme={theme} style={{ background: "#191716" }}>
-      <Sidebar isOpen={isOpen} toggle={setIsOpen} />
-      <Navbar toggle={setIsOpen} />
       <Item item={items.at(activeStep)} />
 
       <DotsMobileStepper

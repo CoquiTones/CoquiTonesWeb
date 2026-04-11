@@ -18,16 +18,10 @@ import ErrorAlerts from "../components/shared/ErrorAlerts";
 import DataTable from "../components/shared/DataTable";
 
 export default function Dashboard() {
-  const [isOpen, setIsOpen] = useState(false);
-  const toggle = () => {
-    setIsOpen(!isOpen);
-  };
   const [errors, setErrors] = useState([]);
   return (
     <ThemeProvider theme={theme}>
       <ErrorAlerts errors={errors} setErrors={setErrors} />
-      <Sidebar isOpen={isOpen} toggle={toggle} />
-      <Navbar toggle={toggle} />
       {
         <Box sx={{ display: "flex", width: "100%" }}>
           <CssBaseline />

@@ -37,10 +37,6 @@ const Classifier = () => {
   ];
   const column_headers = ["Time Slice", ...species];
 
-  const [isOpen, setIsOpen] = useState(false);
-  const toggle = () => {
-    setIsOpen(!isOpen);
-  };
   const [errors, setErrors] = useState([]);
   const apiHandler = useMemo(() => new APIHandlerClassifier());
   const [rawAudioFile, setRawAudioFile] = useState(null);
@@ -66,8 +62,6 @@ const Classifier = () => {
   return (
     <ThemeProvider theme={theme}>
       <ErrorAlerts errors={errors} setErrors={setErrors} />
-      <Sidebar isOpen={isOpen} toggle={toggle} />
-      <Navbar toggle={toggle} />
       <HeroSectionClassifier />
       <Box sx={{ display: "flex" }}>
         <CssBaseline />

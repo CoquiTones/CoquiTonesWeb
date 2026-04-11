@@ -18,8 +18,6 @@ const Home = () => {
   return (
     <>
       <ErrorAlerts errors={errors} setErrors={setErrors} />
-      <Sidebar isOpen={isOpen} toggle={toggle} isHome={true} />
-      <Navbar toggle={toggle} isHome={true} />
       <HeroSection />
       <InfoSection {...dashboardData} />
       <InfoSection {...NetworkMonitorData} />
