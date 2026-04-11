@@ -1,6 +1,4 @@
 import React, { useEffect, useState } from "react";
-import { ThemeProvider } from "@mui/material/styles";
-import CssBaseline from "@mui/material/CssBaseline";
 import Box from "@mui/material/Box";
 import Paper from "@mui/material/Paper";
 import IconButton from "@mui/material/IconButton";
@@ -37,8 +35,7 @@ const SpectralAnalysis = () => {
   const handleDrawerClose = () => setDrawerOpen(false);
 
   return (
-    <ThemeProvider theme={theme}>
-      <CssBaseline />
+    <>
       <Box sx={{ display: "flex", height: "100vh", width: "100%" }}>
         <Box sx={{ display: "flex", flexDirection: "column", flex: 1, minWidth: 0 }}>
 
@@ -209,7 +206,7 @@ const SpectralAnalysis = () => {
           )}
         </DialogContent>
       </Dialog>
-    </ThemeProvider>
+    </>
   );
 };
 

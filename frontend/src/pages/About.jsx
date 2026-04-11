@@ -5,9 +5,7 @@ import {
   CarouselH1,
   CarouselP,
 } from "../components/shared/CarouselStyle";
-import { ThemeProvider } from "@emotion/react";
 import DotsMobileStepper from "../components/shared/DotsMobileStepper";
-import theme from "../components/shared/Theme";
 import AboutUsSection from "../components/shared/AboutUsSection";
 import Footer from "../components/shared/Footer";
 import background from "../components/assets/images/AboutBGImage.svg";
@@ -64,7 +62,7 @@ const About = () => {
 
   const [activeStep, setActiveStep] = useState(0);
   return (
-    <ThemeProvider theme={theme} style={{ background: "#191716" }}>
+    <>
       <Item item={items.at(activeStep)} />
 
       <DotsMobileStepper
@@ -74,7 +72,7 @@ const About = () => {
       />
       <AboutUsSection />
       <Footer />
-    </ThemeProvider>
+    </>
   );
 };
 

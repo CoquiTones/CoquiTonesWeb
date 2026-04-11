@@ -1,5 +1,4 @@
 import React, { useState, useMemo, useEffect } from "react";
-import { ThemeProvider } from "@mui/material/styles";
 import {
   NodeContainer,
   NodeWrapper,
@@ -10,7 +9,6 @@ import {
 import Grid from "@mui/material/Grid";
 import Paper from "@mui/material/Paper";
 import Link from "@mui/material/Link";
-import theme from "../components/shared/Theme";
 import { APIHandlerNetworkMonitor } from "../services/rest/APIHandler/APIHandlerNetworkMonitor";
 import NewNodeDialog from "../components/shared/NewNodeDialog";
 import HeroSectionCDN from "../components/shared/HeroSectionCDN";
@@ -36,79 +34,79 @@ const NetworkMonitor = () => {
     fetchNodes();
   }, []);
   return (
-    <ThemeProvider theme={theme}>
-      <ErrorAlerts errors={errors} setErrors={setErrors}/>
+    <>
+      <ErrorAlerts errors={errors} setErrors={setErrors} />
       <Stack>
-      <HeroSectionCDN />
-      <NodeContainer>
-        <Typography
-          sx={{ display: "flex", justifyContent: "center" }}
-          color="primary"
-          variant="h3"
-        >
-          Duck Network
-        </Typography>
-        <NewNodeDialog
-          setDucks={setNodes}
-          errors={errors}
-          setErrors={setErrors}
-          style={{
-            display: "flex",
-            justifyContent: "flex-end",
-            marginTop: "5vh",
-          }}
-        />
-        <NodeWrapper>
-          {nodes.length === 0 ? (
-            <Typography
-              sx={{ display: "flex", justifyContent: "center" }}
-              color="primary"
-              variant={"h3"}
-            >
-              {" "}
-              No Ducks to display
-            </Typography>
-          ) : (
-            nodes.map((node) => (
-              <NodeCard item key={node.nid}>
-                <NodeTitle>Duck ID: {node.nid}</NodeTitle>
-                <NodeInfo>Type: {node.ntype}</NodeInfo>
-                <NodeInfo>Description: {node.ndescription}</NodeInfo>
-                <NodeInfo>Latitude: {node.nlatitude}</NodeInfo>
-                <NodeInfo>Longitude: {node.nlongitude}</NodeInfo>
-                <Link href="#" variant="button" style={{ marginTop: "16px" }}>
-                  View Details
-                </Link>
-              </NodeCard>
-            ))
-          )}
-        </NodeWrapper>
-      </NodeContainer>
+        <HeroSectionCDN />
+        <NodeContainer>
+          <Typography
+            sx={{ display: "flex", justifyContent: "center" }}
+            color="primary"
+            variant="h3"
+          >
+            Duck Network
+          </Typography>
+          <NewNodeDialog
+            setDucks={setNodes}
+            errors={errors}
+            setErrors={setErrors}
+            style={{
+              display: "flex",
+              justifyContent: "flex-end",
+              marginTop: "5vh",
+            }}
+          />
+          <NodeWrapper>
+            {nodes.length === 0 ? (
+              <Typography
+                sx={{ display: "flex", justifyContent: "center" }}
+                color="primary"
+                variant={"h3"}
+              >
+                {" "}
+                No Ducks to display
+              </Typography>
+            ) : (
+              nodes.map((node) => (
+                <NodeCard item key={node.nid}>
+                  <NodeTitle>Duck ID: {node.nid}</NodeTitle>
+                  <NodeInfo>Type: {node.ntype}</NodeInfo>
+                  <NodeInfo>Description: {node.ndescription}</NodeInfo>
+                  <NodeInfo>Latitude: {node.nlatitude}</NodeInfo>
+                  <NodeInfo>Longitude: {node.nlongitude}</NodeInfo>
+                  <Link href="#" variant="button" style={{ marginTop: "16px" }}>
+                    View Details
+                  </Link>
+                </NodeCard>
+              ))
+            )}
+          </NodeWrapper>
+        </NodeContainer>
 
-      <Grid item lg={8}>
-        <Paper
-          elevation={4}
-          sx={{
-            p: 2,
-            display: "flex",
-            flexDirection: "column",
-            height: "75vh",
-          }}
-        >
-          <div style={{ height: "100%" }}>
-            {" "}
-            {/* Ensure map container fills parent's height */}
-            <MapEmbed ducks={nodes} />
-          </div>
-        </Paper>
-      </Grid>
+        <Grid item lg={8}>
+          <Paper
+            elevation={4}
+            sx={{
+              p: 2,
+              display: "flex",
+              flexDirection: "column",
+              height: "75vh",
+            }}
+          >
+            <div style={{ height: "100%" }}>
+              {" "}
+              {/* Ensure map container fills parent's height */}
+              <MapEmbed ducks={nodes} />
+            </div>
+          </Paper>
+        </Grid>
       </Stack>
 
       {/* </Container>
                 </Box>
-            </Box>
-            <Footer/> */}
-    </ThemeProvider>
+                </Box>
+                <Footer/> */}
+    </>
   );
 };
 

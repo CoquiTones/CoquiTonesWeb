@@ -12,7 +12,7 @@ import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import DangerousIcon from '@mui/icons-material/Dangerous';
 import { styled } from '@mui/material/styles';
 
-export default function LatestNodeHeartbeat({errors, setErrors}) {
+export default function NodeHealthCheck({ errors, setErrors }) {
   const [heartbeatInfo, setHeartbeatInfo] = useState(null);
   const apiHandler = useMemo(() => new APIHandlerDashboard());
   const MAX_ALLOWED_TIME_IN_HOURS_BEFORE_DECLARED_UNRESPONSIVE = 48 // hours

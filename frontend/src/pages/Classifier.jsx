@@ -1,6 +1,4 @@
-import React, { useState, useEffect, useMemo} from "react";
-import { ThemeProvider } from "@mui/material/styles";
-import CssBaseline from "@mui/material/CssBaseline";
+import React, { useState, useEffect, useMemo } from "react";
 import Box from "@mui/material/Box";
 import Typography from "@mui/material/Typography";
 import Container from "@mui/material/Container";
@@ -14,7 +12,6 @@ import TableContainer from "@mui/material/TableContainer";
 import TableHead from "@mui/material/TableHead";
 import TableRow from "@mui/material/TableRow";
 
-import theme from "../components/shared/Theme";
 import FileUpload from "../components/shared/FileUpload";
 import Footer from "../components/shared/Footer";
 import HeroSectionClassifier from "../components/shared/HeroSectionClassifier";
@@ -58,11 +55,10 @@ const Classifier = () => {
   const [classifierReport, setClassifierReport] = useState(null);
 
   return (
-    <ThemeProvider theme={theme}>
+    <>
       <ErrorAlerts errors={errors} setErrors={setErrors} />
       <HeroSectionClassifier />
       <Box sx={{ display: "flex" }}>
-        <CssBaseline />
         <Box
           component="main"
           sx={{
@@ -87,7 +83,7 @@ const Classifier = () => {
               >
                 {/* <Typography variant="h3" color="primary" align="center">
                                     Machine Learning Analysis
-                                </Typography> */}
+                                    </Typography> */}
 
                 <FileUpload setAudioFile={setRawAudioFile} />
               </Paper>
@@ -170,7 +166,7 @@ const Classifier = () => {
         </Box>
       </Box>
       <Footer />
-    </ThemeProvider>
+    </>
   );
 };
 

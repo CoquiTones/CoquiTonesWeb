@@ -1,7 +1,5 @@
 import React from "react";
 import { useState, useMemo } from "react";
-import { ThemeProvider } from "@mui/material/styles";
-import CssBaseline from "@mui/material/CssBaseline";
 import Box from "@mui/material/Box";
 import Toolbar from "@mui/material/Toolbar";
 import Container from "@mui/material/Container";
@@ -9,20 +7,18 @@ import Grid from "@mui/material/Grid";
 import Paper from "@mui/material/Paper";
 
 import Chart from "../components/dashboard/WeekLineChart";
-import LatestNodeHeartbeat from "../components/dashboard/NodeHeartbeat";
+import NodeHealthCheck from "../components/dashboard/NodeHealthCheck";
 import Footer from "../components/shared/Footer";
-import theme from "../components/shared/Theme";
 import ErrorAlerts from "../components/shared/ErrorAlerts";
 import DataTable from "../components/shared/DataTable";
 
 export default function Dashboard() {
   const [errors, setErrors] = useState([]);
   return (
-    <ThemeProvider theme={theme}>
+    <>
       <ErrorAlerts errors={errors} setErrors={setErrors} />
       {
         <Box sx={{ display: "flex", width: "100%" }}>
-          <CssBaseline />
           <Box
             component="main"
             sx={{
@@ -58,7 +54,7 @@ export default function Dashboard() {
                       height: 500,
                     }}
                   >
-                    <LatestNodeHeartbeat errors={errors} setErrors={setErrors} />
+                    <NodeHealthCheck errors={errors} setErrors={setErrors} />
                   </Paper>
                 </Grid>
 
@@ -70,7 +66,7 @@ export default function Dashboard() {
                       width: "100%",
                     }}
                   >
-                    <DataTable errors={errors} setErrors={setErrors}/>
+                    <DataTable errors={errors} setErrors={setErrors} />
                   </Paper>
                 </Grid>
               </Grid>
@@ -79,6 +75,6 @@ export default function Dashboard() {
         </Box>
       }
       <Footer />
-    </ThemeProvider>
+    </>
   );
 }
