@@ -6,9 +6,7 @@ import {
   CarouselP,
 } from "../components/shared/CarouselStyle";
 import { ThemeProvider } from "@emotion/react";
-import Sidebar from "../components/shared/Sidebar";
 import DotsMobileStepper from "../components/shared/DotsMobileStepper";
-import Navbar from "../components/shared/Navbar";
 import theme from "../components/shared/Theme";
 import AboutUsSection from "../components/shared/AboutUsSection";
 import Footer from "../components/shared/Footer";
@@ -64,7 +62,6 @@ const About = () => {
     },
   ];
 
-  const [isOpen, setIsOpen] = useState(false);
   const [activeStep, setActiveStep] = useState(0);
   return (
     <ThemeProvider theme={theme} style={{ background: "#191716" }}>

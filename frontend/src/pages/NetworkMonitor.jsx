@@ -10,8 +10,6 @@ import {
 import Grid from "@mui/material/Grid";
 import Paper from "@mui/material/Paper";
 import Link from "@mui/material/Link";
-import Navbar from "../components/shared/Navbar";
-import Sidebar from "../components/shared/Sidebar";
 import theme from "../components/shared/Theme";
 import { APIHandlerNetworkMonitor } from "../services/rest/APIHandler/APIHandlerNetworkMonitor";
 import NewNodeDialog from "../components/shared/NewNodeDialog";
@@ -37,13 +35,6 @@ const NetworkMonitor = () => {
 
     fetchNodes();
   }, []);
-
-
-  const [isOpen, setIsOpen] = useState(false);
-  const toggle = () => {
-    setIsOpen(!isOpen);
-  };
-
   return (
     <ThemeProvider theme={theme}>
       <ErrorAlerts errors={errors} setErrors={setErrors}/>

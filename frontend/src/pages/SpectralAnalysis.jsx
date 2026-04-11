@@ -12,19 +12,15 @@ import MenuIcon from "@mui/icons-material/Menu";
 import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 import MoreVertIcon from "@mui/icons-material/MoreVert";
 
-import Sidebar from "../components/shared/Sidebar";
-import theme from "../components/shared/Theme";
 import DataManager from "../components/shared/DataManager";
 import SoundPlayer from "../components/SoundAnalysisTools/render/SoundPlayer";
 import SpectrogramVisualizer from "../components/SoundAnalysisTools/render/Spectrogram";
 import SpectrogramControls from "../components/SoundAnalysisTools/render/SpectrogramControls";
-import Navbar from "../components/shared/Navbar";
 
 const drawerWidth = 380;
 
 const SpectralAnalysis = () => {
-  const [isOpen, setIsOpen] = useState(false);
-  const toggle = () => setIsOpen(!isOpen);
+
 
   const [rawAudioFile, setRawAudioFile] = useState(null);
   const [currentTime, setCurrentTime] = useState(0);
@@ -44,10 +40,7 @@ const SpectralAnalysis = () => {
     <ThemeProvider theme={theme}>
       <CssBaseline />
       <Box sx={{ display: "flex", height: "100vh", width: "100%" }}>
-        <Sidebar isOpen={isOpen} toggle={toggle} />
-
         <Box sx={{ display: "flex", flexDirection: "column", flex: 1, minWidth: 0 }}>
-          <Navbar toggle={toggle} />
 
           <Box
             sx={{

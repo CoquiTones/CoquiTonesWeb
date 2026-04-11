@@ -1,6 +1,4 @@
 import React, { useState } from 'react';
-import Sidebar from '../components/shared/Sidebar';
-import Navbar from '../components/shared/Navbar';
 import Footer from '../components/shared/Footer';
 import HeroSection from '../components/shared/HeroSection';
 import InfoSection from '../components/shared/InfoSection';
@@ -8,11 +6,7 @@ import { dashboardData, NetworkMonitorData, ClassifierData, SpectralAnalysisData
 import ErrorAlerts from '../components/shared/ErrorAlerts';
 const Home = () => {
 
-  const [isOpen, setIsOpen] = useState(false)
   const [errors, setErrors] = useState([]);
-  const toggle = () => {
-    setIsOpen(!isOpen)
-  }
 
 
   return (
