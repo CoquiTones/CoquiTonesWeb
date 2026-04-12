@@ -9,14 +9,11 @@ import {
   Stack,
   Divider,
   styled,
-  Link,
-  Snackbar,
-  Alert
 } from '@mui/material';
 import logo from "../components/assets/images/logo512.png";
-import HeroSection from '../components/shared/HeroSection';
 import { APIHandlerAuthentication } from '../services/rest/APIHandler/APIHandlerAuthentication';
 import { SignUpRequest } from '../services/rest/RequestORM/Authentication/SignUpRequest';
+import { ErrorContext } from '../components/shared/ErrorContext';
 
 const PageContainer = styled(Box)(({ theme }) => ({
   minHeight: '100vh',
@@ -42,7 +39,7 @@ const PageContainer = styled(Box)(({ theme }) => ({
   '& .overlay': {
     position: 'absolute',
     inset: 0,
-    background: 'rgba(0,0,0,0.45)', // adjust for contrast
+    background: 'rgba(0,0,0,0.45)',
     zIndex: 1,
   },
 
@@ -69,66 +66,96 @@ const PageContainer = styled(Box)(({ theme }) => ({
 
 const SignUpPage = () => {
   const navigate = useNavigate();
+  const { addError } = useContext(ErrorContext); // Use addError from context for global errors
+
   const [form, setForm] = useState({
     username: '',
     password: '',
     confirmPassword: ''
   });
-  const { errors, setErrors } = useContext(ErrorContext);
+
+  // Local state for field-specific errors
+  const [fieldErrors, setFieldErrors] = useState({
+    username: '',
+    password: '',
+    confirmPassword: '',
+    form: ''
+  });
 
   const [loading, setLoading] = useState(false);
-  // New state for managing Snackbar
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState('');
   const [snackbarSeverity, setSnackbarSeverity] = useState('success');
-  // Handler to close the Snackbar
+
   const handleSnackbarClose = (event, reason) => {
     if (reason === 'clickaway') {
       return;
     }
     setSnackbarOpen(false);
   };
+
   const validate = () => {
-    const e = {};
-    if (!form.username.trim()) e.username = 'Username required';
-    if (!form.password) e.password = 'Password required';
-    else if (form.password.length < 8) e.password = 'Minimum 8 characters';
-    if (form.password !== form.confirmPassword) e.confirmPassword = 'Passwords do not match';
-    setErrors([...errors, e]);
-    return Object.keys(e).length === 0;
+    const newErrors = {
+      username: '',
+      password: '',
+      confirmPassword: '',
+      form: ''
+    };
+
+    if (!form.username.trim()) {
+      newErrors.username = 'Username required';
+    }
+    if (!form.password) {
+      newErrors.password = 'Password required';
+    } else if (form.password.length < 8) {
+      newErrors.password = 'Minimum 8 characters';
+    }
+    if (form.password !== form.confirmPassword) {
+      newErrors.confirmPassword = 'Passwords do not match';
+    }
+
+    setFieldErrors(newErrors);
+
+    // Return true if no errors
+    return !newErrors.username && !newErrors.password && !newErrors.confirmPassword;
   };
 
   const handleChange = (field) => (evt) => {
     setForm((s) => ({ ...s, [field]: evt.target.value }));
-    setErrors((es) => ({ ...es, [field]: undefined }));
+    // Clear field error when user starts typing
+    setFieldErrors((es) => ({ ...es, [field]: '' }));
   };
 
   const handleSubmit = async () => {
     if (!validate()) return;
+
     setLoading(true);
     try {
       const handler = new APIHandlerAuthentication();
-      // Replace with your real request/handler:
-      // const created = await handler.createUser(req);
-      // Example placeholder (simulate):
       const createNewUserRequest = new SignUpRequest(form.username, form.password)
       const created = await handler.SignUpNewUser(createNewUserRequest)
 
       if (created) {
         // Show success Snackbar
-        setSnackbarMessage('Successfuly Sign up. Welcome to CoquiTones!');
+        setSnackbarMessage('Successfully signed up. Welcome to CoquiTones!');
         setSnackbarSeverity('success');
         setSnackbarOpen(true);
         setTimeout(() => {
           navigate('/');
         }, 3000);
-
       } else {
-        setErrors({ form: 'Registration failed. Try again.' });
+        setFieldErrors((prev) => ({
+          ...prev,
+          form: "Registration Failed. Please try again."
+        }));
+        addError("Registration Failed. Please try again.");
       }
     } catch (err) {
-      console.error('Sign-up error', err);
-      setErrors({ form: 'Server error. Try again later.' });
+      setFieldErrors((prev) => ({
+        ...prev,
+        form: "Registration Failed. Please try again."
+      }));
+      addError("Registration Failed. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -162,8 +189,8 @@ const SignUpPage = () => {
           label="Username"
           value={form.username}
           onChange={handleChange('username')}
-          error={!!errors.username}
-          helperText={errors.username}
+          error={!!fieldErrors.username}
+          helperText={fieldErrors.username}
         />
 
         <TextField
@@ -173,8 +200,8 @@ const SignUpPage = () => {
           label="Password"
           value={form.password}
           onChange={handleChange('password')}
-          error={!!errors.password}
-          helperText={errors.password}
+          error={!!fieldErrors.password}
+          helperText={fieldErrors.password}
         />
 
         <TextField
@@ -184,13 +211,13 @@ const SignUpPage = () => {
           label="Confirm Password"
           value={form.confirmPassword}
           onChange={handleChange('confirmPassword')}
-          error={!!errors.confirmPassword}
-          helperText={errors.confirmPassword}
+          error={!!fieldErrors.confirmPassword}
+          helperText={fieldErrors.confirmPassword}
         />
 
-        {errors.form && (
+        {fieldErrors.form && (
           <Typography color="error" variant="body2" sx={{ mt: 1 }}>
-            {errors.form}
+            {fieldErrors.form}
           </Typography>
         )}
 
@@ -215,20 +242,6 @@ const SignUpPage = () => {
           <Button variant="text" color="error" fullWidth onClick={() => navigate('/')}>
             Cancel
           </Button>
-          <Snackbar
-            open={snackbarOpen}
-            autoHideDuration={3000}
-            onClose={handleSnackbarClose}
-            anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
-          >
-            <Alert
-              onClose={handleSnackbarClose}
-              severity={snackbarSeverity}
-              sx={{ width: '100%' }}
-            >
-              {snackbarMessage}
-            </Alert>
-          </Snackbar>
         </Stack>
       </Box>
     </PageContainer>

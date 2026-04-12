@@ -7,7 +7,7 @@ export const useAudioDownload = (apiHandler) => {
     const [error, setError] = useState([])
     const downloadAudio = useCallback(async (afid, audioFileRequest) => {
         setLoading(true);
-        setErrors(null);
+        setError(null);
         try {
             const audioFile = await apiHandler.getAudioById(audioFileRequest);
             const blob = new Blob([audioFile], { type: 'audio/mpeg' });
