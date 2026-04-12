@@ -36,7 +36,7 @@ export default function DataTable({ errors, setErrors }) {
             setRows(rows.getData());
         } catch (error) {
             setDownloadError("Failed to fetch data");
-            setErrors([errors, setErrors])
+            setErrors([...errors, error])
         } finally {
             setLoading(false);
         }

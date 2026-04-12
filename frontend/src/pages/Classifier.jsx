@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useContext } from "react";
 import Box from "@mui/material/Box";
 import Typography from "@mui/material/Typography";
 import Container from "@mui/material/Container";
@@ -19,6 +19,7 @@ import HeroSectionClassifier from "../components/shared/HeroSectionClassifier";
 import { APIHandlerClassifier } from "../services/rest/APIHandler/APIHandlerClassifier";
 import { ClassifyAudioRequest } from "../services/rest/RequestORM/Classifier/ClassifyAudioRequest";
 import ErrorAlerts from "../components/shared/ErrorAlerts";
+import { ErrorContext } from "../components/shared/ErrorContext";
 const Classifier = () => {
   const species = [
     "coqui",
@@ -32,7 +33,7 @@ const Classifier = () => {
   ];
   const column_headers = ["Time Slice", ...species];
 
-  const [errors, setErrors] = useState([]);
+  const { errors, setErrors } = useContext(ErrorContext);
   const apiHandler = useMemo(() => new APIHandlerClassifier());
   const [rawAudioFile, setRawAudioFile] = useState(null);
   const classifyAudiofile = async () => {

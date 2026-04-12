@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from "react";
+import React, { useState, useMemo, useEffect, useContext } from "react";
 import {
   NodeContainer,
   NodeWrapper,
@@ -15,10 +15,11 @@ import HeroSectionCDN from "../components/shared/HeroSectionCDN";
 import MapEmbed from "../components/NetworkMonitor/Map";
 import { Typography, Stack } from "@mui/material";
 import ErrorAlerts from "../components/shared/ErrorAlerts";
-import { APIHandlerError } from "../services/rest/APIHandler/Errors";
+import { ErrorContext } from "../components/shared/ErrorContext";
 const NetworkMonitor = () => {
   const [nodes, setNodes] = useState([]);
-  const [errors, setErrors] = useState([]);
+  const { errors, setErrors } = useContext(ErrorContext);
+
   const [warningsAndActions, setWarningsAndActions] = useState([]);
   const apiHandler = useMemo(() => new APIHandlerNetworkMonitor());
   const fetchNodes = async () => {

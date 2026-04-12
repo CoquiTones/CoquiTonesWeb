@@ -1,30 +1,27 @@
 // hooks/useAudioDownload.js
-import { useState, useCallback } from 'react';
-
+import { useState, useCallback, useContext } from 'react';
+import { ErrorContext } from '../components/shared/ErrorContext';
 export const useAudioDownload = (apiHandler) => {
     const [loading, setLoading] = useState(false);
-    const [error, setError] = useState(null);
-
+    const { errors, setErrors } = useContext(ErrorContext);
+    const [error, setError] = useState([])
     const downloadAudio = useCallback(async (afid, audioFileRequest) => {
         setLoading(true);
-        setError(null);
+        setErrors(null);
         try {
             const audioFile = await apiHandler.getAudioById(audioFileRequest);
-
             const blob = new Blob([audioFile], { type: 'audio/mpeg' });
             const url = window.URL.createObjectURL(blob);
-
             const link = document.createElement('a');
             link.href = url;
             link.download = `audio_${afid}.mp3`;
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
-
             window.URL.revokeObjectURL(url);
-        } catch (err) {
-            setError(err.message);
-            console.error('Error downloading audio file:', err);
+        } catch (error) {
+            setErrors([...errors, err.message]);
+            setError(error)
         } finally {
             setLoading(false);
         }

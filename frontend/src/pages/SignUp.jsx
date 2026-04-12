@@ -1,6 +1,6 @@
 // src/components/auth/SignUpPage.jsx
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useContext } from 'react';
+import { useNavigate, } from 'react-router-dom';
 import {
   Box,
   Typography,
@@ -74,26 +74,27 @@ const SignUpPage = () => {
     password: '',
     confirmPassword: ''
   });
-  const [errors, setErrors] = useState({});
+  const { errors, setErrors } = useContext(ErrorContext);
+
   const [loading, setLoading] = useState(false);
   // New state for managing Snackbar
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState('');
   const [snackbarSeverity, setSnackbarSeverity] = useState('success');
-  	// Handler to close the Snackbar
-	const handleSnackbarClose = (event, reason) => {
-		if (reason === 'clickaway') {
-			return;
-		}
-		setSnackbarOpen(false);
-	};
+  // Handler to close the Snackbar
+  const handleSnackbarClose = (event, reason) => {
+    if (reason === 'clickaway') {
+      return;
+    }
+    setSnackbarOpen(false);
+  };
   const validate = () => {
     const e = {};
     if (!form.username.trim()) e.username = 'Username required';
     if (!form.password) e.password = 'Password required';
     else if (form.password.length < 8) e.password = 'Minimum 8 characters';
     if (form.password !== form.confirmPassword) e.confirmPassword = 'Passwords do not match';
-    setErrors(e);
+    setErrors([...errors, e]);
     return Object.keys(e).length === 0;
   };
 
@@ -114,14 +115,14 @@ const SignUpPage = () => {
       const created = await handler.SignUpNewUser(createNewUserRequest)
 
       if (created) {
-				// Show success Snackbar
-				setSnackbarMessage('Successfuly Sign up. Welcome to CoquiTones!');
-				setSnackbarSeverity('success');
-				setSnackbarOpen(true);
+        // Show success Snackbar
+        setSnackbarMessage('Successfuly Sign up. Welcome to CoquiTones!');
+        setSnackbarSeverity('success');
+        setSnackbarOpen(true);
         setTimeout(() => {
-					navigate('/'); 
-				}, 3000);
-        
+          navigate('/');
+        }, 3000);
+
       } else {
         setErrors({ form: 'Registration failed. Try again.' });
       }
@@ -208,26 +209,26 @@ const SignUpPage = () => {
           </Divider>
 
           <Button variant="outlined" color="secondary" fullWidth onClick={() => navigate('/')}>
-              Already have an account? Sign In
+            Already have an account? Sign In
           </Button>
 
           <Button variant="text" color="error" fullWidth onClick={() => navigate('/')}>
             Cancel
           </Button>
-                <Snackbar
-                  open={snackbarOpen}
-                  autoHideDuration={3000}
-                  onClose={handleSnackbarClose}
-                  anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
-                >
-                  <Alert
-                    onClose={handleSnackbarClose}
-                    severity={snackbarSeverity}
-                    sx={{ width: '100%' }}
-                  >
-                    {snackbarMessage}
-                  </Alert>
-                </Snackbar>
+          <Snackbar
+            open={snackbarOpen}
+            autoHideDuration={3000}
+            onClose={handleSnackbarClose}
+            anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+          >
+            <Alert
+              onClose={handleSnackbarClose}
+              severity={snackbarSeverity}
+              sx={{ width: '100%' }}
+            >
+              {snackbarMessage}
+            </Alert>
+          </Snackbar>
         </Stack>
       </Box>
     </PageContainer>

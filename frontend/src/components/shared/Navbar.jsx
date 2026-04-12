@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useContext } from "react";
 import { styled } from "@mui/material/styles";
 import { FaBars } from "react-icons/fa";
 import { Link as LinkRouter, useNavigate } from "react-router-dom";
@@ -6,8 +6,11 @@ import { Link as LinkScroll } from "react-scroll";
 import { animateScroll as scroll } from "react-scroll";
 import { Button } from "@mui/material";
 import SignInModal from "./SignInModal";
+import { ErrorContext } from "./ErrorContext";
+import ErrorAlerts from "./ErrorAlerts";
 import GlobalStateManager from "../../services/Authentication/GlobalStateManager";
-import { APIHandlerAuthentication } from "../../services/rest/APIHandler/APIHandlerAuthentication";
+import { ValidationError } from "../../services/rest/APIHandler/Errors";
+
 const Nav = styled("nav")(({ theme }) => ({
   background: "#191716",
   height: "7vh",
@@ -142,19 +145,35 @@ const Navbar = ({ toggle, isHome }) => {
   };
 
   const [isSignInModalOpen, setIsSignInModalOpen] = useState(false);
-  const [isSignedIn, setIsSignedIn] = useState(GlobalStateManager.getIsAuthenticated());
+  const [isSignedIn, setIsSignedIn] = useState(
+    GlobalStateManager.getIsAuthenticated()
+  );
+  const { errors, setErrors } = useContext(ErrorContext);
+
   const navigate = useNavigate();
+
   const handleToggle = () => {
     setIsSignInModalOpen(!isSignInModalOpen);
-  }
+  };
 
   const handleSignOut = () => {
     GlobalStateManager.clearAuthenticationToken();
     setIsSignedIn(false);
-    navigate('/', {replace : true})
-  }
+    navigate("/", { replace: true });
+  };
+
+  const handleProtectedNavigation = (path) => {
+    if (!isSignedIn) {
+      setErrors([...errors, new ValidationError("Must be Signed In to access this page!")]);
+      setIsSignInModalOpen(true);
+    } else {
+      navigate(path);
+    }
+  };
+
   return (
     <Nav>
+      <ErrorAlerts errors={errors} setErrors={setErrors} />
       <NavbarContainer>
         <NavLogo to="/" onClick={toggleHome}>
           CoquiTones
@@ -219,13 +238,40 @@ const Navbar = ({ toggle, isHome }) => {
           </NavMenu>
         ) : (
           // if not home page
-          // TODO: Change these buttons to new ones with proper styling
           <NavMenu>
             <NavItem>
-              <NavLinkR to="/Dashboard">Dashboard</NavLinkR>
+              <div
+                onClick={() => handleProtectedNavigation("/Dashboard")}
+                style={{
+                  color: "#fff",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  textDecoration: "none",
+                  padding: "0 1rem",
+                  height: "100%",
+                  cursor: "pointer",
+                }}
+              >
+                Dashboard
+              </div>
             </NavItem>
             <NavItem>
-              <NavLinkR to="/NetworkMonitor">IoT Network</NavLinkR>
+              <div
+                onClick={() => handleProtectedNavigation("/NetworkMonitor")}
+                style={{
+                  color: "#fff",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  textDecoration: "none",
+                  padding: "0 1rem",
+                  height: "100%",
+                  cursor: "pointer",
+                }}
+              >
+                IoT Network
+              </div>
             </NavItem>
             <NavItem>
               <NavLinkR to="/Classifier">Classifier</NavLinkR>
@@ -238,19 +284,18 @@ const Navbar = ({ toggle, isHome }) => {
             </NavItem>
           </NavMenu>
         )}
-        {
-          isSignedIn ? 
-            <Button onClick={handleSignOut}>
-              Sign Out
-            </Button>
-            :
-            <Button onClick={handleToggle}>
-              Sign in
-            </Button>
-        }
-        <SignInModal open={isSignInModalOpen} setOpen={setIsSignInModalOpen} setIsSignedIn={setIsSignedIn}/>
+        {isSignedIn ? (
+          <Button onClick={handleSignOut}>Sign Out</Button>
+        ) : (
+          <Button onClick={handleToggle}>Sign in</Button>
+        )}
+        <SignInModal
+          open={isSignInModalOpen}
+          setOpen={setIsSignInModalOpen}
+          setIsSignedIn={setIsSignedIn}
+        />
       </NavbarContainer>
-    </Nav>
+    </Nav >
   );
 };
 

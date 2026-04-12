@@ -1,5 +1,5 @@
 import React from "react";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useContext } from "react";
 import Box from "@mui/material/Box";
 import Toolbar from "@mui/material/Toolbar";
 import Container from "@mui/material/Container";
@@ -10,10 +10,12 @@ import Chart from "../components/dashboard/WeekLineChart";
 import NodeHealthCheck from "../components/dashboard/NodeHealthCheck";
 import Footer from "../components/shared/Footer";
 import ErrorAlerts from "../components/shared/ErrorAlerts";
+import { ErrorContext } from "../components/shared/ErrorContext";
 import DataTable from "../components/shared/DataTable";
 
 export default function Dashboard() {
-  const [errors, setErrors] = useState([]);
+  const { errors, setErrors } = useContext(ErrorContext);
+
   return (
     <>
       <ErrorAlerts errors={errors} setErrors={setErrors} />
