@@ -7,7 +7,7 @@ export class APIHandlerClassifier extends APIHandlerBase {
     /**
      * 
      * @param {ClassifyAudioRequest} classifyAudioRequest 
-     * @returns 
+     * @returns {ClassifierReport}
      */
     async fetchClassification(classifyAudioRequest) {
         try {
