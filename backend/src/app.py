@@ -91,7 +91,9 @@ async def create_node_client(
     node = await dao.Node.get(current_user.auid, nid, transaction.connection)
     if node is None:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Node doesn't exist")
-    if not await mqtt.create_node(current_user.auid, node.nname, password):
+    try:
+        await mqtt.create_node(current_user.auid, node.nname, password)
+    except mqtt.CommandExcept:
         raise HTTPException(
             status.HTTP_500_INTERNAL_SERVER_ERROR, "Failed to create client"
         )
