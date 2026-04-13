@@ -114,7 +114,7 @@ async def nodes_with_no_client(
         filter(lambda node: node.ntype == "primary", user_nodes.result())
     )
     client_names = all_mqtt_clients.result().keys()
-    missing_nodes = filter(lambda node: node.nname in client_names, primary_nodes)
+    missing_nodes = filter(lambda node: node.nname not in client_names, primary_nodes)
     return list(missing_nodes)
 
 
