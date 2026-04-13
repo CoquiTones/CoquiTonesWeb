@@ -619,23 +619,23 @@ async def _execute_command(admin_client: Client, args: MQTTArgs) -> SuccessfulRe
     Raises:
         CommandExcept when command fails
     """
-    await global_command_lock.acquire()
-    await listener_ready.wait()
-    message = MQTTCommands(commands=[args]).model_dump_json(exclude_none=True)
-    await admin_client.publish(CONTROL_TOPIC, message)
+    
+    async with global_command_lock:
+        await listener_ready.wait()
+        message = MQTTCommands(commands=[args]).model_dump_json(exclude_none=True)
+        await admin_client.publish(CONTROL_TOPIC, message)
 
-    handle = command_handle()
-    # Create an event to let us know when our command's output will be ready for us to read
-    # Note that the asyncio event primitive isn't thread safe; however, due to the 1 producer-1 consumer nature of how
-    # we are executing and reading the output of commands, no race conditions can occur.
-    output_received = asyncio.Event()
-    # Send the command listener thread a message telling it we want to receive the output for the command we sent out
-    command_sender_info_queue.put((handle, output_received))
-    # Wait until the output from that command is available
-    await output_received.wait()
-    # Retreive output
-    output = receive_command_output_channel.get(handle)
-    global_command_lock.release()
+        handle = command_handle()
+        # Create an event to let us know when our command's output will be ready for us to read
+        # Note that the asyncio event primitive isn't thread safe; however, due to the 1 producer-1 consumer nature of how
+        # we are executing and reading the output of commands, no race conditions can occur.
+        output_received = asyncio.Event()
+        # Send the command listener thread a message telling it we want to receive the output for the command we sent out
+        command_sender_info_queue.put((handle, output_received))
+        # Wait until the output from that command is available
+        await output_received.wait()
+        # Retreive output
+        output = receive_command_output_channel.get(handle)
     assert output is not None
     raw_command_output = MQTTCommandResponses.model_validate_json(output.decode())
     # We get exactly 1 response.
