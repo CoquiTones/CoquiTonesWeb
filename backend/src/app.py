@@ -80,7 +80,7 @@ async def node_get(
     return await dao.Node.get(current_user.auid, nid, transaction.connection)
 
 
-@app.post("api/node/mqtt")
+@app.post("/api/node/mqtt")
 async def create_node_client(
     current_user: Annotated[LightWeightUser, Depends(get_current_user)],
     nid: Annotated[int, Form()],
@@ -272,18 +272,16 @@ async def node_insert(
     # We'll do this as a task so it can be concurrent with creating the entry in the database.
     # If an exception is raised it will return False, otherwise it will cause everything to break.
     async def mqtt_client_creation() -> bool:
-        assert(node_client_password is not None)
+        assert node_client_password is not None
         try:
-            await mqtt.create_node(
-                current_user.auid, nname, node_client_password
-            )
+            await mqtt.create_node(current_user.auid, nname, node_client_password)
             return True
         except mqtt.CommandExcept as e:
             LOGGER.error(
                 f"ERROR: Failed to create client: \n\t{e.detail.error}\n\tCommand: {e.detail.command}"
             )
             return False
-    
+
     async def database_operation() -> dao.Node | None:
         ownerid = current_user.auid
         try:
@@ -299,7 +297,7 @@ async def node_insert(
         except HTTPException:
             return None
         return new_node
-    
+
     async def mqtt_topic_access(new_node: dao.Node) -> bool:
         # All the user's primary nodes must have access to a topic corresponding to the new node
         # This allows them to upload reports from the new node into the appropriate topic
@@ -312,7 +310,7 @@ async def node_insert(
             return False
 
         return True
-    
+
     async with asyncio.TaskGroup() as group:
         client_task = None
         client_error = None
@@ -324,7 +322,6 @@ async def node_insert(
                 )
             else:
                 client_task = group.create_task(mqtt_client_creation())
-
 
         node_task = group.create_task(database_operation())
         await node_task
@@ -338,23 +335,21 @@ async def node_insert(
         raise client_error
     if client_task is None or not client_task.result():
         raise HTTPException(
-                    status_code=500,
-                    detail="Failed to create MQTT client for primary node.",
-                )
+            status_code=500,
+            detail="Failed to create MQTT client for primary node.",
+        )
     if topic_task is None or not topic_task.result():
         raise HTTPException(
-                    status_code=500,
-                    detail="Failed to give access to the node's MQTT topic.",
-                )
+            status_code=500,
+            detail="Failed to give access to the node's MQTT topic.",
+        )
     if node_task.result() is None:
         raise HTTPException(
-                    status_code=500,
-                    detail="Failed to create node.",
-                )
+            status_code=500,
+            detail="Failed to create node.",
+        )
     else:
         return node_task.result()
-
-    
 
 
 @app.delete(path="/api/node/delete")
