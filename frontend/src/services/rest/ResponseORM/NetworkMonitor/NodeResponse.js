@@ -19,9 +19,13 @@ export class Node {
     getNodeIdFormData() {
         let formData = new FormData();
         formData.append("nid", this.nid);
+        return formData;
     }
 }
 
+/**
+ * Array of Node {Node} Objects
+ */
 export class NodeList {
     constructor(apiResponse) {
         this.nodeList = []
@@ -37,4 +41,10 @@ export class NodeList {
     isEmpty() {
         return this.nodeList.length === 0;
     }
+
+    find(callback) {
+        return this.nodeList.find(callback)
+    }
 }
+
+

@@ -67,12 +67,15 @@ export class APIHandlerNetworkMonitor extends APIHandlerBase {
      * 
      * @param {Node} node 
      */
-    async create_client_for_node(node) {
+    async create_client_for_node(node, clientPasword) {
         try {
+            let formData = new FormData();
+            formData.append("nid", node.nid);
+            formData.append("password", clientPasword);
             const response = await fetch(this.web_url + "/api/node/mqtt", {
                 method: "POST",
                 headers: this.getAuthenticationHeader(),
-                body: node.getNodeIdFormData()
+                body: formData
             });
 
             if (!response.ok) {
@@ -80,7 +83,7 @@ export class APIHandlerNetworkMonitor extends APIHandlerBase {
             }
 
             const apiResponseObject = await response.json();
-            return true;
+            return apiResponseObject.nodeCreationStatus;
         } catch (error) {
             console.error("Error with Creating client for node");
             throw new APIHandlerError("Error with creating client for node" + node.nid);

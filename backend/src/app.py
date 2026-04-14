@@ -93,6 +93,7 @@ async def create_node_client(
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Node doesn't exist")
     try:
         await mqtt.create_node(current_user.auid, node.nname, password)
+        return {"nodeCreationStatus": True}
     except mqtt.CommandExcept:
         raise HTTPException(
             status.HTTP_500_INTERNAL_SERVER_ERROR, "Failed to create client"
