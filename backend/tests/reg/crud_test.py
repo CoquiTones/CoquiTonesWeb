@@ -1,5 +1,5 @@
 import unittest
-import requests
+import random
 import datetime
 from requests_oauthlib import OAuth2Session
 from tests.reg.util import *
@@ -14,25 +14,27 @@ class NodeCRUDTest(unittest.TestCase):
         url = host_url + 'api/node/insert'
 
         response = self.session.post(url, data={
+                "nname": f"testnode{random.randint(0, 1 << 31)}",
                 "ntype": "primary",
                 "nlatitude": 20.8879728,
                 "nlongitude": -76.2718481,
-                "ndescription": "hospital"
+                "ndescription": "hospital",
+                "node_client_password": "testpassword",
             }
         )
         self.nid = int(response.json()['nid'])
 
     def tearDown(self):
-        url = host_url + f'api/node/delete/{self.nid}'
-        self.session.delete(url)
+        url = host_url + f'api/node/delete'
+        self.session.delete(url, data={"nid":self.nid})
 
     def test_insert(self):
         self.assertIsNotNone(self.nid)
 
     def test_get(self):
-        url = host_url + f'api/node/{self.nid}'
+        url = host_url + f'api/node'
 
-        response = self.session.get(url)
+        response = self.session.get(url, data={"nid": self.nid})
 
         res: dict = response.json()
 
@@ -94,9 +96,9 @@ class TimeStampCRUDTest(unittest.TestCase):
 
         tid = res[0]['tid']
 
-        url = host_url + f'api/timestamp/{tid}'
+        url = host_url + f'api/timestamp'
 
-        response = self.session.get(url)
+        response = self.session.get(url, data={"tid": tid})
         self.assertEqual(response.status_code, 200, 'response OK')
         res = response.json()
 
@@ -142,9 +144,9 @@ class AudioSlicesCRUDTest(unittest.TestCase):
 
         asid = res[0]['asid']
 
-        url = host_url + f'api/audioslices/{asid}'
+        url = host_url + f'api/audioslices'
 
-        response = self.session.get(url)
+        response = self.session.get(url, data={"asid": asid})
         self.assertEqual(response.status_code, 200, 'response OK')
         res = response.json()
 
@@ -181,8 +183,8 @@ class AudioCRUDTest(unittest.TestCase):
         self.assertIs(type(res[0]['afid']), int, 'dicts have afid')
 
     def test_get(self):
-        url = host_url + f'api/audio/{self.afid}'
-        response = self.session.get(url)
+        url = host_url + f'api/audio'
+        response = self.session.get(url, data={"afid": self.afid})
         self.assertEqual(response.status_code, 200, 'response OK')
 
 class WeatherDataCRUDTest(unittest.TestCase):
@@ -207,9 +209,9 @@ class WeatherDataCRUDTest(unittest.TestCase):
 
         wdid = res[0]['wdid']
 
-        url = host_url + f'api/weather/{wdid}'
+        url = host_url + f'api/weather'
 
-        response = self.session.get(url)
+        response = self.session.get(url, data={"wdid": wdid})
         self.assertEqual(response.status_code, 200, 'response OK')
         res = response.json()
 

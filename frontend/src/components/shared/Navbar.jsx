@@ -6,8 +6,7 @@ import { Link as LinkScroll } from "react-scroll";
 import { animateScroll as scroll } from "react-scroll";
 import { Button } from "@mui/material";
 import SignInModal from "./SignInModal";
-import GlobalStateManager from "../../services/Authentication/GlobalStateManager";
-import { APIHandlerAuthentication } from "../../services/rest/APIHandler/APIHandlerAuthentication";
+import { useGlobalState } from "../../services/Authentication/GlobalStateManager";
 const Nav = styled("nav")(({ theme }) => ({
   background: "#191716",
   height: "7vh",
@@ -142,17 +141,17 @@ const Navbar = ({ toggle, isHome }) => {
   };
 
   const [isSignInModalOpen, setIsSignInModalOpen] = useState(false);
-  const [isSignedIn, setIsSignedIn] = useState(GlobalStateManager.getIsAuthenticated());
   const navigate = useNavigate();
   const handleToggle = () => {
     setIsSignInModalOpen(!isSignInModalOpen);
   }
 
+  const { isAuthenticated, logout } = useGlobalState();
   const handleSignOut = () => {
-    GlobalStateManager.clearAuthenticationToken();
-    setIsSignedIn(false);
-    navigate('/', {replace : true})
+    logout();
+    navigate('/', { replace: true })
   }
+
   return (
     <Nav>
       <NavbarContainer>
@@ -239,7 +238,7 @@ const Navbar = ({ toggle, isHome }) => {
           </NavMenu>
         )}
         {
-          isSignedIn ? 
+          isAuthenticated ?
             <Button onClick={handleSignOut}>
               Sign Out
             </Button>
@@ -248,7 +247,7 @@ const Navbar = ({ toggle, isHome }) => {
               Sign in
             </Button>
         }
-        <SignInModal open={isSignInModalOpen} setOpen={setIsSignInModalOpen} setIsSignedIn={setIsSignedIn}/>
+        <SignInModal open={isSignInModalOpen} setOpen={setIsSignInModalOpen} />
       </NavbarContainer>
     </Nav>
   );

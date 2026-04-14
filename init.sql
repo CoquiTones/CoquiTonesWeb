@@ -27,11 +27,13 @@ CREATE INDEX idx_appuser_username ON appuser(username);
 -- ============================================
 CREATE TABLE node (
     nid         SERIAL PRIMARY KEY,
+    nname       VARCHAR(30) NOT NULL,
     ownerid     INTEGER REFERENCES appuser(auid) ON DELETE CASCADE,
     ntype       node_type NOT NULL,
     nlatitude   REAL NOT NULL,
     nlongitude  REAL NOT NULL,
-    ndescription VARCHAR(512)
+    ndescription VARCHAR(512),
+    UNIQUE (nname)
 );
 
 -- Index for finding nodes by owner (for user dashboards)

@@ -1,26 +1,29 @@
 from typing import AsyncGenerator, Annotated
 from fastapi import HTTPException, Depends
 from urllib.parse import urlparse
-from constants import ENVIRONMENT_DATABASE_CONFIG
+from constants import ENVIRONMENT_CONFIG_DATABASE_URL
 from pydantic import BaseModel, ValidationError
-from psycopg_pool import AsyncConnectionPool
-from psycopg import AsyncConnection, AsyncTransaction, Error, errors 
+from psycopg import AsyncConnection, AsyncTransaction, Error, errors
+from contextlib import asynccontextmanager
 import json
 import os
+from Logger import Logger
+
+
+LOGGER = Logger.getInstance("Database Util Component")
 
 from psycopg.conninfo import make_conninfo
-
-pool: None | AsyncConnectionPool = None
 
 class Conn(BaseModel):
     dbname: str
     user: str
-    password: str # Has to be a str or else it won't dump
+    password: str  # Has to be a str or else it won't dump
     host: str
     port: int
 
     def __str__(self) -> str:
         return make_conninfo(**self.model_dump())
+
 
 def get_connection_from_environment() -> str:
     """
@@ -31,30 +34,30 @@ def get_connection_from_environment() -> str:
         ConnInfo: configuration for a new connection
     """
 
-
     try:
-        result = urlparse(os.getenv("DATABASE_URL"))
-        assert(type(result.username) is str)
-        assert(type(result.password) is str)
-        assert(type(result.path) is str)
-        assert(type(result.hostname) is str)
-        assert(type(result.port) is int)
+        result = urlparse(os.environ[ENVIRONMENT_CONFIG_DATABASE_URL])
+        assert type(result.username) is str
+        assert type(result.password) is str
+        assert type(result.path) is str
+        assert type(result.hostname) is str
+        assert type(result.port) is int
     except AssertionError as e:
-        print("ERROR: Couldn't parse database url")
+        LOGGER.error("Couldn't parse database url")
         raise e
 
     try:
         conn = Conn(
-            user = result.username,
-            password = result.password,
-            dbname = result.path[1:],
-            host = result.hostname,
-            port = result.port,
+            user=result.username,
+            password=result.password,
+            dbname=result.path[1:],
+            host=result.hostname,
+            port=result.port,
         )
         return str(conn)
     except Error as e:
-        print("ERROR: Couldn't create connection to database:\n", e)
+        LOGGER.error("Couldn't create connection to database:\n", e)
         raise e
+
 
 def get_connection_from_development_config() -> str:
     """
@@ -64,42 +67,33 @@ def get_connection_from_development_config() -> str:
         ConnInfo: configuration for a new connection
     """
     config_file_path = "backend/src/testdbconfig.json"
-    print("defaulting to local config for db connection in", config_file_path)
+    LOGGER.info("defaulting to local config for db connection in ", config_file_path)
     with open(config_file_path, "r") as f:
         db_config = json.loads(f.read())
         try:
             conn = Conn.model_validate(db_config)
         except ValidationError as e:
-            print("ERROR: Couldn't load db connection config:\n", e)
+            LOGGER.error("Couldn't load DB connection config:\n", e)
             raise e
         try:
             return str(conn)
-        
+
         except Error as e:
-            print("ERROR: Couldn't create connection to database:\n", e)
+            LOGGER.error("Couldn't create connection to database:\n", e)
             raise e
 
-async def init_connection_pool():
-    """
-    Starts the psycopg async connection pool based on current configuration.
-    Uses Environment variables or hardcoded development config json.
-    Also opens the pool.
 
-    Note: this returns nothing, it just starts the pool.
+async def get_connection() -> AsyncConnection:
     """
-    if os.getenv(ENVIRONMENT_DATABASE_CONFIG):
+    Starts the psycopg async connection based on current configuration.
+    Uses Environment variables or hardcoded development config json.
+    """
+    if os.environ[ENVIRONMENT_CONFIG_DATABASE_URL]:
         conninfo = get_connection_from_environment()
     else:
         conninfo = get_connection_from_development_config()
-    global pool
-    pool = AsyncConnectionPool(conninfo, open=False)
-    await pool.open()
-
-async def kill_connection_pool():
-    """Closes the connection pool."""
-    if pool is not None:
-        await pool.close()
-
+    
+    return await AsyncConnection.connect(conninfo=conninfo)
 
 async def db_dep() -> AsyncGenerator[AsyncConnection, None]:
     """
@@ -111,11 +105,14 @@ async def db_dep() -> AsyncGenerator[AsyncConnection, None]:
     Yields:
         connection: psycopg connection object
     """
-    assert(type(pool) is AsyncConnectionPool)
-    async with pool.connection() as connection:
-        yield connection
+    connection = await get_connection()
+    yield connection
+    await connection.close()
 
-async def transaction_dep(database_connection: Annotated[AsyncConnection, Depends(db_dep)]):
+
+async def transaction_dep(
+    database_connection: Annotated[AsyncConnection, Depends(db_dep)],
+):
     """
     Injectable transaction dependency.
 
@@ -128,8 +125,27 @@ async def transaction_dep(database_connection: Annotated[AsyncConnection, Depend
     async with database_connection.transaction() as transaction:
         yield transaction
 
-DBConnectionDependency = Annotated[AsyncConnection, Depends(db_dep)] 
+
+@asynccontextmanager
+async def get_transaction() -> AsyncGenerator[AsyncTransaction, None]:
+    """
+    Simply gets a transaction context.
+    Returns:
+        AsyncTransaction: psycopg transaction
+    """
+   
+    connection = await get_connection()
+    try:
+        async with connection.transaction() as transaction:
+            yield transaction
+    finally:
+        # cleanup
+        await connection.close()
+
+
+DBConnectionDependency = Annotated[AsyncConnection, Depends(db_dep)]
 DBTransactionDependency = Annotated[AsyncTransaction, Depends(transaction_dep)]
+
 
 def default_HTTP_exception(error: Error | None, additional_info: str) -> HTTPException:
     """
@@ -142,6 +158,13 @@ def default_HTTP_exception(error: Error | None, additional_info: str) -> HTTPExc
     Returns HTTPException that has the sqlstate and small description of what caused the error, safe to display to the user.
     """
     if error is None or error.sqlstate is None:
-        return HTTPException(status_code=500, detail="Unknown database error while doing " + additional_info)
+        return HTTPException(
+            status_code=500,
+            detail="Unknown database error while doing " + additional_info,
+        )
     else:
-        return HTTPException(status_code=500, detail=f"Database error {error.sqlstate}: {errors.lookup(error.sqlstate)}\n While doing " + additional_info)
+        return HTTPException(
+            status_code=500,
+            detail=f"Database error {error.sqlstate}: {errors.lookup(error.sqlstate)}\n While doing "
+            + additional_info,
+        )
