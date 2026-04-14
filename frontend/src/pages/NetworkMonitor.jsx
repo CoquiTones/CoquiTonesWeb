@@ -18,7 +18,6 @@ import NewNodeDialog from "../components/shared/NewNodeDialog";
 import HeroSectionCDN from "../components/shared/HeroSectionCDN";
 import MapEmbed from "../components/NetworkMonitor/Map";
 import { Alert, Container, Typography, Button, Stack, Snackbar, TextField } from "@mui/material";
-import { NodeList } from "../services/rest/ResponseORM/NetworkMonitor/NodeResponse";
 const NetworkMonitor = () => {
   const [nodes, setNodes] = useState([]);
   const [nodesWithNoClient, setNodesWithNoClient] = useState([]);
@@ -41,7 +40,9 @@ const NetworkMonitor = () => {
 
   const createClientForNode = async (node) => {
     try {
-      await apiHandler.create_client_for_node(node);
+      const nodeClientPassword = nodePasswords.find((nodePasswords) => nodePasswords.node === node.nid).password
+      await apiHandler.create_client_for_node(node, nodeClientPassword);
+      fetchNodes();
     } catch (apiException) {
       setErrors([...errors, apiException]);
     };
