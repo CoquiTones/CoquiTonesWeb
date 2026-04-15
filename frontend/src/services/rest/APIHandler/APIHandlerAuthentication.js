@@ -4,17 +4,15 @@ import { AuthenticateUserResponse } from "../ResponseORM/Authentication/Authenti
 import { AuthenticateUserRequest } from "../RequestORM/Authentication/CheckUserRequest";
 import { SignUpResponse } from "../ResponseORM/Authentication/SignUpResponse";
 import { SignUpRequest } from "../RequestORM/Authentication/SignUpRequest";
-import GlobalStateManager from "../../Authentication/GlobalStateManager";
 export class APIHandlerAuthentication extends APIHandlerBase {
-
 
     /**
      * Sets session token in if user is successfully authenticated. 
      * 
      * @param {AuthenticateUserRequest} checkUserRequest 
      * @returns true if authenticated else false
-     */
-    async setSessionTokenIfUserExists(checkUserRequest) {
+    */
+    async setSessionTokenIfUserExists(checkUserRequest, login) {
 
         try {
             const response = await fetch(this.web_url + "/api/token", {
@@ -28,7 +26,7 @@ export class APIHandlerAuthentication extends APIHandlerBase {
             const validateUserExists = await response.json();
             const authenticationResponse = new AuthenticateUserResponse(validateUserExists);
             const session_token = authenticationResponse.session_token;
-            GlobalStateManager.setAuthenticationToken(session_token);
+            login(session_token)
             return true;
         } catch (error) {
             // catch error and output something to UI?

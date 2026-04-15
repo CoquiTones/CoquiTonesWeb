@@ -11,6 +11,7 @@ import ErrorAlerts from "./ErrorAlerts";
 import GlobalStateManager from "../../services/Authentication/GlobalStateManager";
 import { ValidationError } from "../../services/rest/APIHandler/Errors";
 
+import { useGlobalState } from "../../services/Authentication/GlobalStateManager";
 const Nav = styled("nav")(({ theme }) => ({
   background: "#191716",
   height: "7vh",
@@ -145,9 +146,6 @@ const Navbar = ({ toggle, isHome }) => {
   };
 
   const [isSignInModalOpen, setIsSignInModalOpen] = useState(false);
-  const [isSignedIn, setIsSignedIn] = useState(
-    GlobalStateManager.getIsAuthenticated()
-  );
   const { errors, setErrors } = useContext(ErrorContext);
 
   const navigate = useNavigate();
@@ -156,20 +154,21 @@ const Navbar = ({ toggle, isHome }) => {
     setIsSignInModalOpen(!isSignInModalOpen);
   };
 
+  const { isAuthenticated, logout } = useGlobalState();
   const handleSignOut = () => {
-    GlobalStateManager.clearAuthenticationToken();
-    setIsSignedIn(false);
+    logout();
     navigate("/", { replace: true });
   };
 
   const handleProtectedNavigation = (path) => {
-    if (!isSignedIn) {
+    if (!isAuthenticated) {
       setErrors([...errors, new ValidationError("Must be Signed In to access this page!")]);
       setIsSignInModalOpen(true);
     } else {
       navigate(path);
     }
   };
+
 
   return (
     <Nav>
@@ -284,19 +283,20 @@ const Navbar = ({ toggle, isHome }) => {
             </NavItem>
           </NavMenu>
         )}
-        {isSignedIn ? (
-          <Button onClick={handleSignOut}>Sign Out</Button>
-        ) : (
-          <Button onClick={handleToggle}>Sign in</Button>
-        )}
-        <SignInModal
-          open={isSignInModalOpen}
-          setOpen={setIsSignInModalOpen}
-          setIsSignedIn={setIsSignedIn}
-        />
-      </NavbarContainer>
+        {
+          isAuthenticated ?
+            <Button onClick={handleSignOut}>
+              Sign Out
+            </Button>
+            :
+            <Button onClick={handleToggle}>
+              Sign in
+            </Button>
+        }
+        <SignInModal open={isSignInModalOpen} setOpen={setIsSignInModalOpen} />
+      </NavbarContainer >
     </Nav >
   );
-};
+}
 
 export default Navbar;

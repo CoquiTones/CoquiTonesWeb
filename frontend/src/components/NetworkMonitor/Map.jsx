@@ -1,77 +1,74 @@
-import React, { useMemo, useState } from "react";
-import {
-  GeolocateControl,
-  Marker,
-  Popup,
-  NavigationControl,
-  ScaleControl,
-  FullscreenControl,
-} from "react-map-gl/mapbox";
+import React, { useEffect, useState, useRef, useCallback } from "react";
 
-import MapGL from "react-map-gl/mapbox";
-import "mapbox-gl/dist/mapbox-gl.css";
+import mapboxgl from 'mapbox-gl';
+import 'mapbox-gl/dist/mapbox-gl.css';
 
-const MapEmbed = ({ ducks }) => {
-  // Use useMemo to compute markers
-  const [popupInfo, setPopupInfo] = useState(null);
-  const markers = useMemo(() =>
-    ducks.map(
-      (duck) => (
-        <Marker
-          key={duck.nid}
-          longitude={duck.nlongitude}
-          latitude={duck.nlatitude}
-          anchor="bottom"
-          onClick={(e) => {
-            // If we let the click event propagates to the map, it will immediately close the popup
-            // with `closeOnClick: true`
-            e.originalEvent.stopPropagation();
-            setPopupInfo(duck);
-          }}
-        />
-      ),
-      [ducks]
-    )
-  );
+import Marker from "./Marker";
+import Popup from "./Popup";
+
+/**
+ * 
+ * @param {NodeList} Nodes 
+ * @returns 
+ */
+const MapEmbed = ({ Nodes }) => {
+  const INITIAL_CENTER = [-66.1057, 18.4655];
+  const INITIAL_ZOOM = 9;
+
+
+  const [center, setCenter] = useState(INITIAL_CENTER)
+  const [zoom, setZoom] = useState(INITIAL_ZOOM)
+  const [activeNode, setActiveNode] = useState(null);
+  const mapRef = useRef();
+  const mapContainerRef = useRef();
+
+  const handleMarkerClick = (selectedNode) => {
+    setActiveNode(selectedNode)
+  }
+  useEffect(() => {
+    mapboxgl.accessToken = import.meta.env.VITE_MAPBOX_API_TOKEN;
+    mapRef.current = new mapboxgl.Map({
+      container: mapContainerRef.current,
+      center: [
+        -66.48590156897816,
+        18.215311781299874
+      ],
+      zoom: 9,
+      maxBounds: [[-68.34863711943092, 16.788333451001122], [-65.28422465966874, 18.60716956104943]],
+    });
+
+    mapRef.current.on('move', () => {
+      // get the current center coordinates and zoom level from the map
+      const mapCenter = mapRef.current.getCenter()
+      const mapZoom = mapRef.current.getZoom()
+
+      // update state
+      setCenter([mapCenter.lng, mapCenter.lat])
+      setZoom(mapZoom)
+    })
+    return () => {
+      mapRef.current.remove()
+    }
+  }, [])
+
 
   return (
-    <div style={{ width: "100%", height: "100%" }}>
-      <MapGL
-        mapboxAccessToken={import.meta.env.VITE_MAPBOX_API_TOKEN}
-        initialViewState={{
-          longitude: -66.1057,
-          latitude: 18.4655,
-          zoom: 9,
-          width: "100%",
-          height: "100%",
-        }}
-        mapStyle="mapbox://styles/mapbox/navigation-night-v1"
-      >
-        <GeolocateControl
-          positionOptions={{ enableHighAccuracy: true }}
-          trackUserLocation={true}
-        />
-        <FullscreenControl position="top-left" />
-        <NavigationControl position="top-left" />
-        <ScaleControl />
-        {markers.map((duckMarker) => duckMarker)}
+    <>
 
-        {popupInfo && (
-          <Popup
-            anchor="top"
-            longitude={popupInfo.nlongitude}
-            latitude={popupInfo.nlatitude}
-            onClose={() => setPopupInfo(null)}
-          >
-            <div style={{ color: "black" }}>
-              Node ID: {popupInfo.nid}
-              <br />
-              Node Description: {popupInfo.ndescription}
-            </div>
-          </Popup>
-        )}
-      </MapGL>
-    </div>
+      <div id="map-container" ref={mapContainerRef} style={{ width: "100%", height: "100vh" }} >
+        {(mapRef.current && Nodes) && Nodes.map((Node) => {
+          return <Marker key={Node.nid}
+            map={mapRef.current}
+            Node={Node}
+            onClick={() => handleMarkerClick(Node)}
+            isActive={activeNode?.nid === Node.nid}
+            anchor="bottom" />
+        }
+        )
+        }
+        {(mapRef.current && activeNode) && (<Popup map={mapRef.current} Node={activeNode} />)}
+      </div>
+    </>
   );
 };
 

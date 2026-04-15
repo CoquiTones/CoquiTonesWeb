@@ -13,31 +13,77 @@ import { APIHandlerNetworkMonitor } from "../services/rest/APIHandler/APIHandler
 import NewNodeDialog from "../components/shared/NewNodeDialog";
 import HeroSectionCDN from "../components/shared/HeroSectionCDN";
 import MapEmbed from "../components/NetworkMonitor/Map";
-import { Typography, Stack } from "@mui/material";
-import ErrorAlerts from "../components/shared/ErrorAlerts";
-import { ErrorContext } from "../components/shared/ErrorContext";
+import { Alert, Container, Typography, Button, Stack, Snackbar, TextField } from "@mui/material";
+import { useGlobalState } from "../services/Authentication/GlobalStateManager";
 const NetworkMonitor = () => {
   const [nodes, setNodes] = useState([]);
-  const { errors, setErrors } = useContext(ErrorContext);
-
-  const [warningsAndActions, setWarningsAndActions] = useState([]);
+  const [nodesWithNoClient, setNodesWithNoClient] = useState([]);
+  const [nodePasswords, setNodePasswords] = useState([])
+  const { errors, setErrors } = useGlobalState();
   const apiHandler = useMemo(() => new APIHandlerNetworkMonitor());
+
   const fetchNodes = async () => {
-    try {
-      const nodes = await apiHandler.get_all_nodes();
-      setNodes(nodes);
-    } catch (error) {
-      setErrors([...errors, error])
+    const nodes = await apiHandler.get_all_nodes();
+    setNodes(nodes);
+  };
+
+  const checkNodesWithNoClient = async () => {
+    const nodes_with_no_client = await apiHandler.get_nodes_with_no_client();
+    if (!nodes_with_no_client.isEmpty()) {
+      setIsWarningOpen(true)
+      setNodesWithNoClient(nodes_with_no_client);
     }
   };
-  useEffect(() => {
 
+  const createClientForNode = async (node) => {
+    try {
+      const nodeClientPassword = nodePasswords.find((nodePasswords) => nodePasswords.node === node.nid).password
+      await apiHandler.create_client_for_node(node, nodeClientPassword);
+      fetchNodes();
+    } catch (apiException) {
+      setErrors([...errors, apiException]);
+    };
+  };
+  useEffect(() => {
     fetchNodes();
   }, []);
+
+  useEffect(() => {
+    checkNodesWithNoClient();
+  }, [nodes]);
+
+  const [isOpen, setIsOpen] = useState(false);
+  const toggle = () => {
+    setIsOpen(!isOpen);
+  };
+  const [isWarningOpen, setIsWarningOpen] = useState(false)
   return (
-    <>
-      <ErrorAlerts errors={errors} setErrors={setErrors} />
+    <ThemeProvider theme={theme}>
+      {/* Warning Snackbars */}
+      <Snackbar
+        open={isWarningOpen}
+        anchorOrigin={{ vertical: "top", horizontal: "center" }}
+      >
+        <Alert
+          severity="warning"
+          action={
+            <>
+              <Button
+                size="small"
+                onClick={() => setIsWarningOpen(false)}>
+                Hide
+              </Button>
+            </>
+          }
+        >
+          Some Nodes were found to not have mqtt clients. Nodes: {nodesWithNoClient.map((node) => (node.nid)).join(", ")}
+        </Alert>
+      </Snackbar >
+
+
       <Stack>
+        <Sidebar isOpen={isOpen} toggle={toggle} />
+        <Navbar toggle={toggle} />
         <HeroSectionCDN />
         <NodeContainer>
           <Typography
@@ -48,9 +94,6 @@ const NetworkMonitor = () => {
             Duck Network
           </Typography>
           <NewNodeDialog
-            setDucks={setNodes}
-            errors={errors}
-            setErrors={setErrors}
             style={{
               display: "flex",
               justifyContent: "flex-end",
@@ -75,39 +118,47 @@ const NetworkMonitor = () => {
                   <NodeInfo>Description: {node.ndescription}</NodeInfo>
                   <NodeInfo>Latitude: {node.nlatitude}</NodeInfo>
                   <NodeInfo>Longitude: {node.nlongitude}</NodeInfo>
-                  <Link href="#" variant="button" style={{ marginTop: "16px" }}>
-                    View Details
-                  </Link>
+                  {nodesWithNoClient.find((node_from_list) => node.nid === node_from_list.nid) && // if node doesn't have mqtt client.
+                    <>
+                      <TextField
+                        required
+                        margin="dense"
+                        id={`node-${node.nid}-password`}
+                        label="mqtt-node-password"
+                        type="password"
+                        fullWidth
+                        variant="standard"
+                        onChange={(event) => setNodePasswords([...nodePasswords, { node: node.nid, password: event.target.value }])}
+                      />
+                      <Button onClick={() => createClientForNode(node)} >
+                        Create Client
+                      </Button>
+                    </>
+                  }
                 </NodeCard>
               ))
             )}
           </NodeWrapper>
         </NodeContainer>
 
-        <Grid item lg={8}>
-          <Paper
-            elevation={4}
-            sx={{
-              p: 2,
-              display: "flex",
-              flexDirection: "column",
-              height: "75vh",
-            }}
-          >
-            <div style={{ height: "100%" }}>
-              {" "}
-              {/* Ensure map container fills parent's height */}
-              <MapEmbed ducks={nodes} />
-            </div>
-          </Paper>
-        </Grid>
+        <Container id="map-embed-id" sx={{ mt: 4, mb: 4, width: "100%" }}>
+          <Grid item lg={8}>
+            <Paper
+              elevation={4}
+              sx={{
+                p: 2,
+                display: "flex",
+                flexDirection: "column",
+                height: "95%",
+                width: "95%",
+              }}
+            >
+              <MapEmbed Nodes={nodes} />
+            </Paper>
+          </Grid>
+        </Container>
       </Stack>
-
-      {/* </Container>
-                </Box>
-                </Box>
-                <Footer/> */}
-    </>
+    </ThemeProvider >
   );
 };
 

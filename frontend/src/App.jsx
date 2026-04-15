@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import './App.css';
+import { GlobalStateProvider } from './services/Authentication/GlobalStateManager';
 import ProtectedRoute from './pages/ProtectedRoute';
 import About from './pages/About';
 import NetworkMonitor from './pages/NetworkMonitor'
@@ -21,20 +22,22 @@ function App() {
   }
   return (
     <div>
-      <BrowserRouter>
-        <Routes>
-          <Route path='/' element={<ThemeProvider theme={theme} > <Navbar toggle={toggle} isHome={true} /> <Home /> </ThemeProvider>} />
-          <Route element={<ProtectedRoute />} >
-            <Route path='/Dashboard' element={<ThemeProvider theme={theme} > <Navbar toggle={toggle} isHome={false} />  <Sidebar isOpen={open} toggle={toggle} /> <Dashboard /> </ThemeProvider>} />
-            <Route path='/NetworkMonitor' element={<ThemeProvider theme={theme} > <Navbar toggle={toggle} isHome={false} />   <Sidebar isOpen={open} toggle={toggle} /> <NetworkMonitor /> </ThemeProvider>} />
-          </Route>
-          <Route path='/About' element={<ThemeProvider theme={theme} > <Navbar toggle={toggle} isHome={false} />   <Sidebar isOpen={open} toggle={toggle} /> <About /> </ThemeProvider>} />
-          <Route path='/Classifier' element={<ThemeProvider theme={theme} > <Navbar toggle={toggle} isHome={false} />   <Sidebar isOpen={open} toggle={toggle} /> <Classifier /> </ThemeProvider>} />
-          <Route path='/SpectralAnalysis' element={<ThemeProvider theme={theme} > <Navbar toggle={toggle} isHome={false} />   <Sidebar isOpen={open} toggle={toggle} /> <SpectralAnalysis /> </ThemeProvider>} />
-          <Route path='/SignUp' element={<ThemeProvider theme={theme} > <SignUpPage /> </ThemeProvider>} />
-          <Route path='*' element={<ThemeProvider theme={theme} > <Navbar toggle={toggle} isHome={false} />  <PageNotFound /> </ThemeProvider>} />
-        </Routes>
-      </BrowserRouter>
+      <GlobalStateProvider>
+        <BrowserRouter>
+          <Routes>
+            <Route path='/' element={<ThemeProvider theme={theme} > <Navbar toggle={toggle} isHome={true} /> <Home /> </ThemeProvider>} />
+            <Route element={<ProtectedRoute />} >
+              <Route path='/Dashboard' element={<ThemeProvider theme={theme} > <Navbar toggle={toggle} isHome={false} />  <Sidebar isOpen={open} toggle={toggle} /> <Dashboard /> </ThemeProvider>} />
+              <Route path='/NetworkMonitor' element={<ThemeProvider theme={theme} > <Navbar toggle={toggle} isHome={false} />   <Sidebar isOpen={open} toggle={toggle} /> <NetworkMonitor /> </ThemeProvider>} />
+            </Route>
+            <Route path='/About' element={<ThemeProvider theme={theme} > <Navbar toggle={toggle} isHome={false} />   <Sidebar isOpen={open} toggle={toggle} /> <About /> </ThemeProvider>} />
+            <Route path='/Classifier' element={<ThemeProvider theme={theme} > <Navbar toggle={toggle} isHome={false} />   <Sidebar isOpen={open} toggle={toggle} /> <Classifier /> </ThemeProvider>} />
+            <Route path='/SpectralAnalysis' element={<ThemeProvider theme={theme} > <Navbar toggle={toggle} isHome={false} />   <Sidebar isOpen={open} toggle={toggle} /> <SpectralAnalysis /> </ThemeProvider>} />
+            <Route path='/SignUp' element={<ThemeProvider theme={theme} > <SignUpPage /> </ThemeProvider>} />
+            <Route path='*' element={<ThemeProvider theme={theme} > <Navbar toggle={toggle} isHome={false} />  <PageNotFound /> </ThemeProvider>} />
+          </Routes>
+        </BrowserRouter>
+      </GlobalStateProvider>
 
     </div>
   );

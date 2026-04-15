@@ -15,7 +15,7 @@ import {
 import logo from "../assets/images/logo512.png";
 import { APIHandlerAuthentication } from '../../services/rest/APIHandler/APIHandlerAuthentication';
 import { AuthenticateUserRequest } from '../../services/rest/RequestORM/Authentication/CheckUserRequest';
-
+import { useGlobalState } from '../../services/Authentication/GlobalStateManager';
 const ModalContainer = styled(Box)(({ theme }) => ({
 	position: 'absolute',
 	top: '50%',
@@ -36,27 +36,26 @@ const ModalContainer = styled(Box)(({ theme }) => ({
 	}
 }));
 
-const SignInModal = ({ open, setOpen, setIsSignedIn}) => {
+const SignInModal = ({ open, setOpen }) => {
 	const [username, setUsername] = useState('');
 	const [password, setPassword] = useState('');
+	const { login } = useGlobalState();
 
 	// New state for managing Snackbar
 	const [messageSnackbarOpen, setMessageSnackBarOpen] = useState(false);
 	const [message, setMessage] = useState('');
 	const [messageSeverity, setMessageSeverity] = useState('success');
-
 	const handleSignIn = async () => {
 		try {
 			const handler = new APIHandlerAuthentication();
 			const checkUserRequest = new AuthenticateUserRequest(username, password);
-			const successfullyAuthenticatedStatus = await handler.setSessionTokenIfUserExists(checkUserRequest);
+			const successfullyAuthenticatedStatus = await handler.setSessionTokenIfUserExists(checkUserRequest, login);
 
 			if (successfullyAuthenticatedStatus) {
 				// Show success Snackbar
 				setMessage('Authentication Successful! Welcome back.');
 				setMessageSeverity('success');
 				setMessageSnackBarOpen(true);
-				setIsSignedIn(true);
 				// Optional: Add a slight delay before closing the modal
 				setTimeout(() => {
 					handleClose();

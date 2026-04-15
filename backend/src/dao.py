@@ -7,17 +7,13 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from dbutil import default_HTTP_exception
 from Requests.RecordToBeDeleted import RecordTimestampIndex
+from Logger import Logger
 from pydantic import Field
 from itertools import repeat
 import logging
 
 node_type = str
-
-logging.basicConfig(
-    level=logging.DEBUG,
-    format="%(asctime)s - [%(funcName)s]: %(levelname)s - %(message)s",
-)
-LOGGER = logging.getLogger("DAO Service Component")
+LOGGER = Logger.getInstance("DAO Service Component")
 
 
 class DAO:
@@ -146,6 +142,25 @@ class User(DAO):
     id_column = sql.Identifier("auid")
     owner_table = sql.SQL("(SELECT auid, auid as ownerid FROM appuser)")
 
+    @classmethod
+    async def get_all_no_owner(cls, db: AsyncConnection):
+        async with db.cursor(row_factory=class_row(User)) as curs:
+            try:
+                await curs.execute(
+                    sql.SQL(
+                        """
+SELECT auid, username, salt, pwhash
+FROM appuser
+"""
+                    )
+                )
+
+                return await curs.fetchall()
+
+            except PGError as e:
+                LOGGER.error("Error executing SQL query:", e)
+                raise default_HTTP_exception(e, "Get user query")
+
     @staticmethod
     async def get_by_username(db: AsyncConnection, username: str):
 
@@ -198,6 +213,7 @@ class Node(DAO):
     """Node DAO"""
 
     nid: int
+    nname: str
     ownerid: int
     ntype: node_type
     nlatitude: float
@@ -213,6 +229,7 @@ class Node(DAO):
         cls,
         db: AsyncConnection,
         ownerid: int,
+        nname: str,
         ntype: str,
         nlatitude: float,
         nlongitude: float,
@@ -223,17 +240,17 @@ class Node(DAO):
                 await curs.execute(
                     sql.SQL(
                         """
-                            INSERT INTO {} (ownerid, ntype, nlatitude, nlongitude, ndescription)
-                            VALUES (%s, %s, %s, %s, %s)
+                            INSERT INTO {} (nname, ownerid, ntype, nlatitude, nlongitude, ndescription)
+                            VALUES (%s, %s, %s, %s, %s, %s)
                             RETURNING nid
                             """
                     ).format(cls.table),
-                    (ownerid, ntype, nlatitude, nlongitude, ndescription),
+                    (nname, ownerid, ntype, nlatitude, nlongitude, ndescription),
                 )
                 nid = await curs.fetchone()
                 if nid is None:
                     return None
-                return cls(nid, ownerid, ntype, nlatitude, nlongitude, ndescription)
+                return cls(nid, nname, ownerid, ntype, nlatitude, nlongitude, ndescription)
             except PGError as e:
                 LOGGER.error("Error executing SQL query:", e)
                 raise default_HTTP_exception(e, "insert node query")
@@ -360,6 +377,44 @@ class WeatherData(DAO):
         "weatherdata NATURAL INNER JOIN timestampindex NATURAL INNER JOIN node"
     )
 
+    @classmethod
+    async def insert(
+        cls,
+        db: AsyncConnection,
+        tid: int,
+        wdtemperature: float,
+        wdhumidity: float,
+        wdpressure: float,
+        wddid_rain: bool,
+    ):
+        async with db.cursor(row_factory=scalar_row) as curs:
+            try:
+                await curs.execute(
+                    sql.SQL(
+                        """
+INSERT INTO {table} (tid, wdtemperature, wdhumidity, wdpressure, wddid_rain)
+VALUES (%(tid)s, %(wdtemperature)s, %(wdhumidity)s, %(wdpressure)s, %(wddid_rain)s)
+RETURNING {id_column}
+"""
+                    ).format(table=cls.table, id_column=cls.id_column),
+                    {
+                        "tid": tid,
+                        "wdtemperature": wdtemperature,
+                        "wdhumidity": wdhumidity,
+                        "wdpressure": wdpressure,
+                        "wddid_rain": wddid_rain,
+                    },
+                )
+
+                db_response = await curs.fetchone()
+
+                if db_response is not None:
+                    return db_response[0]
+
+            except PGError as e:
+                LOGGER.error("Error executing SQL query:", e)
+                raise default_HTTP_exception(e, "insert weather data query")
+
 
 @dataclass
 class AudioFile(DAO):
@@ -395,13 +450,37 @@ class AudioFile(DAO):
             return await curs.fetchall()
 
     @classmethod
-    async def insert(
+    async def insert(cls, db: AsyncConnection, file, nid: int, tid: int):
+        async with db.cursor(row_factory=scalar_row) as curs:
+            try:
+                if isinstance(file, bytes):
+                    data = file
+                else:
+                    data = await file.read()
+
+                await curs.execute(
+                    sql.SQL(
+                        """
+INSERT INTO {} (tid, data)
+VALUES (%s, %s)
+RETURNING afid
+"""
+                    ).format(cls.table),
+                    (tid, data),
+                )
+
+                db_response = curs.fetchone()
+                if db_response is not None:
+                    return db_response
+
+            except PGError as e:
+                LOGGER.error("Error executing SQL query:", e)
+                raise default_HTTP_exception(e, "insert audio file query")
+
+    @classmethod
+    async def insert_and_timestamp(
         cls, db: AsyncConnection, owner: int, file, nid: int, timestamp: datetime
     ):
-        # First check that the node being referenced belongs to the owner of this new audio file
-        node = await Node.get(owner, nid, db)
-        if node is None or node.ownerid != owner:
-            return None
 
         async with db.cursor(row_factory=scalar_row) as curs:
             try:
