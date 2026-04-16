@@ -14,6 +14,7 @@ import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 
 import FileUpload from "./FileUpload";
 import { APIHandlerSpectralAnalysis } from "../../services/rest/APIHandler/APIHandlerSpectralAnalysis";
+import InsertAudioRequest from "../../services/rest/RequestORM/SpectralAnalysis/insertAudioRequest";
 
 const DataManager = ({ audioFile, setAudioFile, setDefaultX, setDefaultY, setStats, errors, setErrors }) => {
   const [open, setOpen] = useState(false);
@@ -61,7 +62,7 @@ const DataManager = ({ audioFile, setAudioFile, setDefaultX, setDefaultY, setSta
     try {
 
       const apiHandler = new APIHandlerSpectralAnalysis();
-      const request = new insertAudioRequest(audioFile, nid, timestamp);
+      const request = new InsertAudioRequest(audioFile, nid, dateTime);
       await apiHandler.insertAudio(request);
       setOpen(false);
     } catch (error) {

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useContext, useEffect, useState } from "react";
 import Box from "@mui/material/Box";
 import Paper from "@mui/material/Paper";
 import IconButton from "@mui/material/IconButton";
@@ -14,6 +14,7 @@ import DataManager from "../components/shared/DataManager";
 import SoundPlayer from "../components/SoundAnalysisTools/render/SoundPlayer";
 import SpectrogramVisualizer from "../components/SoundAnalysisTools/render/Spectrogram";
 import SpectrogramControls from "../components/SoundAnalysisTools/render/SpectrogramControls";
+import { ErrorContext } from "../components/shared/ErrorContext";
 
 const drawerWidth = 380;
 
@@ -33,7 +34,7 @@ const SpectralAnalysis = () => {
 
   const handleDrawerOpen = () => setDrawerOpen(true);
   const handleDrawerClose = () => setDrawerOpen(false);
-
+  const { errors, setErrors } = useContext(ErrorContext)
   return (
     <>
       <Box sx={{ display: "flex", height: "100vh", width: "100%" }}>
@@ -80,6 +81,8 @@ const SpectralAnalysis = () => {
                       setDefaultX={setDefaultX}
                       setDefaultY={setDefaultY}
                       setStats={setStats}
+                      errors={errors}
+                      setErrors={setErrors}
                     />
                     <Box sx={{ ml: "auto", display: "flex", alignItems: "center", gap: 1 }}>
                       {rawAudioFile && (
