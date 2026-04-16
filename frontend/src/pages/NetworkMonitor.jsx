@@ -15,13 +15,13 @@ import HeroSectionCDN from "../components/shared/HeroSectionCDN";
 import MapEmbed from "../components/NetworkMonitor/Map";
 import { Alert, Container, Typography, Button, Stack, Snackbar, TextField } from "@mui/material";
 import { useGlobalState } from "../services/Authentication/GlobalStateManager";
+import { ErrorContext } from "../components/shared/ErrorContext";
 const NetworkMonitor = () => {
   const [nodes, setNodes] = useState([]);
   const [nodesWithNoClient, setNodesWithNoClient] = useState([]);
   const [nodePasswords, setNodePasswords] = useState([])
-  const { errors, setErrors } = useGlobalState();
   const apiHandler = useMemo(() => new APIHandlerNetworkMonitor());
-
+  const { errors, setErrors } = useContext(ErrorContext);
   const fetchNodes = async () => {
     const nodes = await apiHandler.get_all_nodes();
     setNodes(nodes);
@@ -35,6 +35,27 @@ const NetworkMonitor = () => {
     }
   };
 
+  const handleChangePasswordForNode = async (node, nodePassword) => {
+    console.log("node ", node)
+    console.log("password", nodePassword)
+    if (nodePasswords.length === 0) {
+      setNodePasswords([{ node: node.nid, password: nodePassword }])
+    } else {
+
+      const newNodePasswords = nodePasswords.map((nodeAndPassword) => {
+        console.log("nodeAndPassword", nodeAndPassword)
+        if (nodeAndPassword.node === node.nid) {
+          console.log("hoopla")
+          return { node: node.nid, password: nodePassword }
+        }
+        else {
+          return nodeAndPassword;
+        }
+      });
+
+      setNodePasswords(newNodePasswords);
+    }
+  }
   const createClientForNode = async (node) => {
     try {
       const nodeClientPassword = nodePasswords.find((nodePasswords) => nodePasswords.node === node.nid).password
@@ -58,7 +79,7 @@ const NetworkMonitor = () => {
   };
   const [isWarningOpen, setIsWarningOpen] = useState(false)
   return (
-    <ThemeProvider theme={theme}>
+    <>
       {/* Warning Snackbars */}
       <Snackbar
         open={isWarningOpen}
@@ -82,8 +103,6 @@ const NetworkMonitor = () => {
 
 
       <Stack>
-        <Sidebar isOpen={isOpen} toggle={toggle} />
-        <Navbar toggle={toggle} />
         <HeroSectionCDN />
         <NodeContainer>
           <Typography
@@ -128,7 +147,7 @@ const NetworkMonitor = () => {
                         type="password"
                         fullWidth
                         variant="standard"
-                        onChange={(event) => setNodePasswords([...nodePasswords, { node: node.nid, password: event.target.value }])}
+                        onChange={(event) => handleChangePasswordForNode(node, event.target.value)}
                       />
                       <Button onClick={() => createClientForNode(node)} >
                         Create Client
@@ -158,7 +177,7 @@ const NetworkMonitor = () => {
           </Grid>
         </Container>
       </Stack>
-    </ThemeProvider >
+    </>
   );
 };
 
