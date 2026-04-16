@@ -1,17 +1,27 @@
-import React, { useContext, useEffect } from 'react';
+import React, { useContext, useEffect, useRef } from 'react';
 import { Navigate, Outlet } from 'react-router-dom';
 import { useGlobalState } from '../services/Authentication/GlobalStateManager';
+import { ErrorContext } from "../components/shared/ErrorContext"
+import CircularProgress from '@mui/material/CircularProgress';
+import { ValidationError } from '../services/rest/APIHandler/Errors';
 
 const ProtectedRoute = () => {
-  const { isAuthenticated, errors, setErrors } = useGlobalState();
+  const { isAuthenticated } = useGlobalState();
+  const { errors, setErrors } = useContext(ErrorContext);
+  const errorAddedRef = useRef(false);
 
-  // Still loading
+  useEffect(() => {
+    if (!isAuthenticated && !errorAddedRef.current) {
+      setErrors([...errors, new ValidationError("You must be Signed In to view this page!")])
+      errorAddedRef.current = true;
+    }
+  }, [isAuthenticated])
+
   if (isAuthenticated === null) {
-    return <div>Loading...</div>;
+    return <CircularProgress />
   }
 
   if (!isAuthenticated) {
-    setErrors([...errors, "You must be Signed in to access this page!"])
     return <Navigate to="/" replace />;
   }
 
