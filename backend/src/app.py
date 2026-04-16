@@ -79,7 +79,6 @@ async def node_get(
 ):
     return await dao.Node.get(current_user.auid, nid, transaction.connection)
 
-
 @app.post("/api/node/mqtt")
 async def create_node_client(
     current_user: Annotated[LightWeightUser, Depends(get_current_user)],
@@ -94,7 +93,8 @@ async def create_node_client(
     try:
         await mqtt.create_node(current_user.auid, node.nname, password)
         return {"nodeCreationStatus": True}
-    except mqtt.CommandExcept:
+    except mqtt.CommandExcept as e:
+        LOGGER.error(e)
         raise HTTPException(
             status.HTTP_500_INTERNAL_SERVER_ERROR, "Failed to create client"
         )
