@@ -9,11 +9,11 @@ from mlutil import get_model, classify_audio_file
 from pydantic import SecretStr
 from routers.security import get_current_user, LightWeightUser
 from routers.security import router as security_router
+from timestamp.router import router as timestamp_router
 from standaloneops import classify_and_save
 from Requests.RecordToBeDeleted import RecordTimestampIndex
 import dao
 import mqtt
-import dao as dao
 import os
 import io
 import asyncio
@@ -61,6 +61,7 @@ app.mount(
 )
 
 app.include_router(security_router)
+app.include_router(timestamp_router)
 
 
 @app.get("/api/node/all")
@@ -119,24 +120,6 @@ async def nodes_with_no_client(
     client_names = all_mqtt_clients.result().keys()
     missing_nodes = filter(lambda node: node.nname not in client_names, primary_nodes)
     return list(missing_nodes)
-
-
-@app.get("/api/timestamp/all")
-async def timestamp_all(
-    current_user: Annotated[LightWeightUser, Depends(get_current_user)],
-    transaction: DBTransactionDependency,
-):
-    return await dao.TimestampIndex.get_all(current_user.auid, transaction.connection)
-
-
-@app.get("/api/timestamp")
-async def timestamp_get(
-    tid: Annotated[int, Form()],
-    current_user: Annotated[LightWeightUser, Depends(get_current_user)],
-    transaction: DBTransactionDependency,
-):
-    return await dao.TimestampIndex.get(current_user.auid, tid, transaction.connection)
-
 
 @app.get("/api/weather/all")
 async def weather_all(

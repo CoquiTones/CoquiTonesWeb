@@ -3,6 +3,7 @@ from psycopg import sql, errors
 from psycopg.connection_async import AsyncConnection
 from psycopg import Error as PGError
 from psycopg.rows import class_row, scalar_row
+#TODO: replace dataclass with BaseModel
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from dbutil import default_HTTP_exception
@@ -10,7 +11,6 @@ from Requests.RecordToBeDeleted import RecordTimestampIndex
 from Logger import Logger
 from pydantic import Field
 from itertools import repeat
-import logging
 
 node_type = str
 LOGGER = Logger.getInstance("DAO Service Component")
@@ -257,41 +257,6 @@ class Node(DAO):
 
 
 @dataclass
-class TimestampIndex(DAO):
-    """Timestamp index DAO"""
-
-    tid: int
-    nid: int
-    ttime: datetime
-
-    table = sql.Identifier("timestampindex")
-    id_column = sql.Identifier("tid")
-    owner_table = sql.SQL("timestampindex NATURAL INNER JOIN node")
-
-    @classmethod
-    async def insert(cls, db: AsyncConnection, nid: int, timestamp: datetime):
-
-        async with db.cursor(row_factory=scalar_row) as curs:
-            try:
-                await curs.execute(
-                    sql.SQL(
-                        """
-                        INSERT INTO {} (nid, ttime)
-                        VALUES (%s, %s)
-                        RETURNING tid
-                        """
-                    ).format(cls.table),
-                    (nid, timestamp),
-                )
-
-                return await curs.fetchone()
-
-            except PGError as e:
-                LOGGER.error("Error executing SQL query:", e)
-                raise default_HTTP_exception(e, "insert timestamp query")
-
-
-@dataclass
 class AudioSlice(DAO):
     """Audio slice DAO"""
 
@@ -477,6 +442,8 @@ RETURNING afid
                 LOGGER.error("Error executing SQL query:", e)
                 raise default_HTTP_exception(e, "insert audio file query")
 
+    #TODO: this should be a service that individually creates the audio file as well as the index, but the repository layer shouldn't
+    #have anything to do with coordinating them at all.
     @classmethod
     async def insert_and_timestamp(
         cls, db: AsyncConnection, owner: int, file, nid: int, timestamp: datetime
