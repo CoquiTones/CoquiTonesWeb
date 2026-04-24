@@ -5,15 +5,15 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, Response
 from fastapi import status
 from dbutil import DBTransactionDependency
-from mlutil import get_model, classify_audio_file
 from pydantic import SecretStr
 from routers.security import get_current_user, LightWeightUser
 from routers.security import router as security_router
+from timestamp.router import router as timestamp_router
+from audio.router import router as audio_router
 from standaloneops import classify_and_save
 from Requests.RecordToBeDeleted import RecordTimestampIndex
 import dao
 import mqtt
-import dao as dao
 import os
 import io
 import asyncio
@@ -61,6 +61,8 @@ app.mount(
 )
 
 app.include_router(security_router)
+app.include_router(timestamp_router)
+app.include_router(audio_router)
 
 
 @app.get("/api/node/all")
@@ -120,24 +122,6 @@ async def nodes_with_no_client(
     missing_nodes = filter(lambda node: node.nname not in client_names, primary_nodes)
     return list(missing_nodes)
 
-
-@app.get("/api/timestamp/all")
-async def timestamp_all(
-    current_user: Annotated[LightWeightUser, Depends(get_current_user)],
-    transaction: DBTransactionDependency,
-):
-    return await dao.TimestampIndex.get_all(current_user.auid, transaction.connection)
-
-
-@app.get("/api/timestamp")
-async def timestamp_get(
-    tid: Annotated[int, Form()],
-    current_user: Annotated[LightWeightUser, Depends(get_current_user)],
-    transaction: DBTransactionDependency,
-):
-    return await dao.TimestampIndex.get(current_user.auid, tid, transaction.connection)
-
-
 @app.get("/api/weather/all")
 async def weather_all(
     current_user: Annotated[LightWeightUser, Depends(get_current_user)],
@@ -153,111 +137,6 @@ async def weather_get(
     transaction: DBTransactionDependency,
 ):
     return await dao.WeatherData.get(current_user.auid, wdid, transaction.connection)
-
-
-@app.get("/api/audio/all")
-async def audio_all(
-    current_user: Annotated[LightWeightUser, Depends(get_current_user)],
-    transaction: DBTransactionDependency,
-):
-    return await dao.AudioFile.get_all(current_user.auid, transaction.connection)
-
-
-@app.post(path="/api/audio", response_class=Response)
-async def audio_get(
-    afid: Annotated[int, Form()],
-    current_user: Annotated[LightWeightUser, Depends(get_current_user)],
-    transaction: DBTransactionDependency,
-):
-    audio_file: dao.AudioFile | None = await dao.AudioFile.get(
-        current_user.auid, afid, transaction.connection
-    )
-    if audio_file is None:
-        raise HTTPException(status_code=404, detail="Audio file not found")
-    data = audio_file.data
-    assert data is not None
-    return Response(content=bytes(data), media_type="audio/mpeg")
-
-
-@app.get("/api/audioslices/all")
-async def audio_slice_all(
-    current_user: Annotated[LightWeightUser, Depends(get_current_user)],
-    transaction: DBTransactionDependency,
-):
-    return await dao.AudioSlice.get_all(current_user.auid, transaction.connection)
-
-
-@app.get(path="/api/audioslices")
-async def audio_slice_get(
-    asid: Annotated[int, Form()],
-    current_user: Annotated[LightWeightUser, Depends(get_current_user)],
-    transaction: DBTransactionDependency,
-):
-    return await dao.AudioSlice.get(current_user.auid, asid, transaction.connection)
-
-
-# TODO: Sort this out as a service(?)
-async def classify_and_save(audio, audio_file_id, db, model):
-    classifier_output = classify_audio_file(audio, model)
-    slice_insert_tasks = []
-    for classified_slice_name, classified_slice in classifier_output.items():
-        classified_slice["starttime"] = classified_slice.pop("start_time")
-        classified_slice["endtime"] = classified_slice.pop("end_time")
-        slice_insert_tasks.append(
-            asyncio.create_task(
-                dao.AudioSlice.insert(db, audio_file_id, **classified_slice),  # type: ignore
-                name=classified_slice_name,
-            )
-        )
-
-    done, pending = await asyncio.wait(slice_insert_tasks)
-    results = map(lambda task: task.result(), done)
-    return results
-
-
-@app.post(path="/api/audio/insert")
-async def audio_post(
-    nid: Annotated[int, Form()],
-    timestamp: Annotated[datetime, Form()],
-    current_user: Annotated[LightWeightUser, Depends(get_current_user)],
-    transaction: DBTransactionDependency,
-    file: UploadFile = File(...),
-    classify: Annotated[bool, Form()] = True,
-    model=Depends(get_model),
-):
-    audio_file_id = await dao.AudioFile.insert_and_timestamp(
-        transaction.connection, current_user.auid, file, nid, timestamp
-    )
-
-    if classify:
-        file.file.seek(0)
-        await classify_and_save(file.file, audio_file_id, transaction.connection, model)
-
-    return audio_file_id
-
-
-@app.get(path="/api/classify/by-id")
-async def classify_by_afid(
-    afid: Annotated[int, Form()],
-    current_user: Annotated[LightWeightUser, Depends(get_current_user)],
-    transaction: DBTransactionDependency,
-    override: Annotated[bool, Form()] = False,
-    model=Depends(get_model),
-):
-
-    if not await dao.AudioFile.exists(afid, current_user.auid, transaction.connection):
-        raise HTTPException(status_code=404, detail="Audio file does not exist")
-
-    if override or not await dao.AudioFile.is_classified(afid, transaction.connection):
-        audio = await dao.AudioFile.get(current_user.auid, afid, transaction.connection)
-        if audio is None or audio.data is None:
-            raise HTTPException(status_code=404, detail="Audio file does not exist")
-
-        await classify_and_save(
-            io.BytesIO(audio.data), afid, transaction.connection, model
-        )
-
-    return await dao.AudioSlice.get_classified(afid, transaction.connection)
 
 
 @app.post(path="/api/node/insert")
@@ -362,12 +241,6 @@ async def node_delete(
     transaction: DBTransactionDependency,
 ):
     return await dao.Node.delete(current_user.auid, nid, transaction.connection)
-
-
-@app.post(path="/api/classifier/classify")
-async def classify(file: UploadFile = File(...), model=Depends(get_model)):
-    report = classify_audio_file(file.file, model)
-    return report
 
 
 @app.get(path="/api/dashboard/week-species-summary")
