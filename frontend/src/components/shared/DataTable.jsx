@@ -26,7 +26,7 @@ export default function DataTable({ errors, setErrors }) {
     const [loading, setLoading] = useState(false);
     const [downloadError, setDownloadError] = useState(null);
 
-    const { downloadAudio, loading: downloadLoading, error: downloadErrorMsg } = useAudioDownload(apiHandler);
+    const { downloadAudio, loading: downloadLoading } = useAudioDownload(apiHandler);
 
     const fetchRecentDataRows = useCallback(async () => {
         setLoading(true);
@@ -81,7 +81,7 @@ export default function DataTable({ errors, setErrors }) {
         setDownloadError(null);
         const audioFileRequest = new AudioFileRequest(afid);
         await downloadAudio(afid, audioFileRequest);
-    }, [downloadAudio]);
+    }, []);
 
     const handleExportCSV = () => {
         // Use selected rows if any are selected, otherwise export all
@@ -173,9 +173,9 @@ export default function DataTable({ errors, setErrors }) {
                 </LocalizationProvider>
             </Stack>
 
-            {(downloadError || downloadErrorMsg) && (
+            {(downloadError) && (
                 <Alert severity="error" sx={{ mb: 2 }} onClose={() => setDownloadError(null)}>
-                    {downloadError || downloadErrorMsg}
+                    {downloadError}
                 </Alert>
             )}
 

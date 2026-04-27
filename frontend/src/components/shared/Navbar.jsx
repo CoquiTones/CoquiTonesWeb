@@ -11,7 +11,7 @@ import ErrorAlerts from "./ErrorAlerts";
 import GlobalStateManager from "../../services/Authentication/GlobalStateManager";
 import { ValidationError } from "../../services/rest/APIHandler/Errors";
 
-import { useGlobalState } from "../../services/Authentication/GlobalStateManager";
+import { useGlobalState, AuthenticationStatus } from "../../services/Authentication/GlobalStateManager";
 const Nav = styled("nav")(({ theme }) => ({
   background: "#191716",
   height: "7vh",
@@ -154,14 +154,14 @@ const Navbar = ({ toggle, isHome }) => {
     setIsSignInModalOpen(!isSignInModalOpen);
   };
 
-  const { isAuthenticated, logout } = useGlobalState();
+  const { authStatus, logout } = useGlobalState();
   const handleSignOut = () => {
     logout();
     navigate("/", { replace: true });
   };
 
   const handleProtectedNavigation = (path) => {
-    if (!isAuthenticated) {
+    if (authStatus === AuthenticationStatus.UNAUTHENTICATED) {
       setErrors([...errors, new ValidationError("Must be Signed In to access this page!")]);
       setIsSignInModalOpen(true);
     } else {
@@ -284,7 +284,7 @@ const Navbar = ({ toggle, isHome }) => {
           </NavMenu>
         )}
         {
-          isAuthenticated ?
+          authStatus === AuthenticationStatus.AUTHENTICATED ?
             <Button onClick={handleSignOut}>
               Sign Out
             </Button>

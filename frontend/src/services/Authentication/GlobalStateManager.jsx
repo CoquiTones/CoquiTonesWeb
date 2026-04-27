@@ -6,9 +6,6 @@ class GlobalStateManager {
     static ACCESS_TOKEN_EXPIRE_HOURS = 24;
     static SESSION_TOKEN_KEY = 'session_token'
 
-    /**
-     * @returns string: authentication token | undefined
-     */
     static getAuthenticationToken() {
         return Cookies.get(this.SESSION_TOKEN_KEY);
     }
@@ -21,9 +18,6 @@ class GlobalStateManager {
         })
     }
 
-    /**
-     * Clears Authentication information
-     */
     static clearAuthenticationToken() {
         Cookies.remove(this.SESSION_TOKEN_KEY);
     }
@@ -32,32 +26,39 @@ class GlobalStateManager {
 // Create Context
 export const GlobalStateContext = createContext();
 
+export const AuthenticationStatus = {
+    AUTHENTICATED: "AUTHENTICATED",
+    LOADING: "LOADING", // used for initial state or when fetching
+    UNAUTHENTICATED: "UNAUTHENTICATED"
+
+}
 // Provider Component
 export const GlobalStateProvider = ({ children }) => {
-    const [isAuthenticated, setIsAuthenticated] = useState(null); // null = loading
-
-    // Check authentication only once on mount
+    // Single state: 'loading' | AuthenticationStatus.AUTHENTICATED | 'unauthenticated'
+    const [authStatus, setAuthStatus] = useState(AuthenticationStatus.LOADING);
     useEffect(() => {
-        const token = GlobalStateManager.getAuthenticationToken();
+        const initialCheckAuth = async () => {
+            const token = GlobalStateManager.getAuthenticationToken();
 
-        if (token !== undefined) {
-            const apiHandlerAuthentication = new APIHandlerAuthentication();
-            const authenticated = apiHandlerAuthentication.isUserAuthenticated();
-            setIsAuthenticated(authenticated);
-        } else {
-            setIsAuthenticated(false);
+            if (token !== undefined) {
+                const apiHandlerAuthentication = new APIHandlerAuthentication();
+                const authenticated = await apiHandlerAuthentication.isUserAuthenticated();
+                setAuthStatus(authenticated ? AuthenticationStatus.AUTHENTICATED : AuthenticationStatus.UNAUTHENTICATED);
+            } else {
+                setAuthStatus(AuthenticationStatus.UNAUTHENTICATED);
+            }
         }
+        initialCheckAuth()
     }, []);
 
-    // Expose methods to update auth state
     const login = useCallback((token) => {
         GlobalStateManager.setAuthenticationToken(token);
-        setIsAuthenticated(true);
+        setAuthStatus(AuthenticationStatus.AUTHENTICATED);
     }, []);
 
     const logout = useCallback(() => {
         GlobalStateManager.clearAuthenticationToken();
-        setIsAuthenticated(false);
+        setAuthStatus(AuthenticationStatus.UNAUTHENTICATED);
     }, []);
 
     const getAuthenticationToken = useCallback(() => {
@@ -65,13 +66,12 @@ export const GlobalStateProvider = ({ children }) => {
     }, []);
 
     return (
-        <GlobalStateContext.Provider value={{ isAuthenticated, login, logout, getAuthenticationToken }}>
+        <GlobalStateContext.Provider value={{ authStatus, login, logout, getAuthenticationToken }}>
             {children}
         </GlobalStateContext.Provider>
     );
 };
 
-// Custom Hook
 export const useGlobalState = () => {
     const context = React.useContext(GlobalStateContext);
     if (!context) {
