@@ -13,8 +13,8 @@ import AudioFileRequest from "../../services/rest/RequestORM/Shared/AudioFileReq
 import { useAudioDownload } from "../../hooks/useAudioDownload";
 import DeleteRecordRequest from "../../services/rest/RequestORM/Dashboard/DeleteRecordRequest";
 
-export default function DataTable({ Actions }) {
-    const APIHandler = useMemo(() => new APIHandlerDashboard(), []);
+export default function DataTable({ errors, setErrors }) {
+    const apiHandler = useMemo(() => new APIHandlerDashboard(), []);
     const paginationModel = { page: 0, pageSize: 5 };
 
     const [rows, setRows] = useState([]);
@@ -26,21 +26,21 @@ export default function DataTable({ Actions }) {
     const [loading, setLoading] = useState(false);
     const [downloadError, setDownloadError] = useState(null);
 
-    const { downloadAudio, loading: downloadLoading, error: downloadErrorMsg } = useAudioDownload(APIHandler);
+    const { downloadAudio, loading: downloadLoading } = useAudioDownload(apiHandler);
 
     const fetchRecentDataRows = useCallback(async () => {
         setLoading(true);
         try {
             const recentDataRequest = new RecentDataRequest(minTime, maxTime);
-            const rows = await APIHandler.get_recent_data(recentDataRequest);
+            const rows = await apiHandler.get_recent_data(recentDataRequest);
             setRows(rows.getData());
         } catch (error) {
-            console.error("Error fetching data:", error);
             setDownloadError("Failed to fetch data");
+            setErrors([...errors, error])
         } finally {
             setLoading(false);
         }
-    }, [minTime, maxTime, APIHandler]);
+    }, [minTime, maxTime, apiHandler]);
 
     const handleSelectionChange = useCallback((newSelection) => {
 
@@ -67,10 +67,9 @@ export default function DataTable({ Actions }) {
         try {
             setLoading(true)
             const deleteRecordsRequest = new DeleteRecordRequest(selectedRows.map((selectedRow) => (selectedRow.tid)));
-            await APIHandler.delete_records(deleteRecordsRequest);
+            await apiHandler.delete_records(deleteRecordsRequest);
             fetchRecentDataRows();
         } catch (error) {
-            console.error("Error deleting record:", error);
             setDownloadError("Failed to delete record");
         } finally {
             setLoading(false)
@@ -82,7 +81,7 @@ export default function DataTable({ Actions }) {
         setDownloadError(null);
         const audioFileRequest = new AudioFileRequest(afid);
         await downloadAudio(afid, audioFileRequest);
-    }, [downloadAudio]);
+    }, []);
 
     const handleExportCSV = () => {
         // Use selected rows if any are selected, otherwise export all
@@ -174,9 +173,9 @@ export default function DataTable({ Actions }) {
                 </LocalizationProvider>
             </Stack>
 
-            {(downloadError || downloadErrorMsg) && (
+            {(downloadError) && (
                 <Alert severity="error" sx={{ mb: 2 }} onClose={() => setDownloadError(null)}>
-                    {downloadError || downloadErrorMsg}
+                    {downloadError}
                 </Alert>
             )}
 

@@ -328,7 +328,7 @@ class AudioSlice(DAO):
         locustus: bool,
         richmondi: bool,
     ):
-        async with db.cursor(row_factory=class_row(cls)) as curs:
+        async with db.cursor(row_factory=scalar_row) as curs:
             try:
                 await curs.execute(
                     sql.SQL(

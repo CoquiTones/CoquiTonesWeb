@@ -1,5 +1,4 @@
-import React, { useState, useMemo, useEffect } from "react";
-import { ThemeProvider } from "@mui/material/styles";
+import React, { useState, useMemo, useEffect, useContext } from "react";
 import {
   NodeContainer,
   NodeWrapper,
@@ -10,20 +9,24 @@ import {
 import Grid from "@mui/material/Grid";
 import Paper from "@mui/material/Paper";
 import Link from "@mui/material/Link";
-import Navbar from "../components/shared/Navbar";
-import Sidebar from "../components/shared/Sidebar";
-import theme from "../components/shared/Theme";
 import { APIHandlerNetworkMonitor } from "../services/rest/APIHandler/APIHandlerNetworkMonitor";
 import NewNodeDialog from "../components/shared/NewNodeDialog";
 import HeroSectionCDN from "../components/shared/HeroSectionCDN";
 import MapEmbed from "../components/NetworkMonitor/Map";
-import { Alert, Container, Typography, Button, Stack, Snackbar, TextField } from "@mui/material";
+import { Alert, Container, Typography, Button, Stack, Snackbar, TextField, CircularProgress, Box } from "@mui/material";
+import CheckCircleIcon from "@mui/icons-material/CheckCircle";
+import ErrorIcon from "@mui/icons-material/Error";
+import { useGlobalState } from "../services/Authentication/GlobalStateManager";
+import { ErrorContext } from "../components/shared/ErrorContext";
+
 const NetworkMonitor = () => {
   const [nodes, setNodes] = useState([]);
   const [nodesWithNoClient, setNodesWithNoClient] = useState([]);
-  const [nodePasswords, setNodePasswords] = useState([])
-  const [errors, setErrors] = useState([]); // list of exceptions (mostly all from api handling)
+  const [nodePasswords, setNodePasswords] = useState([]);
+  const [syncingNodeIds, setSyncingNodeIds] = useState(new Set());
+  const [failedNodeIds, setFailedNodeIds] = useState(new Set());
   const apiHandler = useMemo(() => new APIHandlerNetworkMonitor());
+  const { errors, setErrors } = useContext(ErrorContext);
 
   const fetchNodes = async () => {
     const nodes = await apiHandler.get_all_nodes();
@@ -35,18 +38,85 @@ const NetworkMonitor = () => {
     if (!nodes_with_no_client.isEmpty()) {
       setIsWarningOpen(true)
       setNodesWithNoClient(nodes_with_no_client);
+    } else {
+      setNodesWithNoClient([]);
+      setIsWarningOpen(false);
     }
+  };
+
+  const handleChangePasswordForNode = async (node, nodePassword) => {
+    setNodePasswords((prevPasswords) => {
+      const exists = prevPasswords.find((np) => np.node === node.nid);
+
+      if (exists) {
+        // Update existing password
+        return prevPasswords.map((np) =>
+          np.node === node.nid ? { node: node.nid, password: nodePassword } : np
+        );
+      } else {
+        // Add new password entry
+        return [...prevPasswords, { node: node.nid, password: nodePassword }];
+      }
+    });
   };
 
   const createClientForNode = async (node) => {
     try {
-      const nodeClientPassword = nodePasswords.find((nodePasswords) => nodePasswords.node === node.nid).password
-      await apiHandler.create_client_for_node(node, nodeClientPassword);
-      fetchNodes();
+      const nodePasswordObj = nodePasswords.find(
+        (nodePasswords) => nodePasswords.node === node.nid
+      );
+
+      // Safety check - ensure the password object exists
+      if (!nodePasswordObj) {
+        setErrors([...errors, `No password provided for node ${node.nid}`]);
+        setFailedNodeIds((prev) => new Set([...prev, node.nid]));
+        return;
+      }
+
+      // Set loading state
+      setSyncingNodeIds((prev) => new Set([...prev, node.nid]));
+
+      await apiHandler.create_client_for_node(node, nodePasswordObj.password);
+
+      // Remove password after successful creation
+      setNodePasswords((prevPasswords) =>
+        prevPasswords.filter((np) => np.node !== node.nid)
+      );
+
+      // Fetch updated nodes
+      await fetchNodes();
+      await checkNodesWithNoClient();
+
+      // Clear loading state
+      setSyncingNodeIds((prev) => {
+        const updated = new Set(prev);
+        updated.delete(node.nid);
+        return updated;
+      });
     } catch (apiException) {
       setErrors([...errors, apiException]);
-    };
+
+      // Set failure state
+      setFailedNodeIds((prev) => new Set([...prev, node.nid]));
+
+      // Clear loading state
+      setSyncingNodeIds((prev) => {
+        const updated = new Set(prev);
+        updated.delete(node.nid);
+        return updated;
+      });
+
+      // Clear failure status after 3 seconds
+      setTimeout(() => {
+        setFailedNodeIds((prev) => {
+          const updated = new Set(prev);
+          updated.delete(node.nid);
+          return updated;
+        });
+      }, 3000);
+    }
   };
+
   useEffect(() => {
     fetchNodes();
   }, []);
@@ -60,8 +130,13 @@ const NetworkMonitor = () => {
     setIsOpen(!isOpen);
   };
   const [isWarningOpen, setIsWarningOpen] = useState(false)
+
+  const isSyncing = (nodeId) => syncingNodeIds.has(nodeId);
+  const isFailed = (nodeId) => failedNodeIds.has(nodeId);
+  const hasClient = (nodeId) => !nodesWithNoClient.find((node) => node.nid === nodeId);
+
   return (
-    <ThemeProvider theme={theme}>
+    <>
       {/* Warning Snackbars */}
       <Snackbar
         open={isWarningOpen}
@@ -83,10 +158,7 @@ const NetworkMonitor = () => {
         </Alert>
       </Snackbar >
 
-
       <Stack>
-        <Sidebar isOpen={isOpen} toggle={toggle} />
-        <Navbar toggle={toggle} />
         <HeroSectionCDN />
         <NodeContainer>
           <Typography
@@ -131,13 +203,33 @@ const NetworkMonitor = () => {
                         type="password"
                         fullWidth
                         variant="standard"
-                        onChange={(event) => setNodePasswords([...nodePasswords, { node: node.nid, password: event.target.value }])}
+                        onChange={(event) => handleChangePasswordForNode(node, event.target.value)}
+                        disabled={isSyncing(node.nid)}
                       />
-                      <Button onClick={() => createClientForNode(node)} >
-                        Create Client
-                      </Button>
+                      <Box sx={{ display: "flex", alignItems: "center", gap: 1, mt: 2 }}>
+                        <Button
+                          onClick={() => createClientForNode(node)}
+                          disabled={isSyncing(node.nid)}
+                        >
+                          Create Client
+                        </Button>
+                        {isSyncing(node.nid) && (
+                          <CircularProgress size={24} />
+                        )}
+                        {isFailed(node.nid) && (
+                          <ErrorIcon sx={{ color: "error.main", fontSize: 28 }} />
+                        )}
+                      </Box>
                     </>
                   }
+                  {hasClient(node.nid) && (
+                    <Box sx={{ display: "flex", alignItems: "center", gap: 1, mt: 2 }}>
+                      <CheckCircleIcon sx={{ color: "success.main", fontSize: 28 }} />
+                      <Typography variant="body2" sx={{ color: "success.main" }}>
+                        MQTT Client Created
+                      </Typography>
+                    </Box>
+                  )}
                 </NodeCard>
               ))
             )}
@@ -161,7 +253,7 @@ const NetworkMonitor = () => {
           </Grid>
         </Container>
       </Stack>
-    </ThemeProvider >
+    </>
   );
 };
 

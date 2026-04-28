@@ -1,21 +1,3 @@
-
-/**
- * 
- * As of now, this is the response of classify endpont: 
- * 
- * example: 
- * {
-  *"slice1": { 
-   *   "start_time": 0,
-   *   "end_time": 10,
-   *   "E. coqui": true,
-   *   ...
-   *},
-   *"slice2": ...
-}
- */
-
-
 /**
  * Encapsulation of API response for classification endpoint (/api/report/classify)
  * 
@@ -28,8 +10,17 @@ export default class ClassifierReport {
             new SliceReport(APIResponseJsonData[slice])
         ))
     }
+
     map(callback) {
         return this.slices.map(callback);
+    }
+
+    slice(start, end) {
+        return this.slices.slice(start, end);
+    }
+
+    get length() {
+        return this.slices.length;
     }
 }
 

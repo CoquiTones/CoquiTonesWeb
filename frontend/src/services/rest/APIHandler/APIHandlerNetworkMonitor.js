@@ -14,13 +14,12 @@ export class APIHandlerNetworkMonitor extends APIHandlerBase {
             });
 
             if (!response.ok) {
-                throw new BackendError('Unable to get all nodes due to network error: ' + response.statusText)
+                throw new BackendError(response.statusText)
             }
             const getNodeAPIResopnse = await response.json()
             return new NodeList(getNodeAPIResopnse);
         } catch (error) {
-            console.error("Error fetching all nodes : ", error);
-            throw new APIHandlerError('Error with fetching all nodes in API Handler: ' + error.message);
+            throw new APIHandlerError('Error with fetching all nodes from database: ' + error.message);
         }
     }
 
@@ -35,9 +34,12 @@ export class APIHandlerNetworkMonitor extends APIHandlerBase {
                 headers: this.getAuthenticationHeader(),
                 body: insert_new_node_request.toFormData()
             })
+
+            if (!response.ok) {
+                throw new APIHandlerError(response.statusText);
+            }
         } catch (error) {
-            console.error("Error Inserting New Node: ", error);
-            throw new APIHandlerError("Error Inserting all nodes in API Handler for Network Monitor: " + error.message);
+            throw new APIHandlerError("Error Inserting nodes in database for Network Monitor: " + error.message);
         }
     }
 

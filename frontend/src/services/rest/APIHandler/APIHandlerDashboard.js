@@ -17,13 +17,13 @@ export class APIHandlerDashboard extends APIHandlerBase {
             })
 
             if (!response.ok) {
-                throw new BackendError('Unable to retrieve weekly summary due to network error');
+                throw new BackendError(response.statusText);
             }
 
             const latestWeekSpeciesSummaryApiResponse = await response.json();
             return new WeekSpeciesSummary(latestWeekSpeciesSummaryApiResponse);
         } catch (error) {
-            throw new APIHandlerError('Error with latest week summary in Handler: ' + error.message)
+            throw new APIHandlerError('Error with latest week summary: ' + error.message)
         }
     }
     // eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ1c2VybmFtZTp0ZXN0dXNlciIsImF1aWQiOjEsImV4cCI6MTc2MDEyMjY4MH0.pyOlThe_J53TDI6s9kLmsSXySYowypXiOL9X4zbevhs
@@ -35,13 +35,13 @@ export class APIHandlerDashboard extends APIHandlerBase {
             })
 
             if (!response.ok) {
-                throw new BackendError('Unable to retrieve node health check due to network error');
+                throw new BackendError(response.statusText);
             }
 
             const nodeHealthCheckApiResponse = await response.json();
             return new NodeHealthCheck(nodeHealthCheckApiResponse);
         } catch (error) {
-            throw new APIHandlerError('Error with node health check in Handler: ' + error.message)
+            throw new APIHandlerError('Error with fetching node health check: ' + error.message)
         }
     }
 
@@ -53,13 +53,13 @@ export class APIHandlerDashboard extends APIHandlerBase {
             })
 
             if (!response.ok) {
-                throw new BackendError('Unable to retrieve recent reports due to network error');
+                throw new BackendError(response.statusText);
             }
 
             const recentReportsApiResponse = await response.json();
             return new RecentReports(recentReportsApiResponse);
         } catch (error) {
-            throw new APIHandlerError('Error with recent reports in Handler: ' + error.message)
+            throw new APIHandlerError('Error with fetching recent reports: ' + error.message)
         }
     }
 
@@ -77,13 +77,13 @@ export class APIHandlerDashboard extends APIHandlerBase {
             })
 
             if (!response.ok) {
-                throw new BackendError('Unable to retrieve recent reports due to network error');
+                throw new BackendError(response.statusText);
             }
 
             const recentDataAPIResponse = await response.json();
             return new RecentData(recentDataAPIResponse);
         } catch (error) {
-            throw new APIHandlerError('Error with recent reports in Handler: ' + error.message)
+            throw new APIHandlerError('Error with fetching table data from backend: ' + error.message)
         }
     }
 
@@ -101,13 +101,13 @@ export class APIHandlerDashboard extends APIHandlerBase {
             });
 
             if (!response.ok) {
-                throw new BackendError('Unable to delete selected reports due to network error');
+                throw new BackendError(response.statusText);
             }
 
             const deleteRecordsAPIResponse = await response.json();
             return deleteRecordsAPIResponse
         } catch (error) {
-            throw new APIHandlerError('Error with deleting selected reports', error.message);
+            throw new APIHandlerError('Error with deleting selected reports' + error.message);
         }
     }
 }   

@@ -1,7 +1,5 @@
 import React from "react";
-import { useState } from "react";
-import { ThemeProvider } from "@mui/material/styles";
-import CssBaseline from "@mui/material/CssBaseline";
+import { useState, useMemo, useContext } from "react";
 import Box from "@mui/material/Box";
 import Toolbar from "@mui/material/Toolbar";
 import Container from "@mui/material/Container";
@@ -9,27 +7,20 @@ import Grid from "@mui/material/Grid";
 import Paper from "@mui/material/Paper";
 
 import Chart from "../components/dashboard/WeekLineChart";
-import LatestNodeHeartbeat from "../components/dashboard/NodeHeartbeat";
-import RecentEntries from "../components/dashboard/RecentEntries";
-import Navbar from "../components/shared/Navbar";
+import NodeHealthCheck from "../components/dashboard/NodeHealthCheck";
 import Footer from "../components/shared/Footer";
-import theme from "../components/shared/Theme";
-import Sidebar from "../components/shared/Sidebar";
+import ErrorAlerts from "../components/shared/ErrorAlerts";
+import { ErrorContext } from "../components/shared/ErrorContext";
 import DataTable from "../components/shared/DataTable";
 
 export default function Dashboard() {
-  const [isOpen, setIsOpen] = useState(false);
-  const toggle = () => {
-    setIsOpen(!isOpen);
-  };
+  const { errors, setErrors } = useContext(ErrorContext);
 
   return (
-    <ThemeProvider theme={theme}>
-      <Sidebar isOpen={isOpen} toggle={toggle} />
-      <Navbar toggle={toggle} />
+    <>
+      <ErrorAlerts errors={errors} setErrors={setErrors} />
       {
         <Box sx={{ display: "flex", width: "100%" }}>
-          <CssBaseline />
           <Box
             component="main"
             sx={{
@@ -52,7 +43,7 @@ export default function Dashboard() {
                       height: 500,
                     }}
                   >
-                    <Chart />
+                    <Chart errors={errors} setErrors={setErrors} />
                   </Paper>
                 </Grid>
 
@@ -65,7 +56,7 @@ export default function Dashboard() {
                       height: 500,
                     }}
                   >
-                    <LatestNodeHeartbeat />
+                    <NodeHealthCheck errors={errors} setErrors={setErrors} />
                   </Paper>
                 </Grid>
 
@@ -77,7 +68,7 @@ export default function Dashboard() {
                       width: "100%",
                     }}
                   >
-                    <DataTable />
+                    <DataTable errors={errors} setErrors={setErrors} />
                   </Paper>
                 </Grid>
               </Grid>
@@ -86,6 +77,6 @@ export default function Dashboard() {
         </Box>
       }
       <Footer />
-    </ThemeProvider>
+    </>
   );
 }

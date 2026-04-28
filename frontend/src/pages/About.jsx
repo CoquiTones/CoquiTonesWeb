@@ -5,11 +5,7 @@ import {
   CarouselH1,
   CarouselP,
 } from "../components/shared/CarouselStyle";
-import { ThemeProvider } from "@emotion/react";
-import Sidebar from "../components/shared/Sidebar";
 import DotsMobileStepper from "../components/shared/DotsMobileStepper";
-import Navbar from "../components/shared/Navbar";
-import theme from "../components/shared/Theme";
 import AboutUsSection from "../components/shared/AboutUsSection";
 import Footer from "../components/shared/Footer";
 import background from "../components/assets/images/AboutBGImage.svg";
@@ -64,12 +60,9 @@ const About = () => {
     },
   ];
 
-  const [isOpen, setIsOpen] = useState(false);
   const [activeStep, setActiveStep] = useState(0);
   return (
-    <ThemeProvider theme={theme} style={{ background: "#191716" }}>
-      <Sidebar isOpen={isOpen} toggle={setIsOpen} />
-      <Navbar toggle={setIsOpen} />
+    <>
       <Item item={items.at(activeStep)} />
 
       <DotsMobileStepper
@@ -79,7 +72,7 @@ const About = () => {
       />
       <AboutUsSection />
       <Footer />
-    </ThemeProvider>
+    </>
   );
 };
 

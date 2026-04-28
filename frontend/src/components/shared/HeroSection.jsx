@@ -18,8 +18,8 @@ const HeroSection = () => {
       <div className="hero-content">
         <img src={logo} width={250} height={250} alt="Logo" />
         <h1 className="hero-h1">
-          All the tools you need for monitoring Amphibian Species with
-          Acoustics.
+          All the tools you need for monitoring amphibian species with
+          acoustics.
         </h1>
         <h1 className="hero-h1">
           All in one place.

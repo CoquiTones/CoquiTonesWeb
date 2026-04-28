@@ -1,5 +1,4 @@
 import React, { useEffect, useRef, useState } from "react";
-import { ThemeProvider } from "@mui/material/styles";
 import { Button } from "@mui/material";
 import theme from "../../shared/Theme";
 
@@ -73,7 +72,7 @@ export default function SoundPlayer({
   }, [source, bandpassFilter]);
 
   return (
-    <ThemeProvider theme={theme}>
+    <>
       {audioUrl && !playing && (
         <Button variant="condensed" onClick={() => handleClick()}>
           Play Sample
@@ -90,6 +89,6 @@ export default function SoundPlayer({
           />
         )}
       </div>
-    </ThemeProvider>
+    </>
   );
 }
