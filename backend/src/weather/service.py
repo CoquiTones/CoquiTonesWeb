@@ -1,5 +1,3 @@
-import audio.repository as repository
-
 from weather.repository import WeatherData
 
 from dbutil import DBTransactionDependency
@@ -17,7 +15,7 @@ async def weather_all(
     return await WeatherData.get_all(current_user.auid, transaction.connection)
 
 
-@router.get("/api/weather")
+@router.get("/api/weather/")
 async def weather_get(
     wdid: Annotated[int, Form()],
     current_user: Annotated[LightWeightUser, Depends(get_current_user)],
