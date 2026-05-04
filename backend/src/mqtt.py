@@ -1,6 +1,9 @@
 from aiomqtt import Client
 import asyncio
 import dao
+import timestamp.repository
+import audio.repository
+import weather.repository
 import os
 import re
 import dotenv
@@ -304,7 +307,7 @@ async def listen_for_reports():
 def parse_report(report_raw: bytes) -> Report:
     return Report.model_validate_json(report_raw)
 
-
+# TODO: MQTT service moodule that provides this service
 async def handle_report(report: Report, model):
     LOGGER.info(f"INFO: New report from node {report.node_id}")
     async with get_transaction() as transaction:
@@ -312,16 +315,16 @@ async def handle_report(report: Report, model):
         if db is None:
             LOGGER.error("Failed to connect to database")
             return
-        timestamp_index = await dao.TimestampIndex.insert(
+        timestamp_index = await timestamp.repository.TimestampIndex.insert(
             db, report.node_id, report.timestamp
         )
         if timestamp_index is None:
             LOGGER.error(f"Failed to save timestamp {report.timestamp}")
             return
-        f1 = dao.AudioFile.insert(
+        f1 = audio.repository.AudioFile.insert(
             db, report.audio.data, report.node_id, timestamp_index
         )
-        f2 = dao.WeatherData.insert(
+        f2 = weather.repository.WeatherData.insert(
             db,
             timestamp_index,
             report.weather_data.temperature,

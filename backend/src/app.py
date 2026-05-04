@@ -1,8 +1,8 @@
 from contextlib import asynccontextmanager
 from typing import Annotated
-from fastapi import FastAPI, File, UploadFile, staticfiles, Depends, HTTPException, Form
+from fastapi import FastAPI, staticfiles, Depends, HTTPException, Form
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import HTMLResponse, Response
+from fastapi.responses import HTMLResponse
 from fastapi import status
 from dbutil import DBTransactionDependency
 from pydantic import SecretStr
@@ -10,16 +10,13 @@ from routers.security import get_current_user, LightWeightUser
 from routers.security import router as security_router
 from timestamp.router import router as timestamp_router
 from audio.router import router as audio_router
-from standaloneops import classify_and_save
+from weather.router import router as weather_router
 from Requests.RecordToBeDeleted import RecordTimestampIndex
 import dao
 import mqtt
 import os
-import io
 import asyncio
 import dotenv
-import ssl
-import json
 
 from datetime import datetime, timedelta
 from Logger import Logger
@@ -63,6 +60,7 @@ app.mount(
 app.include_router(security_router)
 app.include_router(timestamp_router)
 app.include_router(audio_router)
+app.include_router(weather_router)
 
 
 @app.get("/api/node/all")
@@ -121,23 +119,6 @@ async def nodes_with_no_client(
     client_names = all_mqtt_clients.result().keys()
     missing_nodes = filter(lambda node: node.nname not in client_names, primary_nodes)
     return list(missing_nodes)
-
-@app.get("/api/weather/all")
-async def weather_all(
-    current_user: Annotated[LightWeightUser, Depends(get_current_user)],
-    transaction: DBTransactionDependency,
-):
-    return await dao.WeatherData.get_all(current_user.auid, transaction.connection)
-
-
-@app.get("/api/weather")
-async def weather_get(
-    wdid: Annotated[int, Form()],
-    current_user: Annotated[LightWeightUser, Depends(get_current_user)],
-    transaction: DBTransactionDependency,
-):
-    return await dao.WeatherData.get(current_user.auid, wdid, transaction.connection)
-
 
 @app.post(path="/api/node/insert")
 async def node_insert(
