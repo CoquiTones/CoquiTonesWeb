@@ -3,9 +3,9 @@ from psycopg.connection_async import AsyncConnection
 from dataclasses import dataclass
 from dbutil import default_HTTP_exception
 from datetime import datetime
-from psycopg import sql, errors
+from psycopg import sql
 from psycopg.connection_async import AsyncConnection
-from psycopg.rows import class_row, scalar_row
+from psycopg.rows import scalar_row
 from psycopg import Error as PGError
 
 
@@ -35,7 +35,7 @@ class WeatherData(DAO):
         wdhumidity: float,
         wdpressure: float,
         wddid_rain: bool,
-    ):
+    ) -> int:
         async with db.cursor(row_factory=scalar_row) as curs:
             try:
                 await curs.execute(
@@ -56,9 +56,8 @@ RETURNING {id_column}
                 )
 
                 db_response = await curs.fetchone()
-
-                if db_response is not None:
-                    return db_response[0]
+                assert(db_response is not None)
+                return db_response
 
             except PGError as e:
                 LOGGER.error("Error executing SQL query:", e)
