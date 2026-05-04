@@ -6,7 +6,7 @@ from fastapi import Depends, Form, APIRouter
 
 router = APIRouter()
 
-@router.get("/api/timestamp/all")
+@router.get("/timestamp/all")
 async def timestamp_all(
     current_user: Annotated[LightWeightUser, Depends(get_current_user)],
     transaction: DBTransactionDependency,
@@ -14,7 +14,7 @@ async def timestamp_all(
     return await repository.TimestampIndex.get_all(current_user.auid, transaction.connection)
 
 
-@router.get("/api/timestamp")
+@router.get("/timestamp")
 async def timestamp_get(
     tid: Annotated[int, Form()],
     current_user: Annotated[LightWeightUser, Depends(get_current_user)],

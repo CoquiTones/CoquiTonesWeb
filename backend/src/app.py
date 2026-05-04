@@ -1,16 +1,15 @@
 from contextlib import asynccontextmanager
 from typing import Annotated
-from fastapi import FastAPI, staticfiles, Depends, HTTPException, Form
+from fastapi import FastAPI, staticfiles, Depends, APIRouter, Form
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse
-from fastapi import status
 from dbutil import DBTransactionDependency
-from pydantic import SecretStr
 from routers.security import get_current_user, LightWeightUser
 from routers.security import router as security_router
 from timestamp.router import router as timestamp_router
 from audio.router import router as audio_router
 from weather.router import router as weather_router
+from node.router import router as node_router
 from Requests.RecordToBeDeleted import RecordTimestampIndex
 import dao
 import mqtt
@@ -56,11 +55,15 @@ app.mount(
     name="assets",
 )
 
-app.include_router(security_router)
-app.include_router(timestamp_router)
-app.include_router(audio_router)
-app.include_router(weather_router)
+api = APIRouter(prefix="/api")
 
+api.include_router(security_router)
+api.include_router(timestamp_router)
+api.include_router(audio_router)
+api.include_router(weather_router)
+api.include_router(node_router)
+
+app.include_router(api)
 
 @app.get(path="/api/dashboard/week-species-summary")
 async def week_species_summary(

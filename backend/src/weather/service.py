@@ -7,7 +7,7 @@ from fastapi import Depends, Form, APIRouter
 
 router = APIRouter()
 
-@router.get("/api/weather/all")
+@router.get("/weather/all")
 async def weather_all(
     current_user: Annotated[LightWeightUser, Depends(get_current_user)],
     transaction: DBTransactionDependency,
@@ -15,7 +15,7 @@ async def weather_all(
     return await WeatherData.get_all(current_user.auid, transaction.connection)
 
 
-@router.get("/api/weather/")
+@router.get("/weather/")
 async def weather_get(
     wdid: Annotated[int, Form()],
     current_user: Annotated[LightWeightUser, Depends(get_current_user)],

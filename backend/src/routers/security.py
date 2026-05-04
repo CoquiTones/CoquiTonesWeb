@@ -108,7 +108,7 @@ async def authenticate_user(
     return user
 
 
-@router.post("/api/token")
+@router.post("/token")
 async def login_for_access_token(
     form_data: Annotated[OAuth2PasswordRequestForm, Depends()],
     transaction: DBTransactionDependency,
@@ -129,21 +129,21 @@ async def login_for_access_token(
     return Token(access_token=access_token, token_type="bearer")
 
 
-@router.get("/api/authenticated")
+@router.get("/authenticated")
 async def is_user_authenticated(
     current_user: Annotated[LightWeightUser, Depends(get_current_user)],
 ):
     return {"is_authenticated": True}
 
 
-@router.get("/api/users/me")
+@router.get("/users/me")
 async def read_users_me(
     current_user: Annotated[LightWeightUser, Depends(get_current_user)],
 ):
     return current_user
 
 
-@router.post("/api/createuser")
+@router.post("/createuser")
 async def create_user(
     username: Annotated[str, Form()],
     password: Annotated[SecretStr, Form()],

@@ -14,7 +14,7 @@ router = APIRouter()
 
 LOGGER = Logger.getInstance("Node services")
 
-@router.get("/api/node/all")
+@router.get("/node/all")
 async def node_all(
     current_user: Annotated[LightWeightUser, Depends(get_current_user)],
     transaction: DBTransactionDependency,
@@ -22,7 +22,7 @@ async def node_all(
     return await repository.Node.get_all(current_user.auid, transaction.connection)
 
 
-@router.get("/api/node")
+@router.get("/node")
 async def node_get(
     current_user: Annotated[LightWeightUser, Depends(get_current_user)],
     nid: Annotated[int, Form()],
@@ -31,7 +31,7 @@ async def node_get(
     return await repository.Node.get(current_user.auid, nid, transaction.connection)
 
 
-@router.post("/api/node/mqtt")
+@router.post("/node/mqtt")
 async def create_node_client(
     current_user: Annotated[LightWeightUser, Depends(get_current_user)],
     nid: Annotated[int, Form()],
@@ -51,7 +51,7 @@ async def create_node_client(
         )
 
 
-@router.get("/api/node/noclient")
+@router.get("/node/noclient")
 async def nodes_with_no_client(
     current_user: Annotated[LightWeightUser, Depends(get_current_user)],
     transaction: DBTransactionDependency,
@@ -71,7 +71,7 @@ async def nodes_with_no_client(
     missing_nodes = filter(lambda node: node.nname not in client_names, primary_nodes)
     return list(missing_nodes)
 
-@router.post(path="/api/node/insert")
+@router.post(path="/node/insert")
 async def node_insert(
     ntype: Annotated[str, Form()],
     nname: Annotated[str, Form()],
@@ -166,7 +166,7 @@ async def node_insert(
         return node_task.result()
 
 
-@router.delete(path="/api/node/delete")
+@router.delete(path="/node/delete")
 async def node_delete(
     nid: Annotated[int, Form()],
     current_user: Annotated[LightWeightUser, Depends(get_current_user)],

@@ -4,6 +4,7 @@ import dao
 import timestamp.repository
 import audio.repository
 import weather.repository
+from node.repository import Node
 import os
 import re
 import dotenv
@@ -461,7 +462,7 @@ async def broker_sync():
                     # Modify roles by getting all nodes owned by each user and ensuring user's role has permission to send to all nodes' topics.
                     for node in filter(
                         lambda node: node.nid not in allowed_node_ids,
-                        await dao.Node.get_all(user.auid, db),
+                        await Node.get_all(user.auid, db),
                     ):
                         LOGGER.info(
                             f"INFO: adding topic access to node {node.nid} for user {user.username}"

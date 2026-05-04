@@ -49,7 +49,7 @@ async def insert_audio_and_timestamp(
 
 # Path operations
 
-@router.get("/api/audio/all")
+@router.get("/audio/all")
 async def audio_all(
     current_user: Annotated[LightWeightUser, Depends(get_current_user)],
     transaction: DBTransactionDependency,
@@ -57,7 +57,7 @@ async def audio_all(
     return await repository.AudioFile.get_all(current_user.auid, transaction.connection)
 
 
-@router.post(path="/api/audio", response_class=Response)
+@router.post(path="/audio", response_class=Response)
 async def audio_get(
     afid: Annotated[int, Form()],
     current_user: Annotated[LightWeightUser, Depends(get_current_user)],
@@ -73,7 +73,7 @@ async def audio_get(
     return Response(content=bytes(data), media_type="audio/mpeg")
 
 
-@router.get("/api/audioslices/all")
+@router.get("/audioslices/all")
 async def audio_slice_all(
     current_user: Annotated[LightWeightUser, Depends(get_current_user)],
     transaction: DBTransactionDependency,
@@ -81,7 +81,7 @@ async def audio_slice_all(
     return await repository.AudioSlice.get_all(current_user.auid, transaction.connection)
 
 
-@router.get(path="/api/audioslices")
+@router.get(path="/audioslices")
 async def audio_slice_get(
     asid: Annotated[int, Form()],
     current_user: Annotated[LightWeightUser, Depends(get_current_user)],
@@ -90,7 +90,7 @@ async def audio_slice_get(
     return await repository.AudioSlice.get(current_user.auid, asid, transaction.connection)
 
 
-@router.post(path="/api/audio/insert")
+@router.post(path="/audio/insert")
 async def audio_post(
     nid: Annotated[int, Form()],
     timestamp: Annotated[datetime, Form()],
@@ -111,7 +111,7 @@ async def audio_post(
     return audio_file_id
 
 
-@router.get(path="/api/classify/by-id")
+@router.get(path="/classify/by-id")
 async def classify_by_afid(
     afid: Annotated[int, Form()],
     current_user: Annotated[LightWeightUser, Depends(get_current_user)],
@@ -135,7 +135,7 @@ async def classify_by_afid(
     return await repository.AudioSlice.get_classified(afid, transaction.connection)
 
 
-@router.post(path="/api/classifier/classify")
+@router.post(path="/classifier/classify")
 async def classify(file: UploadFile = File(...), model=Depends(get_model)):
     report = classify_audio_file(file.file, model)
     return report
