@@ -6,13 +6,13 @@ from mlutil import get_model, classify_audio_file
 from dbutil import DBTransactionDependency
 from routers.security import LightWeightUser, get_current_user
 from datetime import datetime
-from typing import Annotated
+from typing import Annotated, List
 from fastapi import Depends, Form, UploadFile, File, HTTPException, Response, APIRouter
 from psycopg import AsyncConnection
 from asyncio import TaskGroup
 import io
 
-router = APIRouter()
+router = APIRouter(tags=["Audio"])
 
 # --- SERVICES PER SE ---
 
@@ -49,7 +49,11 @@ async def insert_audio_and_timestamp(
 
 # Path operations
 
-@router.get("/audio/all")
+file_router = APIRouter(prefix="/audio", tags=["File"])
+audio_slices_router = APIRouter(prefix="/audioslices", tags=["Audio Slices"])
+classify_router = APIRouter(tags=["Classification"])
+
+@file_router.get("/all")
 async def audio_all(
     current_user: Annotated[LightWeightUser, Depends(get_current_user)],
     transaction: DBTransactionDependency,
@@ -57,7 +61,7 @@ async def audio_all(
     return await repository.AudioFile.get_all(current_user.auid, transaction.connection)
 
 
-@router.post(path="/audio", response_class=Response)
+@file_router.post(path="/", response_class=Response)
 async def audio_get(
     afid: Annotated[int, Form()],
     current_user: Annotated[LightWeightUser, Depends(get_current_user)],
@@ -72,25 +76,7 @@ async def audio_get(
     assert data is not None
     return Response(content=bytes(data), media_type="audio/mpeg")
 
-
-@router.get("/audioslices/all")
-async def audio_slice_all(
-    current_user: Annotated[LightWeightUser, Depends(get_current_user)],
-    transaction: DBTransactionDependency,
-):
-    return await repository.AudioSlice.get_all(current_user.auid, transaction.connection)
-
-
-@router.get(path="/audioslices")
-async def audio_slice_get(
-    asid: Annotated[int, Form()],
-    current_user: Annotated[LightWeightUser, Depends(get_current_user)],
-    transaction: DBTransactionDependency,
-):
-    return await repository.AudioSlice.get(current_user.auid, asid, transaction.connection)
-
-
-@router.post(path="/audio/insert")
+@file_router.post(path="/insert")
 async def audio_post(
     nid: Annotated[int, Form()],
     timestamp: Annotated[datetime, Form()],
@@ -110,8 +96,27 @@ async def audio_post(
 
     return audio_file_id
 
+router.include_router(file_router)
 
-@router.get(path="/classify/by-id")
+@audio_slices_router.get(path="/all")
+async def audio_slice_all(
+    current_user: Annotated[LightWeightUser, Depends(get_current_user)],
+    transaction: DBTransactionDependency,
+) -> List[repository.AudioSlice]:
+    return await repository.AudioSlice.get_all(current_user.auid, transaction.connection)
+
+
+@audio_slices_router.get(path="/")
+async def audio_slice_get(
+    asid: Annotated[int, Form()],
+    current_user: Annotated[LightWeightUser, Depends(get_current_user)],
+    transaction: DBTransactionDependency,
+):
+    return await repository.AudioSlice.get(current_user.auid, asid, transaction.connection)
+
+router.include_router(audio_slices_router)
+
+@classify_router.get(path="/classify/by-id")
 async def classify_by_afid(
     afid: Annotated[int, Form()],
     current_user: Annotated[LightWeightUser, Depends(get_current_user)],
@@ -135,8 +140,9 @@ async def classify_by_afid(
     return await repository.AudioSlice.get_classified(afid, transaction.connection)
 
 
-@router.post(path="/classifier/classify")
+@classify_router.post(path="/classifier/classify")
 async def classify(file: UploadFile = File(...), model=Depends(get_model)):
     report = classify_audio_file(file.file, model)
     return report
 
+router.include_router(classify_router)
