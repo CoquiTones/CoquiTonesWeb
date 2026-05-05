@@ -2,7 +2,7 @@ import node.repository as repository
 
 import mqtt
 from dbutil import DBTransactionDependency
-from routers.security import LightWeightUser, get_current_user
+from user.service import LightWeightUser, get_current_user
 import asyncio
 from typing import Annotated, List
 from pydantic import SecretStr

@@ -1,7 +1,7 @@
 from weather.repository import WeatherData
 
 from dbutil import DBTransactionDependency
-from routers.security import LightWeightUser, get_current_user
+from user.service import LightWeightUser, get_current_user
 from typing import Annotated, List
 from fastapi import Depends, Form, APIRouter
 

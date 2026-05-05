@@ -2,7 +2,7 @@ import dashboard.repository as repository
 
 from Requests.RecordToBeDeleted import RecordTimestampIndex
 from dbutil import DBTransactionDependency
-from routers.security import LightWeightUser, get_current_user
+from user.service import LightWeightUser, get_current_user
 
 from datetime import datetime
 from typing import Annotated, List

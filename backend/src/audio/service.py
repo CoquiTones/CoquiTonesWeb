@@ -1,53 +1,17 @@
 import audio.repository as repository
+from audio.basic_service import insert_audio_and_timestamp, classify_and_save
 
 from timestamp.repository import TimestampIndex
 
 from mlutil import get_model, classify_audio_file
 from dbutil import DBTransactionDependency
-from routers.security import LightWeightUser, get_current_user
+from user.service import LightWeightUser, get_current_user
 from datetime import datetime
 from typing import Annotated, List
 from fastapi import Depends, Form, UploadFile, File, HTTPException, Response, APIRouter
-from psycopg import AsyncConnection
-from asyncio import TaskGroup
 import io
 
 router = APIRouter(tags=["Audio"])
-
-# --- SERVICES PER SE ---
-
-async def classify_and_save(audio, audio_file_id, db, model):
-    classifier_output = classify_audio_file(audio, model)
-    slice_insert_tasks = []
-    async with TaskGroup() as task_group:
-        for classified_slice_name, classified_slice in classifier_output.items():
-            classified_slice["starttime"] = classified_slice.pop("start_time")
-            classified_slice["endtime"] = classified_slice.pop("end_time")
-            slice_insert_tasks.append(
-                task_group.create_task(
-                    dao.AudioSlice.insert(db, audio_file_id, **classified_slice),  # type: ignore
-                    name=classified_slice_name,
-                )
-            )
-
-    results = map(lambda task: task.result(), slice_insert_tasks)
-    return results
-
-async def insert_audio_and_timestamp(
-        db: AsyncConnection,
-        owner: int,
-        file,
-        nid: int,
-        timestamp: datetime
-): 
-    async with TaskGroup() as setup_group:
-        tid = setup_group.create_task(TimestampIndex.insert(db, nid, timestamp))
-        data = setup_group.create_task(file.read())
-
-    audio_file_id = await repository.AudioFile.insert(db, data.result(), nid, tid.result())
-    
-
-# Path operations
 
 file_router = APIRouter(prefix="/audio", tags=["File"])
 audio_slices_router = APIRouter(prefix="/audioslices", tags=["Audio Slices"])

@@ -9,7 +9,7 @@ from jwt.exceptions import InvalidTokenError
 from dbutil import DBTransactionDependency
 from psycopg import AsyncTransaction
 import hashlib
-import dao
+import user.repository as repository
 import os
 import mqtt
 
@@ -92,10 +92,10 @@ async def authenticate_user(
     submitted_username: str,
     submitted_password: SecretStr,
     transaction: AsyncTransaction,
-) -> dao.User | None:
+) -> repository.User | None:
     if not validate_username(submitted_username):
         return None
-    user: dao.User | None = await dao.User.get_by_username(
+    user: repository.User | None = await repository.User.get_by_username(
         transaction.connection, submitted_username
     )
     if not user:
@@ -153,7 +153,7 @@ async def create_user(
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Username too long")
     salt = os.urandom(16)
     pwhash = hash_password(password, salt)
-    auid = await dao.User.insert(transaction.connection, username, pwhash, salt)
+    auid = await repository.User.insert(transaction.connection, username, pwhash, salt)
     if auid is None:
         raise HTTPException(status.HTTP_409_CONFLICT, "Username taken")
 

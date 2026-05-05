@@ -2,7 +2,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, staticfiles, APIRouter
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse
-from routers.security import router as security_router
+from user.router import router as user_router
 from timestamp.router import router as timestamp_router
 from audio.router import router as audio_router
 from weather.router import router as weather_router
@@ -52,7 +52,7 @@ app.mount(
 
 api = APIRouter(prefix="/api")
 
-api.include_router(security_router)
+api.include_router(user_router)
 api.include_router(timestamp_router)
 api.include_router(audio_router)
 api.include_router(weather_router)

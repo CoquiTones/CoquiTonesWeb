@@ -1,10 +1,10 @@
 from aiomqtt import Client
 import asyncio
-import dao
 import timestamp.repository
 import audio.repository
 import weather.repository
 from node.repository import Node
+from user.repository import User
 import os
 import re
 import dotenv
@@ -21,7 +21,7 @@ from pydantic import (
 )
 from enum import Enum
 from datetime import datetime
-from standaloneops import classify_and_save
+from audio.basic_service import classify_and_save
 from mlutil import get_model
 from queue import Queue
 from random import randint
@@ -411,7 +411,7 @@ async def broker_sync():
                 list_roles_task = get_tasks.create_task(
                     _execute_command(client, ListRolesArgs(verbose=True))
                 )
-                get_users_task = get_tasks.create_task(dao.User.get_all_no_owner(db=db))
+                get_users_task = get_tasks.create_task(User.get_all_no_owner(db=db))
             # Get clients from broker
             clients = clients_from_command(list_clients_task.result())
 
