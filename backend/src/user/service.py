@@ -157,7 +157,9 @@ async def create_user(
     if auid is None:
         raise HTTPException(status.HTTP_409_CONFLICT, "Username taken")
 
-    if not await mqtt.create_user_role(auid):
+    try:
+        await mqtt.create_user_role(auid)
+    except mqtt.CommandExcept:
         raise HTTPException(
             status.HTTP_500_INTERNAL_SERVER_ERROR,
             "Created user but failed to create their MQTT role.",
