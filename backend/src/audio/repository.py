@@ -1,6 +1,5 @@
 from dao import DAO, LOGGER
 from psycopg.connection_async import AsyncConnection
-from dataclasses import dataclass
 from dbutil import default_HTTP_exception
 from datetime import datetime, timedelta
 from psycopg import sql, errors
@@ -9,7 +8,6 @@ from psycopg.rows import class_row, scalar_row
 from psycopg import Error as PGError
 
 
-@dataclass
 class AudioSlice(DAO):
     """Audio slice DAO"""
 
@@ -26,9 +24,12 @@ class AudioSlice(DAO):
     locustus: bool
     richmondi: bool
 
-    table = sql.Identifier("audioslice")
-    id_column = sql.Identifier("asid")
-    owner_table = sql.SQL("audioslice NATURAL INNER JOIN audiofile")
+    @staticmethod
+    def table(): return sql.Identifier("audioslice")
+    @staticmethod
+    def id_column(): return sql.Identifier("asid")
+    @staticmethod
+    def owner_table(): return sql.SQL("audioslice NATURAL INNER JOIN audiofile")
 
     @classmethod
     async def insert(
@@ -78,7 +79,6 @@ class AudioSlice(DAO):
             return await curs.fetchall()
 
 
-@dataclass
 class AudioFile(DAO):
     """Audio File DAO"""
 
@@ -87,9 +87,12 @@ class AudioFile(DAO):
     ownerid: int
     data: bytes | None = None
 
-    table = sql.Identifier("audiofile")
-    id_column = sql.Identifier("afid")
-    owner_table = sql.SQL("audiofile")
+    @staticmethod
+    def table(): return sql.Identifier("audiofile")
+    @staticmethod
+    def id_column(): return sql.Identifier("afid")
+    @staticmethod
+    def owner_table(): return sql.SQL("audiofile")
 
     @classmethod
     async def get_all(cls, owner: int, db: AsyncConnection) -> list:

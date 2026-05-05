@@ -1,17 +1,13 @@
 from dao import DAO, LOGGER
 from psycopg.connection_async import AsyncConnection
-from dataclasses import dataclass
 from dbutil import default_HTTP_exception
-from datetime import datetime
-from psycopg import sql, errors
+from psycopg import sql
 from psycopg.connection_async import AsyncConnection
-from psycopg.rows import class_row, scalar_row
+from psycopg.rows import scalar_row
 from psycopg import Error as PGError
-
 
 node_type = str
 
-@dataclass
 class Node(DAO):
     """Node DAO"""
 
@@ -23,9 +19,12 @@ class Node(DAO):
     nlongitude: float
     ndescription: str
 
-    table = sql.Identifier("node")
-    id_column = sql.Identifier("nid")
-    owner_table = sql.SQL("node")
+    @staticmethod
+    def table(): return sql.Identifier("node")
+    @staticmethod
+    def id_column(): return sql.Identifier("nid")
+    @staticmethod
+    def owner_table(): return sql.SQL("node")
 
     @classmethod
     async def insert(
@@ -53,7 +52,7 @@ class Node(DAO):
                 nid = await curs.fetchone()
                 if nid is None:
                     return None
-                return cls(nid, nname, ownerid, ntype, nlatitude, nlongitude, ndescription)
+                return cls(nid=nid, nname=nname, ownerid=ownerid, ntype=ntype, nlatitude=nlatitude, nlongitude=nlongitude, ndescription=ndescription)
             except PGError as e:
                 LOGGER.error("Error executing SQL query:", e)
                 raise default_HTTP_exception(e, "insert node query")

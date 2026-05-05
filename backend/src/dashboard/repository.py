@@ -1,5 +1,4 @@
 from psycopg.connection_async import AsyncConnection
-from dataclasses import dataclass
 from pydantic import Field, BaseModel
 from dbutil import default_HTTP_exception
 from datetime import datetime, timezone
@@ -14,8 +13,7 @@ from Logger import Logger
 
 LOGGER = Logger.getInstance("Dashboard repository")
 
-@dataclass
-class RecentData:
+class RecentData(BaseModel):
     """Recent reports dashboard operation response object"""
     nid: int
     afid: int
@@ -26,8 +24,8 @@ class RecentData:
     time: float
     tid: int
 
-@dataclass
-class ReportTableEntry:
+
+class ReportTableEntry(BaseModel):
     """Recent reports table entry"""
     ndescription: str
     ttime: datetime
@@ -45,8 +43,8 @@ class ReportTableEntry:
     wddid_rain: bool
     afid: int  # Front end should generate URL to audio file by using get audio file endpoint
 
-@dataclass
-class WeeklySummaryEntry:
+
+class WeeklySummaryEntry(BaseModel):
     """Row of weekly summary table"""
     total_coqui: int
     total_wightmanae: int
@@ -71,8 +69,7 @@ class WeeklySummaryTable(BaseModel):
     total_richmondi: list[int] = Field(default_factory=lambda: list())
     date_bin: list[datetime] = Field(default_factory=lambda: list())
 
-@dataclass
-class NodeReport:
+class NodeReport(BaseModel):
     """Node health report response object"""
 
     latest_time: datetime

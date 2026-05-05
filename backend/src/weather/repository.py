@@ -20,9 +20,13 @@ class WeatherData(DAO):
     wdpressure: float
     wddid_rain: bool
 
-    table = sql.Identifier("weatherdata")
-    id_column = sql.Identifier("wdid")
-    owner_table = sql.SQL(
+    @staticmethod
+    def table(): return sql.Identifier("weatherdata")
+    @staticmethod
+    def id_column(): return sql.Identifier("wdid")
+    @staticmethod
+    def owner_table(): 
+        return sql.SQL(
         "weatherdata NATURAL INNER JOIN timestampindex NATURAL INNER JOIN node"
     )
 

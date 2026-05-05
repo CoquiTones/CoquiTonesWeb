@@ -1,6 +1,5 @@
 from dao import DAO, LOGGER
 from psycopg.connection_async import AsyncConnection
-from dataclasses import dataclass
 from dbutil import default_HTTP_exception
 from datetime import datetime
 from psycopg import sql
@@ -8,7 +7,7 @@ from psycopg.connection_async import AsyncConnection
 from psycopg.rows import scalar_row
 from psycopg import Error as PGError
 
-@dataclass
+
 class TimestampIndex(DAO):
     """Timestamp index DAO"""
 
@@ -16,9 +15,12 @@ class TimestampIndex(DAO):
     nid: int
     ttime: datetime
 
-    table = sql.Identifier("timestampindex")
-    id_column = sql.Identifier("tid")
-    owner_table = sql.SQL("timestampindex NATURAL INNER JOIN node")
+    @staticmethod
+    def table(): return sql.Identifier("timestampindex")
+    @staticmethod
+    def id_column(): return sql.Identifier("tid")
+    @staticmethod
+    def owner_table(): return sql.SQL("timestampindex NATURAL INNER JOIN node")
 
     @classmethod
     async def insert(cls, db: AsyncConnection, nid: int, timestamp: datetime) -> int:

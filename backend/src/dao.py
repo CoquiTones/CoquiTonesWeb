@@ -1,24 +1,38 @@
-from asyncio import TaskGroup
+from abc import ABC, abstractmethod
 from psycopg import sql, errors
 from psycopg.connection_async import AsyncConnection
 from psycopg import Error as PGError
 from psycopg.rows import class_row, scalar_row
-#TODO: replace dataclass with BaseModel
-from dataclasses import dataclass
 from dbutil import default_HTTP_exception
 from Logger import Logger
-from pydantic import Field
+from pydantic import Field, BaseModel, ConfigDict
 
 LOGGER = Logger.getInstance("DAO Service Component")
 
 
-class DAO:
-    table: sql.Identifier  # name of the table that contains this type's data
-    id_column: sql.Identifier  # name of the column that contains the type's id
-    owner_table: (
-        sql.SQL
-    )  # SQL statement that produces table with column ownerid and id column for this type
-    # Example for timestampindex: timestampindex NATURAL INNER JOIN node
+class DAO(BaseModel):
+    """
+    Data Access Object
+
+    table: name of the table that contains this type's data  
+    id_column: name of the column that contains the type's id  
+    owner_table: SQL statement that produces table with column ownerid and id column for this type
+    """
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+
+    @staticmethod
+    @abstractmethod
+    def table() -> sql.Identifier: pass
+    
+    @staticmethod
+    @abstractmethod
+    def id_column() -> sql.Identifier: pass
+
+    @staticmethod
+    @abstractmethod
+    def owner_table() -> sql.SQL: pass
+
+    # Example owner_table for timestampindex: timestampindex NATURAL INNER JOIN node
     # timestampindex contains the id column, then node has an ownerid column.
 
     @classmethod
@@ -36,9 +50,9 @@ WITH owner_matches as (
 SELECT * FROM {my_table} NATURAL INNER JOIN owner_matches
                     """
                     ).format(
-                        my_id=cls.id_column,
-                        my_table=cls.table,
-                        owner_table=cls.owner_table,
+                        my_id=cls.id_column(),
+                        my_table=cls.table(),
+                        owner_table=cls.owner_table(),
                     ),
                     (owner,),
                 )
@@ -65,9 +79,9 @@ SELECT * FROM {my_table} NATURAL INNER JOIN owner_matches
 WHERE {my_id} = %s
                     """
                     ).format(
-                        my_table=cls.table,
-                        my_id=cls.id_column,
-                        owner_table=cls.owner_table,
+                        my_table=cls.table(),
+                        my_id=cls.id_column(),
+                        owner_table=cls.owner_table(),
                     ),
                     (
                         owner,
@@ -111,9 +125,9 @@ WHERE {my_id} = %(my_id)s AND ownerid = %(owner_id)s
 RETURNING {my_id}
                     """
                     ).format(
-                        my_table=cls.table,
-                        my_id=cls.id_column,
-                        owner_table=cls.owner_table,
+                        my_table=cls.table(),
+                        my_id=cls.id_column(),
+                        owner_table=cls.owner_table(),
                     ),
                     {"my_id": id, "owner_id": owner},
                 )
@@ -125,7 +139,6 @@ RETURNING {my_id}
             return db_response
 
 
-@dataclass
 class User(DAO):
     """App user DAO"""
 
@@ -134,9 +147,12 @@ class User(DAO):
     salt: bytes
     pwhash: bytes
 
-    table = sql.Identifier("appuser")
-    id_column = sql.Identifier("auid")
-    owner_table = sql.SQL("(SELECT auid, auid as ownerid FROM appuser)")
+    @staticmethod
+    def table(): return sql.Identifier("appuser")
+    @staticmethod
+    def id_column(): return sql.Identifier("auid")
+    @staticmethod
+    def owner_table(): return sql.SQL("(SELECT auid, auid as ownerid FROM appuser)")
 
     @classmethod
     async def get_all_no_owner(cls, db: AsyncConnection):
