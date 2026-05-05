@@ -54,11 +54,12 @@ async def audio_post(
         transaction.connection, current_user.auid, file, nid, timestamp
     )
 
+    audio_slice_ids = []
     if classify:
         file.file.seek(0)
-        await classify_and_save(file.file, audio_file_id, transaction.connection, model)
+        audio_slice_ids = await classify_and_save(file.file, audio_file_id, transaction.connection, model)
 
-    return audio_file_id
+    return {"afid": audio_file_id, "audio_slice_ids": audio_slice_ids}
 
 router.include_router(file_router)
 

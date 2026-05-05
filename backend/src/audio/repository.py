@@ -46,8 +46,8 @@ class AudioSlice(DAO):
         hedricki: bool,
         locustus: bool,
         richmondi: bool,
-    ):
-        async with db.cursor(row_factory=class_row(cls)) as curs:
+    ) -> int:
+        async with db.cursor(row_factory=scalar_row) as curs:
             try:
                 await curs.execute(
                     sql.SQL(
@@ -57,9 +57,23 @@ class AudioSlice(DAO):
                         RETURNING asid
                     """
                     ),
-                    locals(),
+                    {
+                        "afid": afid,
+                        "starttime": starttime,
+                        "endtime": endtime,
+                        "coqui": coqui,
+                        "wightmanae": wightmanae,
+                        "gryllus": gryllus,
+                        "portoricensis": portoricensis,
+                        "unicolor": unicolor,
+                        "hedricki": hedricki,
+                        "locustus": locustus,
+                        "richmondi": richmondi,
+                    },
                 )
-                return await curs.fetchone()
+                asid = await curs.fetchone()
+                assert(asid is not None)
+                return asid
             except PGError as e:
                 LOGGER.error("Error executing SQL query:", e)
                 raise default_HTTP_exception(e, "insert audio slice query")

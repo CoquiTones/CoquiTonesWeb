@@ -22,7 +22,7 @@ async def classify_and_save(audio, audio_file_id, db, model):
             )
 
     results = map(lambda task: task.result(), slice_insert_tasks)
-    return results
+    return list(results)
 
 async def insert_audio_and_timestamp(
         db: AsyncConnection,
@@ -36,4 +36,5 @@ async def insert_audio_and_timestamp(
         data = setup_group.create_task(file.read())
 
     audio_file_id = await repository.AudioFile.insert(db, data.result(), nid, tid.result())
+    return audio_file_id
     
