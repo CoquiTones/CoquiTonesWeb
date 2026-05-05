@@ -40,20 +40,39 @@ export default function SpectrogramControls({
   const [tempX, setTempX] = useState(xrange);
   const [tempY, setTempY] = useState(yrange);
 
-  const handleXSliderChange = (event, newValue) => {
-    setTempX(newValue);
+  const MIN_FREQUENCY_DISTANCE = 1000;
+  const MIN_TIME_DISTANCE_SECONDS = 5;
+
+  const handleXSliderChange = (event, newValue, activeThumb) => {
+    if (activeThumb === 0) {
+      setTempX([Math.min(newValue[0], tempX[1] - MIN_TIME_DISTANCE_SECONDS), tempX[1]]);
+    } else {
+      setTempX([tempX[0], Math.max(newValue[1], tempX[0] + MIN_TIME_DISTANCE_SECONDS)]);
+    }
   };
 
-  const handleXSliderCommit = (event, newValue) => {
-    setXrange(newValue);
+  const handleXSliderCommit = (event, newValue, activeThumb) => {
+    if (activeThumb === 0) {
+      setXrange([Math.min(newValue[0], tempX[1] - MIN_TIME_DISTANCE_SECONDS), tempX[1]]);
+    } else {
+      setXrange([tempX[0], Math.max(newValue[1], tempX[0] + MIN_TIME_DISTANCE_SECONDS)]);
+    }
   };
 
-  const handleYSliderChange = (event, newValue) => {
-    setTempY(newValue);
+  const handleYSliderChange = (event, newValue, activeThumb) => {
+    if (activeThumb === 0) {
+      setTempY([Math.min(newValue[0], tempY[1] - MIN_FREQUENCY_DISTANCE), tempY[1]]);
+    } else {
+      setTempY([tempY[0], Math.max(newValue[1], tempY[0] + MIN_FREQUENCY_DISTANCE)]);
+    }
   };
 
-  const handleYSliderCommit = (event, newValue) => {
-    setYrange(newValue);
+  const handleYSliderCommit = (event, newValue, activeThumb) => {
+    if (activeThumb === 0) {
+      setYrange([Math.min(newValue[0], tempY[1] - MIN_FREQUENCY_DISTANCE), tempY[1]]);
+    } else {
+      setYrange([tempY[0], Math.max(newValue[1], tempY[0] + MIN_FREQUENCY_DISTANCE)]);
+    }
   };
 
   return (
@@ -70,8 +89,8 @@ export default function SpectrogramControls({
               sx: {
                 backgroundColor: "#121212",
                 opacity: 1,
-              }
-            }
+              },
+            },
           }}
         >
           <MenuItem value={"RdBu"}>RedBlue</MenuItem>
@@ -85,9 +104,12 @@ export default function SpectrogramControls({
           <MenuItem value={"Blackbody"}>BlackBody</MenuItem>
         </Select>
       </FormControl>
-      <Typography gutterBottom>Time (s) Range</Typography>
+      <Typography gutterBottom color="white">
+        Time (s) Range
+      </Typography>
       <Box sx={{ display: "flex", alignItems: "center" }}>
         <StyledSlider
+          disableSwap
           sx={{ marginTop: 4, flexGrow: 1 }}
           value={tempX}
           onChange={handleXSliderChange}
@@ -98,9 +120,12 @@ export default function SpectrogramControls({
           step={0.1}
         />
       </Box>
-      <Typography gutterBottom>Frequency (Hz) Range</Typography>
+      <Typography gutterBottom color="white">
+        Frequency (Hz) Range
+      </Typography>
       <Box sx={{ display: "flex", alignItems: "center" }}>
         <StyledSlider
+          disableSwap
           sx={{ marginTop: 4, flexGrow: 1 }}
           value={tempY}
           onChange={handleYSliderChange}
@@ -114,3 +139,14 @@ export default function SpectrogramControls({
     </Box>
   );
 }
+
+SpectrogramControls.propTypes = {
+  colorscale: PropTypes.string.isRequired,
+  setColorscale: PropTypes.func.isRequired,
+  xrange: PropTypes.arrayOf(PropTypes.number).isRequired,
+  setXrange: PropTypes.func.isRequired,
+  yrange: PropTypes.arrayOf(PropTypes.number).isRequired,
+  setYrange: PropTypes.func.isRequired,
+  defaultX: PropTypes.arrayOf(PropTypes.number).isRequired,
+  defaultY: PropTypes.arrayOf(PropTypes.number).isRequired,
+};

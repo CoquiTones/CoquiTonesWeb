@@ -1,6 +1,4 @@
-import React, { useEffect, useState } from "react";
-import { ThemeProvider } from "@mui/material/styles";
-import CssBaseline from "@mui/material/CssBaseline";
+import React, { useContext, useEffect, useState } from "react";
 import Box from "@mui/material/Box";
 import Paper from "@mui/material/Paper";
 import IconButton from "@mui/material/IconButton";
@@ -12,19 +10,16 @@ import MenuIcon from "@mui/icons-material/Menu";
 import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 import MoreVertIcon from "@mui/icons-material/MoreVert";
 
-import Sidebar from "../components/shared/Sidebar";
-import theme from "../components/shared/Theme";
 import DataManager from "../components/shared/DataManager";
 import SoundPlayer from "../components/SoundAnalysisTools/render/SoundPlayer";
 import SpectrogramVisualizer from "../components/SoundAnalysisTools/render/Spectrogram";
 import SpectrogramControls from "../components/SoundAnalysisTools/render/SpectrogramControls";
-import Navbar from "../components/shared/Navbar";
+import { ErrorContext } from "../components/shared/ErrorContext";
 
 const drawerWidth = 380;
 
 const SpectralAnalysis = () => {
-  const [isOpen, setIsOpen] = useState(false);
-  const toggle = () => setIsOpen(!isOpen);
+
 
   const [rawAudioFile, setRawAudioFile] = useState(null);
   const [currentTime, setCurrentTime] = useState(0);
@@ -39,15 +34,11 @@ const SpectralAnalysis = () => {
 
   const handleDrawerOpen = () => setDrawerOpen(true);
   const handleDrawerClose = () => setDrawerOpen(false);
-
+  const { errors, setErrors } = useContext(ErrorContext)
   return (
-    <ThemeProvider theme={theme}>
-      <CssBaseline />
+    <>
       <Box sx={{ display: "flex", height: "100vh", width: "100%" }}>
-        <Sidebar isOpen={isOpen} toggle={toggle} />
-
         <Box sx={{ display: "flex", flexDirection: "column", flex: 1, minWidth: 0 }}>
-          <Navbar toggle={toggle} />
 
           <Box
             sx={{
@@ -90,6 +81,8 @@ const SpectralAnalysis = () => {
                       setDefaultX={setDefaultX}
                       setDefaultY={setDefaultY}
                       setStats={setStats}
+                      errors={errors}
+                      setErrors={setErrors}
                     />
                     <Box sx={{ ml: "auto", display: "flex", alignItems: "center", gap: 1 }}>
                       {rawAudioFile && (
@@ -216,7 +209,7 @@ const SpectralAnalysis = () => {
           )}
         </DialogContent>
       </Dialog>
-    </ThemeProvider>
+    </>
   );
 };
 

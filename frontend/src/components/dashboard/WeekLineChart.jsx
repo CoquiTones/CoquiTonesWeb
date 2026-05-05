@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useState } from "react";
+import { Fragment, useEffect, useState, useMemo } from "react";
 import { useTheme } from "@mui/material/styles";
 import { LineChart } from "@mui/x-charts";
 import { Box } from "@mui/material";
@@ -6,15 +6,21 @@ import { Box } from "@mui/material";
 import Title from "./Title";
 import { APIHandlerDashboard } from "../../services/rest/APIHandler/APIHandlerDashboard";
 
-export default function Chart() {
+export default function Chart({errors, setErrors}) {
   const theme = useTheme();
   const [chartData, setChartData] = useState(null);
-  useEffect(() => {
-    const fetchChartData = async () => {
-      const apiHandler = new APIHandlerDashboard();
+  const apiHandler = useMemo(() => new APIHandlerDashboard());
+
+  const fetchChartData = async () => {
+    try {
+       
       const chartData = await apiHandler.get_week_species_summary();
       setChartData(chartData);
-    };
+    } catch (error) {
+      setErrors([...errors, error]);
+    }
+  };
+  useEffect(() => {
 
     fetchChartData();
   }, []);

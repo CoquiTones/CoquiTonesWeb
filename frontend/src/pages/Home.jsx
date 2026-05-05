@@ -1,21 +1,19 @@
-import React, { useState } from 'react';
-import Sidebar from '../components/shared/Sidebar';
-import Navbar from '../components/shared/Navbar';
+import React, { useState, useContext } from 'react';
 import Footer from '../components/shared/Footer';
 import HeroSection from '../components/shared/HeroSection';
 import InfoSection from '../components/shared/InfoSection';
 import { dashboardData, NetworkMonitorData, ClassifierData, SpectralAnalysisData } from '../components/shared/InfoData';
+import ErrorAlerts from '../components/shared/ErrorAlerts';
+import { ErrorContext } from '../components/shared/ErrorContext';
 const Home = () => {
 
-  const [isOpen, setIsOpen] = useState(false)
-  const toggle = () => {
-    setIsOpen(!isOpen)
-  }
+  const { errors, setErrors } = useContext(ErrorContext);
+
+
 
   return (
     <>
-      <Sidebar isOpen={isOpen} toggle={toggle} isHome={true} />
-      <Navbar toggle={toggle} isHome={true} />
+      <ErrorAlerts errors={errors} setErrors={setErrors} />
       <HeroSection />
       <InfoSection {...dashboardData} />
       <InfoSection {...NetworkMonitorData} />

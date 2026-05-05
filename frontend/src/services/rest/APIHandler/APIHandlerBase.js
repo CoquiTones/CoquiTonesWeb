@@ -32,13 +32,13 @@ export default class APIHandlerBase {
             });
 
             if (!response.ok) {
-                throw new BackendError(`Unable to insert audio in db`);
+                throw new BackendError(`Unable to insert audio in db` + response.statusText);
             }
 
             const audioId = await response.json();
             return audioId;
         } catch (error) {
-            throw APIHandlerError(error.message);
+            throw new APIHandlerError(error.message);
         }
     }
 
