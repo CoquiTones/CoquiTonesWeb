@@ -1,15 +1,12 @@
 from dao import DAO, LOGGER
 from psycopg.connection_async import AsyncConnection
-from dataclasses import dataclass
 from dbutil import default_HTTP_exception
-from datetime import datetime
 from psycopg import sql
 from psycopg.connection_async import AsyncConnection
 from psycopg.rows import scalar_row
 from psycopg import Error as PGError
 
 
-@dataclass
 class WeatherData(DAO):
     """Weather Data DAO"""
 
