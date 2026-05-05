@@ -21,7 +21,7 @@ class RecentData(BaseModel):
     temperature: float
     pressure: float
     rain: float
-    time: float
+    time: datetime
     tid: int
 
 
