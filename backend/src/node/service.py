@@ -4,34 +4,34 @@ import mqtt
 from dbutil import DBTransactionDependency
 from routers.security import LightWeightUser, get_current_user
 import asyncio
-from typing import Annotated
+from typing import Annotated, List
 from pydantic import SecretStr
 from fastapi import Depends, Form, APIRouter, HTTPException, status
 
 from Logger import Logger
 
-router = APIRouter()
+router = APIRouter(prefix="/node", tags=["Node"])
 
 LOGGER = Logger.getInstance("Node services")
 
-@router.get("/node/all")
+@router.get("/all")
 async def node_all(
     current_user: Annotated[LightWeightUser, Depends(get_current_user)],
     transaction: DBTransactionDependency,
-):
+) -> List[repository.Node]:
     return await repository.Node.get_all(current_user.auid, transaction.connection)
 
 
-@router.get("/node")
+@router.get("/")
 async def node_get(
     current_user: Annotated[LightWeightUser, Depends(get_current_user)],
     nid: Annotated[int, Form()],
     transaction: DBTransactionDependency,
-):
+) -> repository.Node | None:
     return await repository.Node.get(current_user.auid, nid, transaction.connection)
 
 
-@router.post("/node/mqtt")
+@router.post("/mqtt")
 async def create_node_client(
     current_user: Annotated[LightWeightUser, Depends(get_current_user)],
     nid: Annotated[int, Form()],
@@ -51,11 +51,11 @@ async def create_node_client(
         )
 
 
-@router.get("/node/noclient")
+@router.get("/noclient")
 async def nodes_with_no_client(
     current_user: Annotated[LightWeightUser, Depends(get_current_user)],
     transaction: DBTransactionDependency,
-) -> list[repository.Node]:
+) -> List[repository.Node]:
     """
     Lists which of the user's primary nodes are missing a client.
     """
@@ -71,7 +71,7 @@ async def nodes_with_no_client(
     missing_nodes = filter(lambda node: node.nname not in client_names, primary_nodes)
     return list(missing_nodes)
 
-@router.post(path="/node/insert")
+@router.post(path="/insert")
 async def node_insert(
     ntype: Annotated[str, Form()],
     nname: Annotated[str, Form()],
@@ -81,7 +81,7 @@ async def node_insert(
     current_user: Annotated[LightWeightUser, Depends(get_current_user)],
     transaction: DBTransactionDependency,
     node_client_password: Annotated[SecretStr | None, Form()] = None,
-):
+) -> repository.Node:
     # Primary node must have a client with the broker
     # We'll do this as a task so it can be concurrent with creating the entry in the database.
     # If an exception is raised it will return False, otherwise it will cause everything to break.
@@ -157,19 +157,20 @@ async def node_insert(
             status_code=500,
             detail="Failed to give access to the node's MQTT topic.",
         )
-    if node_task.result() is None:
+    final_node = node_task.result()
+    if final_node is None:
         raise HTTPException(
             status_code=500,
             detail="Failed to create node.",
         )
     else:
-        return node_task.result()
+        return final_node
 
 
-@router.delete(path="/node/delete")
+@router.delete(path="/delete")
 async def node_delete(
     nid: Annotated[int, Form()],
     current_user: Annotated[LightWeightUser, Depends(get_current_user)],
     transaction: DBTransactionDependency,
-):
+) -> int | None:
     return await repository.Node.delete(current_user.auid, nid, transaction.connection)
