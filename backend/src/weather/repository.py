@@ -49,7 +49,7 @@ INSERT INTO {table} (tid, wdtemperature, wdhumidity, wdpressure, wddid_rain)
 VALUES (%(tid)s, %(wdtemperature)s, %(wdhumidity)s, %(wdpressure)s, %(wddid_rain)s)
 RETURNING {id_column}
 """
-                    ).format(table=cls.table, id_column=cls.id_column),
+                    ).format(table=cls.table(), id_column=cls.id_column),
                     {
                         "tid": tid,
                         "wdtemperature": wdtemperature,

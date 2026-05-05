@@ -34,7 +34,7 @@ class TimestampIndex(DAO):
                         VALUES (%s, %s)
                         RETURNING tid
                         """
-                    ).format(cls.table),
+                    ).format(cls.table()),
                     (nid, timestamp),
                 )
 

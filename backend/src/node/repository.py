@@ -46,7 +46,7 @@ class Node(DAO):
                             VALUES (%s, %s, %s, %s, %s, %s)
                             RETURNING nid
                             """
-                    ).format(cls.table),
+                    ).format(cls.table()),
                     (nname, ownerid, ntype, nlatitude, nlongitude, ndescription),
                 )
                 nid = await curs.fetchone()

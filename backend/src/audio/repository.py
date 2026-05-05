@@ -130,7 +130,7 @@ INSERT INTO {} (tid, data)
 VALUES (%s, %s)
 RETURNING afid
 """
-                    ).format(cls.table),
+                    ).format(cls.table()),
                     (tid, data),
                 )
 
