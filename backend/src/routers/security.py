@@ -15,7 +15,7 @@ import mqtt
 
 from constants import SECRET_KEY_FOR_JWT
 
-router = APIRouter()
+router = APIRouter(tags=["Security"])
 
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24  # 1 day of valid session
