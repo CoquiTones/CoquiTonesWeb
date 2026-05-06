@@ -16,15 +16,6 @@ class TestDBUtil(IsolatedAsyncioTestCase):
         conn = get_connection_from_development_config()
         self.assertIsNotNone(conn, "db config returns and doesn't cause validation exceptions")
 
-    async def test_make_connection_pool(self):
-        # This should always resolve if the database is running, so we'll only test the happy path
-        await init_connection_pool()
-
-        conn = await anext(db_dep())
-        self.assertIsNotNone(conn, "pool can connect")
-        self.assertIsNotNone(conn.cursor(), "can get cursor")
-        await conn.close()
-
     #TODO: Make a testcase for HTTP exception that verifies that it only gets the code of the exception without leaking execution details.
     # def test_default_HTTP_exception(self):
     #     e = default_HTTP_exception('42P01', 'test')

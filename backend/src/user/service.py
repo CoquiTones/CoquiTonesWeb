@@ -9,13 +9,13 @@ from jwt.exceptions import InvalidTokenError
 from dbutil import DBTransactionDependency
 from psycopg import AsyncTransaction
 import hashlib
-import dao
+import user.repository as repository
 import os
 import mqtt
 
 from constants import SECRET_KEY_FOR_JWT
 
-router = APIRouter()
+router = APIRouter(tags=["Security"])
 
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24  # 1 day of valid session
@@ -92,10 +92,10 @@ async def authenticate_user(
     submitted_username: str,
     submitted_password: SecretStr,
     transaction: AsyncTransaction,
-) -> dao.User | None:
+) -> repository.User | None:
     if not validate_username(submitted_username):
         return None
-    user: dao.User | None = await dao.User.get_by_username(
+    user: repository.User | None = await repository.User.get_by_username(
         transaction.connection, submitted_username
     )
     if not user:
@@ -108,7 +108,7 @@ async def authenticate_user(
     return user
 
 
-@router.post("/api/token")
+@router.post("/token")
 async def login_for_access_token(
     form_data: Annotated[OAuth2PasswordRequestForm, Depends()],
     transaction: DBTransactionDependency,
@@ -129,21 +129,21 @@ async def login_for_access_token(
     return Token(access_token=access_token, token_type="bearer")
 
 
-@router.get("/api/authenticated")
+@router.get("/authenticated")
 async def is_user_authenticated(
     current_user: Annotated[LightWeightUser, Depends(get_current_user)],
 ):
     return {"is_authenticated": True}
 
 
-@router.get("/api/users/me")
+@router.get("/users/me")
 async def read_users_me(
     current_user: Annotated[LightWeightUser, Depends(get_current_user)],
 ):
     return current_user
 
 
-@router.post("/api/createuser")
+@router.post("/createuser")
 async def create_user(
     username: Annotated[str, Form()],
     password: Annotated[SecretStr, Form()],
@@ -153,11 +153,13 @@ async def create_user(
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Username too long")
     salt = os.urandom(16)
     pwhash = hash_password(password, salt)
-    auid = await dao.User.insert(transaction.connection, username, pwhash, salt)
+    auid = await repository.User.insert(transaction.connection, username, pwhash, salt)
     if auid is None:
         raise HTTPException(status.HTTP_409_CONFLICT, "Username taken")
 
-    if not await mqtt.create_user_role(auid):
+    try:
+        await mqtt.create_user_role(auid)
+    except mqtt.CommandExcept:
         raise HTTPException(
             status.HTTP_500_INTERNAL_SERVER_ERROR,
             "Created user but failed to create their MQTT role.",

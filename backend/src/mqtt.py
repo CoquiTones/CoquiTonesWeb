@@ -1,6 +1,10 @@
 from aiomqtt import Client
 import asyncio
-import dao
+import timestamp.repository
+import audio.repository
+import weather.repository
+from node.repository import Node
+from user.repository import User
 import os
 import re
 import dotenv
@@ -17,7 +21,7 @@ from pydantic import (
 )
 from enum import Enum
 from datetime import datetime
-from standaloneops import classify_and_save
+from audio.basic_service import classify_and_save
 from mlutil import get_model
 from queue import Queue
 from random import randint
@@ -304,7 +308,7 @@ async def listen_for_reports():
 def parse_report(report_raw: bytes) -> Report:
     return Report.model_validate_json(report_raw)
 
-
+# TODO: MQTT service moodule that provides this service
 async def handle_report(report: Report, model):
     LOGGER.info(f"INFO: New report from node {report.node_id}")
     async with get_transaction() as transaction:
@@ -312,16 +316,16 @@ async def handle_report(report: Report, model):
         if db is None:
             LOGGER.error("Failed to connect to database")
             return
-        timestamp_index = await dao.TimestampIndex.insert(
+        timestamp_index = await timestamp.repository.TimestampIndex.insert(
             db, report.node_id, report.timestamp
         )
         if timestamp_index is None:
             LOGGER.error(f"Failed to save timestamp {report.timestamp}")
             return
-        f1 = dao.AudioFile.insert(
+        f1 = audio.repository.AudioFile.insert(
             db, report.audio.data, report.node_id, timestamp_index
         )
-        f2 = dao.WeatherData.insert(
+        f2 = weather.repository.WeatherData.insert(
             db,
             timestamp_index,
             report.weather_data.temperature,
@@ -407,7 +411,7 @@ async def broker_sync():
                 list_roles_task = get_tasks.create_task(
                     _execute_command(client, ListRolesArgs(verbose=True))
                 )
-                get_users_task = get_tasks.create_task(dao.User.get_all_no_owner(db=db))
+                get_users_task = get_tasks.create_task(User.get_all_no_owner(db=db))
             # Get clients from broker
             clients = clients_from_command(list_clients_task.result())
 
@@ -458,7 +462,7 @@ async def broker_sync():
                     # Modify roles by getting all nodes owned by each user and ensuring user's role has permission to send to all nodes' topics.
                     for node in filter(
                         lambda node: node.nid not in allowed_node_ids,
-                        await dao.Node.get_all(user.auid, db),
+                        await Node.get_all(user.auid, db),
                     ):
                         LOGGER.info(
                             f"INFO: adding topic access to node {node.nid} for user {user.username}"

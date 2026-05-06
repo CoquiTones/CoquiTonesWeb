@@ -1,0 +1,401 @@
+from psycopg.connection_async import AsyncConnection
+from pydantic import Field, BaseModel
+from dbutil import default_HTTP_exception
+from datetime import datetime, timezone
+from psycopg import sql, errors
+from psycopg.connection_async import AsyncConnection
+from psycopg.rows import class_row
+from psycopg import Error as PGError
+from Requests.RecordToBeDeleted import RecordTimestampIndex
+from itertools import repeat
+
+from Logger import Logger
+
+LOGGER = Logger.getInstance("Dashboard repository")
+
+class RecentData(BaseModel):
+    """Recent reports dashboard operation response object"""
+    nid: int
+    afid: int
+    humidity: float
+    temperature: float
+    pressure: float
+    rain: float
+    time: datetime
+    tid: int
+
+
+class ReportTableEntry(BaseModel):
+    """Recent reports table entry"""
+    ndescription: str
+    ttime: datetime
+    coqui: int
+    wightmanae: int
+    gryllus: int
+    portoricensis: int
+    unicolor: int
+    hedricki: int
+    locustus: int
+    richmondi: int
+    wdhumidity: float
+    wdtemperature: float
+    wdpressure: float
+    wddid_rain: bool
+    afid: int  # Front end should generate URL to audio file by using get audio file endpoint
+
+
+class WeeklySummaryEntry(BaseModel):
+    """Row of weekly summary table"""
+    total_coqui: int
+    total_wightmanae: int
+    total_gryllus: int
+    total_portoricensis: int
+    total_unicolor: int
+    total_hedricki: int
+    total_locustus: int
+    total_richmondi: int
+    bin: datetime
+
+
+class WeeklySummaryTable(BaseModel):
+    """All the time series of the weekly summary"""
+    total_coqui: list[int] = Field(default_factory=lambda: list())
+    total_wightmanae: list[int] = Field(default_factory=lambda: list())
+    total_gryllus: list[int] = Field(default_factory=lambda: list())
+    total_portoricensis: list[int] = Field(default_factory=lambda: list())
+    total_unicolor: list[int] = Field(default_factory=lambda: list())
+    total_hedricki: list[int] = Field(default_factory=lambda: list())
+    total_locustus: list[int] = Field(default_factory=lambda: list())
+    total_richmondi: list[int] = Field(default_factory=lambda: list())
+    date_bin: list[datetime] = Field(default_factory=lambda: list())
+
+class NodeReport(BaseModel):
+    """Node health report response object"""
+
+    latest_time: datetime
+    ndescription: str
+    ntype: str
+
+class Dashboard:
+    """Collection of queries for dashboard endpoints"""
+
+    @staticmethod
+    async def recent_data(
+        owner: int, minTimestamp: datetime, maxTimestamp: datetime, db: AsyncConnection
+    ) -> list[RecentData]:
+        """Returns Recent Data form DB, [nid, afid, ...weatherdata]"""
+        async with db.cursor(row_factory=class_row(RecentData)) as curs:
+            try:
+                # Ensure timestamps are timezone-aware UTC
+                if minTimestamp.tzinfo is None:
+                    minTimestamp = minTimestamp.replace(tzinfo=timezone.utc)
+                if maxTimestamp.tzinfo is None:
+                    maxTimestamp = maxTimestamp.replace(tzinfo=timezone.utc)
+
+                await curs.execute(
+                    sql.SQL(
+                        """
+                    SELECT n.nid, af.afid, wd.wdhumidity AS humidity, wd.wdtemperature AS temperature, 
+                        wd.wdpressure AS pressure, wd.wddid_rain AS rain, ti.ttime AS time, ti.tid as tid
+                    FROM node n 
+                    INNER JOIN timestampindex ti ON ti.nid = n.nid
+                    INNER JOIN audiofile af ON af.tid = ti.tid
+                    INNER JOIN weatherdata wd ON wd.tid = ti.tid
+                    WHERE n.ownerid = %s AND ti.ttime > %s AND ti.ttime < %s
+                    ORDER BY ti.ttime DESC
+                    LIMIT 1000
+                    """
+                    ),
+                    (owner, minTimestamp, maxTimestamp),
+                )
+                return await curs.fetchall()
+
+            except PGError as e:
+                LOGGER.error("Error executing SQL query:", e)
+                raise default_HTTP_exception(e, "dashboard recent data query")
+
+    @staticmethod
+    async def delete_records(owner: int, records: list[RecordTimestampIndex], db: AsyncConnection):
+        """Deletes a list of records based on join from @recent_data record
+
+        Args:
+            list including: [
+                owner (int)
+                timetsamp (datetime)
+                node_id (int)
+                db (connection) ]
+        """
+
+        MAX_BATCH_SIZE = 1000
+        number_of_records = len(records)
+        necessary_statements = (number_of_records // MAX_BATCH_SIZE) + 1
+        number_of_records_left = number_of_records
+        record_index = 0
+
+        async with db.cursor() as curs:
+            try:
+                for _ in range(necessary_statements):
+                    number_of_rows_to_insert = (
+                        number_of_records_left
+                        if (number_of_records_left < MAX_BATCH_SIZE)
+                        else MAX_BATCH_SIZE
+                    )
+                    batch_values = [
+                        records[j].timestamp_index_id
+                        for j in range(
+                            record_index, number_of_rows_to_insert + record_index, 1
+                        )
+                    ]
+                    await curs.executemany(
+                        """
+                        DELETE FROM timestampindex WHERE tid = %s 
+                        AND 
+                        nid IN (SELECT nid FROM node  WHERE ownerid = %s)
+                            """,
+                        zip(batch_values, repeat(owner)),
+                    )
+                    number_of_records_left -= number_of_rows_to_insert
+                    record_index += number_of_rows_to_insert
+
+                return curs.rowcount
+            except PGError as e:
+                LOGGER.error("Error Executing SQL Query to delete rows: ", e)
+                raise default_HTTP_exception(e, "Dashboard Delete Record query")
+
+    @staticmethod
+    async def week_species_summary(owner: int, db: AsyncConnection) -> WeeklySummaryTable:
+        """Returns time series with sums of classifier hits of each species from all nodes, binned into days"""
+        async with db.cursor(row_factory=class_row(WeeklySummaryEntry)) as curs:
+            try:
+                await curs.execute(
+                    sql.SQL(
+                        """
+WITH owner_matches AS (
+    SELECT asid FROM audioslice NATURAL INNER JOIN audiofile
+    WHERE ownerid = %s
+),
+classifierreport AS (
+    SELECT afid, 
+        SUM(coqui::int) AS coqui_hits,
+        SUM(wightmanae::int) AS wightmanae_hits,
+        SUM(gryllus::int) AS gryllus_hits,
+        SUM(portoricensis::int) AS portoricensis_hits,
+        SUM(unicolor::int) AS unicolor_hits,
+        SUM(hedricki::int) AS hedricki_hits,
+        SUM(locustus::int) AS locustus_hits,
+        SUM(richmondi::int) AS richmondi_hits
+    FROM audioslice a NATURAL INNER JOIN owner_matches
+    GROUP BY afid 
+)
+SELECT 
+    SUM(coqui_hits)::int AS total_coqui,
+    SUM(wightmanae_hits)::int AS total_wightmanae,
+    SUM(gryllus_hits)::int AS total_gryllus,
+    SUM(portoricensis_hits)::int AS total_portoricensis,
+    SUM(unicolor_hits)::int AS total_unicolor,
+    SUM(hedricki_hits)::int AS total_hedricki,
+    SUM(locustus_hits)::int AS total_locustus,
+    SUM(richmondi_hits)::int AS total_richmondi, 
+    DATE_BIN('1 day', ttime AT LOCAL, CURRENT_TIMESTAMP) AS bin
+FROM classifierreport NATURAL INNER JOIN timestampindex
+WHERE ttime > (CURRENT_TIMESTAMP - '7 days'::INTERVAL)
+GROUP BY "bin" 
+ORDER BY "bin"
+                        """
+                    ),
+                    (owner,),
+                )
+                db_output = await curs.fetchall()
+                if len(db_output) == 0:
+                    # If there are no afids to group by the query will just turn up empty, so we should respond with an empty dict.
+                    return WeeklySummaryTable()
+
+                # Transpose the rows into time series (which are effectively "columns").
+                return WeeklySummaryTable(
+                    total_coqui=[row.total_coqui for row in db_output],
+                    total_wightmanae=[row.total_wightmanae for row in db_output],
+                    total_gryllus=[row.total_gryllus for row in db_output],
+                    total_hedricki=[row.total_hedricki for row in db_output],
+                    total_locustus=[row.total_locustus for row in db_output],
+                    total_portoricensis=[row.total_portoricensis for row in db_output],
+                    total_richmondi=[row.total_richmondi for row in db_output],
+                    total_unicolor=[row.total_unicolor for row in db_output],
+                    date_bin=[row.bin for row in db_output]
+                )
+            
+            except PGError as e:
+                LOGGER.error("Error executing SQL query:", e)
+                raise default_HTTP_exception(
+                    e, "dashboard species weekly summary query"
+                )
+
+    @staticmethod
+    async def node_health_check(owner: int, db: AsyncConnection) -> list[NodeReport]:
+        """Returns the time of the last message from each node along with the type of node"""
+
+        async with db.cursor(row_factory=class_row(NodeReport)) as curs:
+            try:
+                await curs.execute(
+                    sql.SQL(
+                        """
+SELECT latest_time, n.ndescription, n.ntype FROM  (
+    SELECT max(ttime) as latest_time, nid FROM timestampindex
+    GROUP by  nid
+)
+NATURAL INNER JOIN node n
+WHERE n.ownerid = %s
+ORDER by n.ntype 
+                    """
+                    ),
+                    (owner,),
+                )
+
+                return await curs.fetchall()
+
+            except PGError as e:
+                LOGGER.error("Error executing SQL query:", e)
+                raise default_HTTP_exception(e, "dashboard node health check query")
+
+    @staticmethod
+    async def recent_reports(
+        current_user,
+        low_temp: float,
+        high_temp: float,
+        low_humidity: float,
+        high_humidity: float,
+        low_pressure: float,
+        high_pressure: float,
+        low_coqui: int,
+        high_coqui: int,
+        low_wightmanae: int,
+        high_wightmanae: int,
+        low_gryllus: int,
+        high_gryllus: int,
+        low_portoricensis: int,
+        high_portoricensis: int,
+        low_unicolor: int,
+        high_unicolor: int,
+        low_hedricki: int,
+        high_hedricki: int,
+        low_locustus: int,
+        high_locustus: int,
+        low_richmondi: int,
+        high_richmondi: int,
+        description_filter: str,
+        skip: int,
+        limit: int,
+        orderby: int,
+        db: AsyncConnection,
+    ) -> list:
+
+        async with db.cursor(row_factory=class_row(ReportTableEntry)) as curs:
+            try:
+                await curs.execute(
+                    sql.SQL(
+                        """
+WITH
+owner_matches AS (
+    SELECT asid FROM audioslice NATURAL INNER JOIN audiofile
+    WHERE ownerid = %(owner)s
+),
+cr AS (
+    SELECT afid, 
+        SUM(coqui::int) AS coqui,
+        SUM(wightmanae::int) AS wightmanae,
+        SUM(gryllus::int) AS gryllus,
+        SUM(portoricensis::int) AS portoricensis,
+        SUM(unicolor::int) AS unicolor,
+        SUM(hedricki::int) AS hedricki,
+        SUM(locustus::int) AS locustus,
+        SUM(richmondi::int) AS richmondi
+    FROM audioslice a NATURAL INNER JOIN owner_matches
+    GROUP BY afid 
+)
+SELECT n.ndescription,
+        t.ttime, 
+        c.coqui, 
+        c.wightmanae, 
+        c.gryllus, 
+        c.portoricensis, 
+        c.unicolor, 
+        c.hedricki, 
+        c.locustus, 
+        c.richmondi, 
+        w.wdhumidity, w.wdtemperature, w.wdpressure, w.wddid_rain, 
+        a.afid
+FROM timestampindex t NATURAL INNER JOIN cr c NATURAL INNER JOIN weatherdata w NATURAL INNER JOIN audiofile a NATURAL INNER JOIN node n
+WHERE 
+%(lowhum)s <= w.wdhumidity AND w.wdhumidity <= %(highhum)s AND 
+%(lowtemp)s <= w.wdtemperature AND w.wdtemperature <= %(hightemp)s AND 
+%(lowpress)s <= w.wdpressure AND w.wdpressure <= %(highpress)s AND 
+%(lowcoqui)s <= c.coqui AND c.coqui <= %(highcoqui)s and
+%(lowwightmanae)s <= c.wightmanae AND c.wightmanae <= %(highwightmanae)s AND
+%(lowgryllus)s <= c.gryllus AND c.gryllus <= %(highgryllus)s AND
+%(lowportoricensis)s <= c.portoricensis AND c.portoricensis <= %(highportoricensis)s AND
+%(lowunicolor)s <= c.unicolor AND c.unicolor <= %(highunicolor)s AND
+%(lowhedricki)s <= c.hedricki AND c.hedricki <= %(highhedricki)s AND
+%(lowlocustus)s <= c.locustus AND c.locustus <= %(highlocustus)s AND
+%(lowrichmondi)s <= c.richmondi AND c.richmondi <= %(highrichmondi)s AND
+n.ndescription LIKE %(descriptionfilter)s
+ORDER BY 
+    CASE %(orderby)s
+        WHEN 1 THEN t.ttime
+        ELSE NULL
+    END,
+    CASE %(orderby)s
+        WHEN 2 THEN c.coqui
+        WHEN 3 THEN c.wightmanae
+        WHEN 4 THEN c.gryllus
+        WHEN 5 THEN c.portoricensis
+        WHEN 6 THEN c.unicolor
+        WHEN 7 THEN c.hedricki
+        WHEN 8 THEN c.locustus
+        WHEN 9 THEN c.richmondi
+        ELSE NULL
+    END,
+    CASE %(orderby)s
+        WHEN 10 THEN w.wdhumidity
+        WHEN 11 THEN w.wdtemperature
+        WHEN 12 THEN w.wdpressure
+        ELSE NULL
+    END
+OFFSET %(offset)s
+LIMIT %(limit)s
+                        """
+                    ),
+                    {
+                        "owner": current_user.auid,
+                        "lowhum": low_humidity,
+                        "highhum": high_humidity,
+                        "lowtemp": low_temp,
+                        "hightemp": high_temp,
+                        "lowpress": low_pressure,
+                        "highpress": high_pressure,
+                        "lowcoqui": low_coqui,
+                        "highcoqui": high_coqui,
+                        "lowwightmanae": low_wightmanae,
+                        "highwightmanae": high_wightmanae,
+                        "lowgryllus": low_gryllus,
+                        "highgryllus": high_gryllus,
+                        "lowportoricensis": low_portoricensis,
+                        "highportoricensis": high_portoricensis,
+                        "lowunicolor": low_unicolor,
+                        "highunicolor": high_unicolor,
+                        "lowhedricki": low_hedricki,
+                        "highhedricki": high_hedricki,
+                        "lowlocustus": low_locustus,
+                        "highlocustus": high_locustus,
+                        "lowrichmondi": low_richmondi,
+                        "highrichmondi": high_richmondi,
+                        "descriptionfilter": description_filter,
+                        "offset": skip,
+                        "limit": limit,
+                        "orderby": orderby,
+                    },
+                )
+
+                return await curs.fetchall()
+
+            except PGError as e:
+                LOGGER.error("Error executing SQL query:", e)
+                raise default_HTTP_exception(e, "dashboard recent reports query")
