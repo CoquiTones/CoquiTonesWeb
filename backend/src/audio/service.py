@@ -1,9 +1,10 @@
+from pydantic import BaseModel
 import audio.repository as repository
 from audio.basic_service import insert_audio_and_timestamp, classify_and_save
 
 from timestamp.repository import TimestampIndex
 
-from mlutil import get_model, classify_audio_file
+from mlutil import Classifications, classify_audio_file, get_model, classify_audio_file_deprecated
 from dbutil import DBTransactionDependency
 from user.service import LightWeightUser, get_current_user
 from datetime import datetime
@@ -21,7 +22,7 @@ classify_router = APIRouter(tags=["Classification"])
 async def audio_all(
     current_user: Annotated[LightWeightUser, Depends(get_current_user)],
     transaction: DBTransactionDependency,
-):
+) -> List[repository.AudioFile]:
     return await repository.AudioFile.get_all(current_user.auid, transaction.connection)
 
 
@@ -30,7 +31,7 @@ async def audio_get(
     afid: Annotated[int, Form()],
     current_user: Annotated[LightWeightUser, Depends(get_current_user)],
     transaction: DBTransactionDependency,
-):
+) -> Response:
     audio_file: repository.AudioFile | None = await repository.AudioFile.get(
         current_user.auid, afid, transaction.connection
     )
@@ -39,6 +40,10 @@ async def audio_get(
     data = audio_file.data
     assert data is not None
     return Response(content=bytes(data), media_type="audio/mpeg")
+
+class AudioInsertReceipt(BaseModel):
+    afid: int
+    audio_slice_ids: List[int]
 
 @file_router.post(path="/insert")
 async def audio_post(
@@ -59,7 +64,7 @@ async def audio_post(
         file.file.seek(0)
         audio_slice_ids = await classify_and_save(file.file, audio_file_id, transaction.connection, model)
 
-    return {"afid": audio_file_id, "audio_slice_ids": audio_slice_ids}
+    return AudioInsertReceipt(afid=audio_file_id, audio_slice_ids=audio_slice_ids)
 
 router.include_router(file_router)
 
@@ -76,11 +81,13 @@ async def audio_slice_get(
     asid: Annotated[int, Form()],
     current_user: Annotated[LightWeightUser, Depends(get_current_user)],
     transaction: DBTransactionDependency,
-):
+) -> repository.AudioSlice | None:
     return await repository.AudioSlice.get(current_user.auid, asid, transaction.connection)
 
 router.include_router(audio_slices_router)
 
+# TODO: consider updating this to use the new classify_audio_file, 
+# or at least return a Classifications object instead of just a list of slices.
 @classify_router.get(path="/classify/by-id")
 async def classify_by_afid(
     afid: Annotated[int, Form()],
@@ -88,7 +95,7 @@ async def classify_by_afid(
     transaction: DBTransactionDependency,
     override: Annotated[bool, Form()] = False,
     model=Depends(get_model),
-):
+) -> List[repository.AudioSlice]:
 
     if not await repository.AudioFile.exists(afid, current_user.auid, transaction.connection):
         raise HTTPException(status_code=404, detail="Audio file does not exist")
@@ -105,8 +112,13 @@ async def classify_by_afid(
     return await repository.AudioSlice.get_classified(afid, transaction.connection)
 
 
-@classify_router.post(path="/classifier/classify")
-async def classify(file: UploadFile = File(...), model=Depends(get_model)):
+@classify_router.post(path="/classifier/classify", deprecated=True)
+async def classify_old(file: UploadFile = File(...), model=Depends(get_model)):
+    report = classify_audio_file_deprecated(file.file, model)
+    return report
+
+@classify_router.post(path="/classifier/classifynew")
+async def classify(file: UploadFile = File(...), model=Depends(get_model)) -> Classifications:
     report = classify_audio_file(file.file, model)
     return report
 

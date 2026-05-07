@@ -43,7 +43,7 @@ class TestMLUtil(unittest.TestCase):
 
     def test_classify_audio_file(self):
         predictor = next(get_model())
-        classifications = classify_audio_file(self.audio_file_path, predictor)
+        classifications = classify_audio_file_deprecated(self.audio_file_path, predictor)
         self.assertIsInstance(classifications, dict, "Classifications are a dictionary")
         for slice_classification in classifications.values():
             species_in_slice = slice_classification.keys()
