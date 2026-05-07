@@ -9,7 +9,7 @@ from psycopg.rows import class_row
 from psycopg import Error as PGError
 from itertools import repeat
 
-from Logger import Logger
+from logger import Logger
 
 LOGGER = Logger.getInstance("Dashboard repository")
 

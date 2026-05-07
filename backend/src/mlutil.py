@@ -9,7 +9,7 @@ from pydantic import BaseModel
 import soundfile as sf
 from datetime import timedelta
 from fastapi import HTTPException
-from Logger import Logger
+from logger import Logger
 
 LOGGER = Logger.getInstance("Machine Learning")
 
