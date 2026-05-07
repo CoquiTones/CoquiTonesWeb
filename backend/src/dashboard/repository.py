@@ -1,3 +1,4 @@
+from typing import List
 from psycopg.connection_async import AsyncConnection
 from pydantic import Field, BaseModel
 from dbutil import default_HTTP_exception
@@ -59,15 +60,15 @@ class WeeklySummaryEntry(BaseModel):
 
 class WeeklySummaryTable(BaseModel):
     """All the time series of the weekly summary"""
-    total_coqui: list[int] = Field(default_factory=lambda: list())
-    total_wightmanae: list[int] = Field(default_factory=lambda: list())
-    total_gryllus: list[int] = Field(default_factory=lambda: list())
-    total_portoricensis: list[int] = Field(default_factory=lambda: list())
-    total_unicolor: list[int] = Field(default_factory=lambda: list())
-    total_hedricki: list[int] = Field(default_factory=lambda: list())
-    total_locustus: list[int] = Field(default_factory=lambda: list())
-    total_richmondi: list[int] = Field(default_factory=lambda: list())
-    date_bin: list[datetime] = Field(default_factory=lambda: list())
+    total_coqui: List[int] = Field(default_factory=lambda: list())
+    total_wightmanae: List[int] = Field(default_factory=lambda: list())
+    total_gryllus: List[int] = Field(default_factory=lambda: list())
+    total_portoricensis: List[int] = Field(default_factory=lambda: list())
+    total_unicolor: List[int] = Field(default_factory=lambda: list())
+    total_hedricki: List[int] = Field(default_factory=lambda: list())
+    total_locustus: List[int] = Field(default_factory=lambda: list())
+    total_richmondi: List[int] = Field(default_factory=lambda: list())
+    date_bin: List[datetime] = Field(default_factory=lambda: list())
 
 class NodeReport(BaseModel):
     """Node health report response object"""
@@ -82,7 +83,7 @@ class Dashboard:
     @staticmethod
     async def recent_data(
         owner: int, minTimestamp: datetime, maxTimestamp: datetime, db: AsyncConnection
-    ) -> list[RecentData]:
+    ) -> List[RecentData]:
         """Returns Recent Data form DB, [nid, afid, ...weatherdata]"""
         async with db.cursor(row_factory=class_row(RecentData)) as curs:
             try:
@@ -115,7 +116,7 @@ class Dashboard:
                 raise default_HTTP_exception(e, "dashboard recent data query")
 
     @staticmethod
-    async def delete_records(owner: int, records: list[RecordTimestampIndex], db: AsyncConnection):
+    async def delete_records(owner: int, records: List[RecordTimestampIndex], db: AsyncConnection):
         """Deletes a list of records based on join from @recent_data record
 
         Args:
@@ -230,7 +231,7 @@ ORDER BY "bin"
                 )
 
     @staticmethod
-    async def node_health_check(owner: int, db: AsyncConnection) -> list[NodeReport]:
+    async def node_health_check(owner: int, db: AsyncConnection) -> List[NodeReport]:
         """Returns the time of the last message from each node along with the type of node"""
 
         async with db.cursor(row_factory=class_row(NodeReport)) as curs:
@@ -286,7 +287,7 @@ ORDER by n.ntype
         limit: int,
         orderby: int,
         db: AsyncConnection,
-    ) -> list:
+    ) -> List[ReportTableEntry]:
 
         async with db.cursor(row_factory=class_row(ReportTableEntry)) as curs:
             try:
