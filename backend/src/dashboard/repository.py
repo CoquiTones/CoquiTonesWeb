@@ -7,12 +7,20 @@ from psycopg import sql, errors
 from psycopg.connection_async import AsyncConnection
 from psycopg.rows import class_row
 from psycopg import Error as PGError
-from Requests.RecordToBeDeleted import RecordTimestampIndex
 from itertools import repeat
 
 from Logger import Logger
 
 LOGGER = Logger.getInstance("Dashboard repository")
+
+class RecordTimestampIndex(BaseModel):
+    """
+    Encapsulation of Record which is captured by timestamp.
+    Since we can delete audiom, weather data based on timestamp, all that is needed is the timestamp index id
+    """
+
+    timestamp_index_id: int
+
 
 class RecentData(BaseModel):
     """Recent reports dashboard operation response object"""

@@ -1,6 +1,5 @@
 import dashboard.repository as repository
 
-from Requests.RecordToBeDeleted import RecordTimestampIndex
 from dbutil import DBTransactionDependency
 from user.service import LightWeightUser, get_current_user
 
@@ -84,7 +83,7 @@ async def recent_data(
 @router.delete(path="/delete")
 async def delete_record(
     current_user: Annotated[LightWeightUser, Depends(get_current_user)],
-    list_of_records_to_be_deleted: list[RecordTimestampIndex],
+    list_of_records_to_be_deleted: list[repository.RecordTimestampIndex],
     transaction: DBTransactionDependency,
 ) -> int:
 
