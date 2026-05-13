@@ -1,6 +1,6 @@
 import pickle
 from typing import List
-from sklearn.ensemble import RandomForestClassifier 
+from sklearn.ensemble import RandomForestClassifier
 import numpy as np
 import librosa
 import concurrent.futures
@@ -13,10 +13,12 @@ from logger import Logger
 
 LOGGER = Logger.getInstance("Machine Learning")
 
+
 class SliceData(BaseModel):
     """
     Model of a slice of audio from a file with data of species detections.
     """
+
     start_time: timedelta
     end_time: timedelta
     coqui: bool
@@ -34,31 +36,33 @@ class Classifications(BaseModel):
     Model that holds all the classification data from a classified file.
     Provides a method for each species that returns how many hits of that species there are among the slices.
     """
+
     slices: List[SliceData]
-    
+
     def coqui(self) -> int:
         return sum(map(lambda slice: slice.coqui, self.slices))
-    
+
     def wightmanae(self) -> int:
         return sum(map(lambda slice: slice.wightmanae, self.slices))
-    
+
     def gryllus(self) -> int:
         return sum(map(lambda slice: slice.gryllus, self.slices))
-    
+
     def portoricensis(self) -> int:
         return sum(map(lambda slice: slice.portoricensis, self.slices))
-    
+
     def unicolor(self) -> int:
         return sum(map(lambda slice: slice.unicolor, self.slices))
-    
+
     def hedricki(self) -> int:
         return sum(map(lambda slice: slice.hedricki, self.slices))
-    
+
     def locustus(self) -> int:
         return sum(map(lambda slice: slice.locustus, self.slices))
-    
+
     def richmondi(self) -> int:
         return sum(map(lambda slice: slice.richmondi, self.slices))
+
 
 species_schema = (
     "coqui",
@@ -103,7 +107,9 @@ def initialize_predictor():
         return pickle.load(f)
 
 
-def classify_slice(spectrogram: np.ndarray, model: RandomForestClassifier) -> np.ndarray:
+def classify_slice(
+    spectrogram: np.ndarray, model: RandomForestClassifier
+) -> np.ndarray:
     return model.predict(spectrogram.reshape(1, -1))
 
 
@@ -133,6 +139,7 @@ def classify_audio_file_deprecated(f, model):
         )
     }
 
+
 def classify_audio_file(f, model) -> Classifications:
     audio_data, sr = sf.read(f)
     all_samples = extract_features(audio_data, sr)
@@ -146,22 +153,22 @@ def classify_audio_file(f, model) -> Classifications:
 
     slice_data_list = []
     for slice_i, slice_array in enumerate(prob_matrix):
-        slice_array = slice_array.transpose() # vector form into list form
+        slice_array = slice_array.transpose()  # vector form into list form
         slice_data = SliceData(
-            start_time= timedelta(seconds=slice_i * SLICE_SECONDS),
-            end_time=   timedelta(seconds=(slice_i + 1) * SLICE_SECONDS),
-            coqui=      slice_array[0],
-            wightmanae= slice_array[1],
-            gryllus=    slice_array[2],
-            portoricensis= slice_array[3],
-            unicolor=   slice_array[4],
-            hedricki=   slice_array[5],
-            locustus=   slice_array[6],
-            richmondi=  slice_array[7],
-            )
-        
+            start_time=timedelta(seconds=slice_i * SLICE_SECONDS),
+            end_time=timedelta(seconds=(slice_i + 1) * SLICE_SECONDS),
+            coqui=slice_array[0],
+            wightmanae=slice_array[1],
+            gryllus=slice_array[2],
+            portoricensis=slice_array[3],
+            unicolor=slice_array[4],
+            hedricki=slice_array[5],
+            locustus=slice_array[6],
+            richmondi=slice_array[7],
+        )
+
         slice_data_list.append(slice_data)
-    
+
     return Classifications(slices=slice_data_list)
 
 
