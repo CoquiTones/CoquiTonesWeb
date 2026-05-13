@@ -11,7 +11,7 @@ export class APIHandlerClassifier extends APIHandlerBase {
      */
     async fetchClassification(classifyAudioRequest) {
         try {
-            const response = await fetch(this.web_url + "/api/classifier/classify", {
+            const response = await fetch(this.web_url + "/api/classifier/classifynew", {
                 method: "POST",
                 body: classifyAudioRequest.toFormData(),
             });
