@@ -4,7 +4,7 @@ from audio.basic_service import insert_audio_and_timestamp, classify_and_save
 
 from timestamp.repository import TimestampIndex
 
-from mlutil import Classifications, classify_audio_file, get_model, classify_audio_file_deprecated
+from mlutil import Classifications, classify_audio_file, get_model
 from dbutil import DBTransactionDependency
 from user.service import LightWeightUser, get_current_user
 from datetime import datetime
@@ -112,12 +112,7 @@ async def classify_by_afid(
     return await repository.AudioSlice.get_classified(afid, transaction.connection)
 
 
-@classify_router.post(path="/classifier/classify", deprecated=True)
-async def classify_old(file: UploadFile = File(...), model=Depends(get_model)):
-    report = classify_audio_file_deprecated(file.file, model)
-    return report
-
-@classify_router.post(path="/classifier/classifynew")
+@classify_router.post(path="/classifier/classify")
 async def classify(file: UploadFile = File(...), model=Depends(get_model)) -> Classifications:
     report = classify_audio_file(file.file, model)
     return report

@@ -19,8 +19,8 @@ class SliceData(BaseModel):
     Model of a slice of audio from a file with data of species detections.
     """
 
-    start_time: timedelta
-    end_time: timedelta
+    start_time: int # seconds
+    end_time: int # seconds
     coqui: bool
     wightmanae: bool
     gryllus: bool
@@ -113,33 +113,6 @@ def classify_slice(
     return model.predict(spectrogram.reshape(1, -1))
 
 
-def classify_audio_file_deprecated(f, model):
-    LOGGER.warning("Deprecated method, use classify_audio_file instead.")
-    audio_data, sr = sf.read(f)
-    all_samples = extract_features(audio_data, sr)
-    n_slices = all_samples.shape[1] // slice_width
-    slices = np.reshape(
-        all_samples[:, 0 : slice_width * n_slices], (n_slices, 20, slice_width)
-    )
-
-    with concurrent.futures.ThreadPoolExecutor() as executor:
-        prob_matrix = executor.map(classify_slice, slices, itertools.repeat(model))
-
-    return {
-        f"slice{i}": {
-            species_name: bool(prediction)
-            for species_name, prediction in zip(species_schema, slice_classification[0])
-        }
-        | {
-            "start_time": timedelta(seconds=start_time),
-            "end_time": timedelta(seconds=start_time + SLICE_SECONDS),
-        }
-        for i, (slice_classification, start_time) in enumerate(
-            zip(prob_matrix, itertools.count(0, SLICE_SECONDS))
-        )
-    }
-
-
 def classify_audio_file(f, model) -> Classifications:
     audio_data, sr = sf.read(f)
     all_samples = extract_features(audio_data, sr)
@@ -155,8 +128,8 @@ def classify_audio_file(f, model) -> Classifications:
     for slice_i, slice_array in enumerate(prob_matrix):
         slice_array = slice_array.transpose()  # vector form into list form
         slice_data = SliceData(
-            start_time=timedelta(seconds=slice_i * SLICE_SECONDS),
-            end_time=timedelta(seconds=(slice_i + 1) * SLICE_SECONDS),
+            start_time=slice_i * SLICE_SECONDS,
+            end_time=(slice_i + 1) * SLICE_SECONDS,
             coqui=slice_array[0],
             wightmanae=slice_array[1],
             gryllus=slice_array[2],
