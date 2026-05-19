@@ -4,7 +4,7 @@ from psycopg.connection_async import AsyncConnection
 from psycopg import Error as PGError
 from psycopg.rows import class_row, scalar_row
 from dbutil import default_HTTP_exception
-from Logger import Logger
+from logger import Logger
 from pydantic import Field, BaseModel, ConfigDict
 
 LOGGER = Logger.getInstance("DAO Service Component")

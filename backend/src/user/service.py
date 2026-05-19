@@ -139,7 +139,7 @@ async def is_user_authenticated(
 @router.get("/users/me")
 async def read_users_me(
     current_user: Annotated[LightWeightUser, Depends(get_current_user)],
-):
+) -> LightWeightUser:
     return current_user
 
 
