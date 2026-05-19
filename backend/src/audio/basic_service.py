@@ -16,13 +16,22 @@ async def classify_and_save(audio, audio_file_id, db, model):
     classifier_output = classify_audio_file(audio, model)
     slice_insert_tasks = []
     async with TaskGroup() as task_group:
-        for classified_slice_name, classified_slice in classifier_output.items():
-            classified_slice["starttime"] = classified_slice.pop("start_time")
-            classified_slice["endtime"] = classified_slice.pop("end_time")
+        for slice_ in classifier_output.slices:
             slice_insert_tasks.append(
                 task_group.create_task(
-                    repository.AudioSlice.insert(db, audio_file_id, **classified_slice),  # type: ignore
-                    name=classified_slice_name,
+                    repository.AudioSlice.insert(
+                        db, 
+                        audio_file_id, 
+                        slice_.start_time, 
+                        slice_.end_time, 
+                        slice_.coqui,
+                        slice_.wightmanae,
+                        slice_.gryllus,
+                        slice_.portoricensis,
+                        slice_.unicolor,
+                        slice_.hedricki,
+                        slice_.locustus,
+                        slice_.richmondi,)
                 )
             )
 

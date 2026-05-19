@@ -7,7 +7,7 @@ from psycopg import AsyncConnection, AsyncTransaction, Error, errors
 from contextlib import asynccontextmanager
 import json
 import os
-from Logger import Logger
+from logger import Logger
 
 
 LOGGER = Logger.getInstance("Database Util Component")

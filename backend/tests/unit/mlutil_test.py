@@ -44,15 +44,9 @@ class TestMLUtil(unittest.TestCase):
     def test_classify_audio_file(self):
         predictor = next(get_model())
         classifications = classify_audio_file(self.audio_file_path, predictor)
-        self.assertIsInstance(classifications, dict, "Classifications are a dictionary")
-        for slice_classification in classifications.values():
-            species_in_slice = slice_classification.keys()
-            for species_name in species_schema:
-                self.assertIn(
-                    species_name, 
-                    slice_classification, 
-                    f"{species_name} classified in all slices"
-                    )
+        self.assertIsInstance(classifications, Classifications, "Classifications type works")
+        for slice_classification in classifications.slices:
+            self.assertIsInstance(slice_classification, SliceData)
             
 
     def test_get_model(self):

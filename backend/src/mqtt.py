@@ -25,7 +25,7 @@ from audio.basic_service import classify_and_save
 from mlutil import get_model
 from queue import Queue
 from random import randint
-from Logger import Logger
+from logger import Logger
 from constants import MQTT_LISTENER_PASSWORD_ENV, MQTT_ADMIN_PASSWORD_ENV, MQTT_BROKER_HOSTNAME_ENV
 
 LOGGER = Logger.getInstance("MQTT Service Component")

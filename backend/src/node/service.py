@@ -8,7 +8,7 @@ from typing import Annotated, List
 from pydantic import SecretStr
 from fastapi import Depends, Form, APIRouter, HTTPException, status
 
-from Logger import Logger
+from logger import Logger
 
 router = APIRouter(prefix="/node", tags=["Node"])
 

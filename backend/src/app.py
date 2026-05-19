@@ -12,7 +12,7 @@ import mqtt
 import os
 import dotenv
 
-from Logger import Logger
+from logger import Logger
 
 dotenv.load_dotenv(dotenv_path="backend/src/.env")
 

@@ -3,11 +3,12 @@
  * 
  * @param (json response object)
  */
-export default class ClassifierReport {
 
+export default class ClassifierReport {
+    SLICES_KEY = "slices"
     constructor(APIResponseJsonData) {
-        this.slices = Object.keys(APIResponseJsonData).map((slice) => (
-            new SliceReport(APIResponseJsonData[slice])
+        this.slices = APIResponseJsonData[this.SLICES_KEY].map((slice) => (
+            new SliceReport(slice)
         ))
     }
 

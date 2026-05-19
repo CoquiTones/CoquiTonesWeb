@@ -325,7 +325,7 @@ const Classifier = () => {
                                   px: 1.5,
                                 }}
                               >
-                                {slice.start_time}s – {slice.end_time}s
+                                {slice.start_time} – {slice.end_time}
                               </TableCell>
                               {species.map((speciesName) =>
                                 renderSpeciesCell(slice, speciesName)

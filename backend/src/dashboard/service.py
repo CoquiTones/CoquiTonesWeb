@@ -1,6 +1,5 @@
 import dashboard.repository as repository
 
-from Requests.RecordToBeDeleted import RecordTimestampIndex
 from dbutil import DBTransactionDependency
 from user.service import LightWeightUser, get_current_user
 
@@ -60,7 +59,7 @@ async def recent_reports(
     skip: int = 0,
     limit: int = 10,
     orderby: int = 1,  # This could be changed to an enum, but passing through the query might be weird.
-):
+) -> List[repository.ReportTableEntry]:
     arguments = locals() | {
         "db": transaction.connection
     }  # pass all keyword args as unpacked dictionary, special case for db connection
@@ -74,7 +73,7 @@ async def recent_data(
     minTimestamp: Annotated[datetime, Form()],  # default to yesterday
     maxTimestamp: Annotated[datetime, Form()],  # default to present
     transaction: DBTransactionDependency,
-):
+) -> List[repository.RecentData]:
 
     return await repository.Dashboard.recent_data(
         current_user.auid, minTimestamp, maxTimestamp, transaction.connection
@@ -84,9 +83,9 @@ async def recent_data(
 @router.delete(path="/delete")
 async def delete_record(
     current_user: Annotated[LightWeightUser, Depends(get_current_user)],
-    list_of_records_to_be_deleted: list[RecordTimestampIndex],
+    list_of_records_to_be_deleted: list[repository.RecordTimestampIndex],
     transaction: DBTransactionDependency,
-):
+) -> int:
 
     return await repository.Dashboard.delete_records(
         current_user.auid, list_of_records_to_be_deleted, transaction.connection
