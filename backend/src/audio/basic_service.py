@@ -5,10 +5,10 @@ from node.repository import Node
 
 from psycopg import AsyncConnection
 from mlutil import classify_audio_file
-from datetime import datetime
+from datetime import datetime, timedelta
 from asyncio import TaskGroup
 
-from Logger import Logger
+from logger import Logger
 
 LOGGER = Logger.getInstance("Basic Audio Service")
 
@@ -22,8 +22,8 @@ async def classify_and_save(audio, audio_file_id, db, model):
                     repository.AudioSlice.insert(
                         db, 
                         audio_file_id, 
-                        slice_.start_time, 
-                        slice_.end_time, 
+                        timedelta(seconds=slice_.start_time), 
+                        timedelta(seconds=slice_.end_time), 
                         slice_.coqui,
                         slice_.wightmanae,
                         slice_.gryllus,
