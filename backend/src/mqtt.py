@@ -295,15 +295,22 @@ async def listen_for_reports():
         await client.subscribe("reports/#")
         async for message in client.messages:
             if not isinstance(message.payload, bytes):
-                LOGGER.error("ERROR: Bad message received", message)
+                LOGGER.error("Bad message received:", message)
                 continue
             try:
                 report = parse_report(message.payload)
-                await handle_report(report, model)
+                if report.node_id != topic_node_id(str(message.topic)):
+                    LOGGER.error(f"Report claims to be from node {report.node_id} but was uploaded in topic {message.topic}.")
+                else:
+                    await handle_report(report, model)
 
             except ValidationError:
-                LOGGER.error("ERROR: Bad message received", message)
+                LOGGER.error("Bad message received:", message)
 
+def topic_node_id(topic: str) -> int:
+    """Takes the topic of a message in the reports/# wildcard and returns the #"""
+    assert(topic.startswith("reports/"))
+    return int(topic[8:])
 
 def parse_report(report_raw: bytes) -> Report:
     return Report.model_validate_json(report_raw)
