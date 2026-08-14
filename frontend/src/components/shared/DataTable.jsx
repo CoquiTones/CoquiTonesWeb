@@ -42,6 +42,9 @@ export default function DataTable({ errors, setErrors }) {
         }
     }, [minTime, maxTime, apiHandler]);
 
+    useEffect(() => {
+        fetchRecentDataRows();
+    }, [fetchRecentDataRows]);
     const handleSelectionChange = useCallback((newSelection) => {
 
         if (newSelection.type === "exclude") {
@@ -53,9 +56,6 @@ export default function DataTable({ errors, setErrors }) {
             setSelectedRows(newSelectedRows);
         }
     })
-    useEffect(() => {
-        fetchRecentDataRows();
-    }, [fetchRecentDataRows]);
 
     const handleDeleteClick = () => {
         setDeleteDialogOpen(true);

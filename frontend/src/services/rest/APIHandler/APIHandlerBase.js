@@ -2,7 +2,7 @@ import GlobalStateManager from "../../Authentication/GlobalStateManager";
 import AudioFileRequest from "../RequestORM/Shared/AudioFileRequest";
 import InsertAudioRequest from "../RequestORM/SpectralAnalysis/insertAudioRequest";
 import { APIHandlerError } from "./Errors";
-
+import { AllAudioResponse } from "../ResponseORM/Shared/AllAudioResponse";
 /**
  * Abstract APIHandler class for managing API calls to backend server
  * 

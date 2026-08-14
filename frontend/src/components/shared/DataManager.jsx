@@ -15,9 +15,12 @@ import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import FileUpload from "./FileUpload";
 import { APIHandlerSpectralAnalysis } from "../../services/rest/APIHandler/APIHandlerSpectralAnalysis";
 import InsertAudioRequest from "../../services/rest/RequestORM/SpectralAnalysis/insertAudioRequest";
+import AudioLoader from "./AudioLoader";
+import CloudDownloadIcon from '@mui/icons-material/CloudDownload';
 
 const DataManager = ({ audioFile, setAudioFile, setDefaultX, setDefaultY, setStats, errors, setErrors }) => {
   const [open, setOpen] = useState(false);
+  const [modalOpen, setModalOpen] = useState(false)
   const [nid, setNid] = useState("");
   const [dateTime, setDateTime] = useState(new Date().getTime());
   const processAudio = async () => {
@@ -73,6 +76,14 @@ const DataManager = ({ audioFile, setAudioFile, setDefaultX, setDefaultY, setSta
   return (
     <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
       <FileUpload setAudioFile={setAudioFile} />
+      <IconButton
+        onClick={() => setModalOpen(!modalOpen)}
+
+      >
+        <CloudDownloadIcon color="primary" />
+      </IconButton>
+
+      <AudioLoader setAudioFile={setAudioFile} isOpen={modalOpen} />
       <IconButton
         aria-label="add"
         onClick={handleClickOpen}
