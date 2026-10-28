@@ -1,8 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  DEFAULT_DETAIL_PROFILE,
+  DETAIL_PROFILES,
   MAX_FRAMES,
   clampRange,
+  getDetailProfile,
   validateAnalysis,
 } from '../src/components/SoundAnalysisTools/processing/spectrogramModel';
 import { makeAnalysis } from './helpers/spectrogramFixtures';
@@ -10,6 +13,17 @@ import { makeAnalysis } from './helpers/spectrogramFixtures';
 describe('spectrogramModel', () => {
   it('accepts a valid analysis', () => {
     expect(validateAnalysis(makeAnalysis())).toEqual([]);
+  });
+
+  it('exposes three increasing generation profiles', () => {
+    expect(Object.keys(DETAIL_PROFILES)).toEqual(['low', 'medium', 'high']);
+    expect(DEFAULT_DETAIL_PROFILE).toBe('medium');
+    expect(getDetailProfile('missing')).toBe(DETAIL_PROFILES.medium);
+
+    expect(DETAIL_PROFILES.low.maxFrames).toBeLessThan(DETAIL_PROFILES.medium.maxFrames);
+    expect(DETAIL_PROFILES.medium.maxFrames).toBeLessThan(DETAIL_PROFILES.high.maxFrames);
+    expect(DETAIL_PROFILES.low.maxBins).toBeLessThan(DETAIL_PROFILES.medium.maxBins);
+    expect(DETAIL_PROFILES.medium.maxBins).toBeLessThan(DETAIL_PROFILES.high.maxBins);
   });
 
   it('rejects mismatched db dimensions', () => {

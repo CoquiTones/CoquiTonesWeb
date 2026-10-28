@@ -19,6 +19,10 @@ import DataManager from '../components/shared/DataManager';
 import SoundPlayer from '../components/SoundAnalysisTools/render/SoundPlayer';
 import Spectrogram from '../components/SoundAnalysisTools/render/Spectrogram';
 import SpectrogramControls from '../components/SoundAnalysisTools/render/SpectrogramControls';
+import {
+  DEFAULT_DETAIL_PROFILE,
+  getDetailProfile,
+} from '../components/SoundAnalysisTools/processing/spectrogramModel';
 
 const PANEL_WIDTH = 340;
 
@@ -37,6 +41,7 @@ export default function SpectralAnalysis() {
   const [colorscale, setColorscale] = useState('jet');
   const [xrange, setXrange] = useState([0, 15]);
   const [yrange, setYrange] = useState([0, 10000]);
+  const [detailProfile, setDetailProfile] = useState(DEFAULT_DETAIL_PROFILE);
   const [defaultX, setDefaultX] = useState([0, 120]);
   const [defaultY, setDefaultY] = useState([0, 10000]);
   const [panelOpen, setPanelOpen] = useState(false);
@@ -54,6 +59,8 @@ export default function SpectralAnalysis() {
     setYrange([min, Math.min(max, 20000)]);
   }, [defaultY]);
 
+  const detail = getDetailProfile(detailProfile);
+
   const controls = (
     <SpectrogramControls
       colorscale={colorscale}
@@ -64,6 +71,10 @@ export default function SpectralAnalysis() {
       setYrange={setYrange}
       defaultX={defaultX}
       defaultY={defaultY}
+      detailProfile={detailProfile}
+      setDetailProfile={setDetailProfile}
+      duration={stats?.duration}
+      sampleRate={stats?.sampleRate}
       disabled={processing.status !== 'ready'}
     />
   );
@@ -73,7 +84,7 @@ export default function SpectralAnalysis() {
       <PageHeader
         eyebrow="Analysis workspace"
         title="Spectral analysis"
-        description="Upload or load a recording, then narrow the spectrogram to the time and frequency band you care about."
+        description="Upload or load a recording, tune the analysis detail, then narrow the spectrogram to the time and frequency band you care about."
       />
 
       <Box
@@ -157,6 +168,8 @@ export default function SpectralAnalysis() {
                 colorscale={colorscale}
                 timeRange={xrange}
                 frequencyRange={yrange}
+                maxFrames={detail.maxFrames}
+                maxBins={detail.maxBins}
                 onProcessingChange={setProcessing}
               />
             </Box>
@@ -165,7 +178,7 @@ export default function SpectralAnalysis() {
           {isDesktop && (
             <Paper sx={{ width: PANEL_WIDTH, flexShrink: 0, p: 2.5, overflowY: 'auto' }}>
               <Typography component="h2" variant="h6" color="text.primary" sx={{ mb: 2 }}>
-                Display settings
+                Spectrogram settings
               </Typography>
               {controls}
             </Paper>
@@ -176,7 +189,7 @@ export default function SpectralAnalysis() {
       <Drawer anchor="right" open={panelOpen} onClose={() => setPanelOpen(false)}>
         <Box sx={{ width: { xs: '88vw', sm: 380 }, p: 2.5 }} role="presentation">
           <Typography component="h2" variant="h6" color="text.primary" sx={{ mb: 2 }}>
-            Display settings
+            Spectrogram settings
           </Typography>
           {controls}
         </Box>

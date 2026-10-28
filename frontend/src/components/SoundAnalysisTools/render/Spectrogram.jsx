@@ -7,7 +7,12 @@ import useMediaQuery from '@mui/material/useMediaQuery';
 import SpectrogramLegend from './SpectrogramLegend';
 import SpectrogramPlot from './SpectrogramPlot';
 import { useSpectrogram } from '../processing/useSpectrogram';
-import { DEFAULT_DISPLAY_MAX_DB, DEFAULT_DISPLAY_MIN_DB } from '../processing/spectrogramModel';
+import {
+  DEFAULT_DISPLAY_MAX_DB,
+  DEFAULT_DISPLAY_MIN_DB,
+  DEFAULT_MAX_BINS,
+  DEFAULT_MAX_FRAMES,
+} from '../processing/spectrogramModel';
 
 const DEFAULT_DISPLAY_RANGE = [DEFAULT_DISPLAY_MIN_DB, DEFAULT_DISPLAY_MAX_DB];
 
@@ -17,11 +22,17 @@ const Spectrogram = memo(function Spectrogram({
   frequencyRange,
   colorscale,
   displayRange = DEFAULT_DISPLAY_RANGE,
+  maxFrames = DEFAULT_MAX_FRAMES,
+  maxBins = DEFAULT_MAX_BINS,
   onProcessingChange,
 }) {
   const theme = useTheme();
   const isDesktop = useMediaQuery(theme.breakpoints.up('md'));
-  const { status, progress, error, analysis, retry } = useSpectrogram({ audioFile });
+  const { status, progress, error, analysis, retry } = useSpectrogram({
+    audioFile,
+    maxFrames,
+    maxBins,
+  });
 
   useEffect(() => {
     onProcessingChange?.({ status, progress, error });
@@ -73,6 +84,8 @@ Spectrogram.propTypes = {
   frequencyRange: PropTypes.arrayOf(PropTypes.number).isRequired,
   colorscale: PropTypes.string.isRequired,
   displayRange: PropTypes.arrayOf(PropTypes.number),
+  maxFrames: PropTypes.number,
+  maxBins: PropTypes.number,
   onProcessingChange: PropTypes.func,
 };
 

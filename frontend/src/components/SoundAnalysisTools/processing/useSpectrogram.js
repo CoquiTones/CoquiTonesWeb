@@ -3,9 +3,9 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   DEFAULT_DISPLAY_MAX_DB,
   DEFAULT_DISPLAY_MIN_DB,
-  MAX_BINS,
+  DEFAULT_MAX_BINS,
+  DEFAULT_MAX_FRAMES,
   MAX_DECODED_BYTES,
-  MAX_FRAMES,
   createAnalysisError,
 } from './spectrogramModel';
 
@@ -77,13 +77,14 @@ export const decodeAudioFile = async (file) => {
 
 /**
  * Decode a recording once and analyze the whole file in the worker. The result
- * is a full-file time/frequency matrix; callers only change which slice of it
- * is drawn, so moving the display sliders never triggers another analysis.
+ * is a full-file time/frequency matrix; viewport changes only select which
+ * slice is drawn. Changing the generation detail reuses the decoded samples
+ * already held by the worker, so it never decodes the file again.
  */
 export const useSpectrogram = ({
   audioFile,
-  maxFrames = MAX_FRAMES,
-  maxBins = MAX_BINS,
+  maxFrames = DEFAULT_MAX_FRAMES,
+  maxBins = DEFAULT_MAX_BINS,
   displayMinDb = DEFAULT_DISPLAY_MIN_DB,
   displayMaxDb = DEFAULT_DISPLAY_MAX_DB,
 } = {}) => {
@@ -94,8 +95,11 @@ export const useSpectrogram = ({
   const [retryCount, setRetryCount] = useState(0);
 
   const workerRef = useRef(null);
+  const workerReadyRef = useRef(false);
   const fileTokenRef = useRef(0);
   const requestIdRef = useRef(0);
+  const metaRef = useRef({ duration: 0, sampleRate: 0 });
+  const configRef = useRef({ maxFrames, maxBins });
   const displayRef = useRef({ displayMinDb, displayMaxDb });
 
   useEffect(() => {
@@ -103,6 +107,7 @@ export const useSpectrogram = ({
   }, [displayMinDb, displayMaxDb]);
 
   const terminateWorker = useCallback(() => {
+    workerReadyRef.current = false;
     const worker = workerRef.current;
     if (worker) {
       worker.postMessage?.({ type: 'dispose' });
@@ -111,9 +116,35 @@ export const useSpectrogram = ({
     workerRef.current = null;
   }, []);
 
+  const requestAnalysis = useCallback((config) => {
+    const worker = workerRef.current;
+    const { duration, sampleRate } = metaRef.current;
+    if (!worker || !workerReadyRef.current || !(duration > 0) || !(sampleRate > 0)) {
+      return false;
+    }
+
+    const requestId = requestIdRef.current + 1;
+    requestIdRef.current = requestId;
+    setStatus('analyzing');
+    setProgress(null);
+    setError(null);
+    worker.postMessage({
+      type: 'analyze',
+      requestId,
+      timeRange: [0, duration],
+      frequencyRange: [0, sampleRate / 2],
+      maxFrames: config.maxFrames,
+      maxBins: config.maxBins,
+      displayMinDb: displayRef.current.displayMinDb,
+      displayMaxDb: displayRef.current.displayMaxDb,
+    });
+    return true;
+  }, []);
+
   useEffect(() => {
     if (!audioFile) {
       terminateWorker();
+      metaRef.current = { duration: 0, sampleRate: 0 };
       setStatus('idle');
       setProgress(null);
       setError(null);
@@ -124,6 +155,7 @@ export const useSpectrogram = ({
     const token = fileTokenRef.current + 1;
     fileTokenRef.current = token;
     requestIdRef.current = 0;
+    metaRef.current = { duration: 0, sampleRate: 0 };
     let cancelled = false;
 
     terminateWorker();
@@ -194,6 +226,7 @@ export const useSpectrogram = ({
         };
 
         worker.onerror = () => {
+          workerReadyRef.current = false;
           fail(createAnalysisError(
             'worker-failed',
             'Audio analysis is unavailable in this browser.',
@@ -211,22 +244,12 @@ export const useSpectrogram = ({
           },
           [decoded.samples.buffer],
         );
+        workerReadyRef.current = true;
+        metaRef.current = { duration: decoded.duration, sampleRate: decoded.sampleRate };
 
-        // Analyze the complete recording once. The display ranges are applied
-        // later by cropping the returned matrix while drawing.
-        const requestId = requestIdRef.current + 1;
-        requestIdRef.current = requestId;
-        setStatus('analyzing');
-        worker.postMessage({
-          type: 'analyze',
-          requestId,
-          timeRange: [0, decoded.duration],
-          frequencyRange: [0, decoded.sampleRate / 2],
-          maxFrames,
-          maxBins,
-          displayMinDb: displayRef.current.displayMinDb,
-          displayMaxDb: displayRef.current.displayMaxDb,
-        });
+        // Generate the full-file matrix once. Later detail changes reuse the
+        // samples already inside the worker.
+        requestAnalysis(configRef.current);
       } catch (nextError) {
         fail(nextError);
       }
@@ -238,7 +261,14 @@ export const useSpectrogram = ({
       cancelled = true;
       terminateWorker();
     };
-  }, [audioFile, retryCount, maxFrames, maxBins, terminateWorker]);
+  }, [audioFile, retryCount, requestAnalysis, terminateWorker]);
+
+  // Generation detail changes re-run the STFT, but never the audio decode.
+  useEffect(() => {
+    configRef.current = { maxFrames, maxBins };
+    if (!workerReadyRef.current) return;
+    requestAnalysis(configRef.current);
+  }, [maxFrames, maxBins, requestAnalysis]);
 
   const retry = useCallback(() => {
     setRetryCount((count) => count + 1);

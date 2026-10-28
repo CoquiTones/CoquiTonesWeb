@@ -3,26 +3,19 @@ import FFT from 'fft.js';
 import {
   DEFAULT_DISPLAY_MAX_DB,
   DEFAULT_DISPLAY_MIN_DB,
-  MAX_BINS,
-  MAX_FFT_SIZE,
-  MAX_FRAMES,
+  DEFAULT_MAX_BINS,
+  DEFAULT_MAX_FRAMES,
   MIN_FFT_SIZE,
   clampRange,
   createAnalysis,
   createAnalysisError,
+  selectFftSize,
 } from './spectrogramModel';
 
-const TARGET_WINDOW_SECONDS = 0.09;
+export { selectFftSize };
+
 const YIELD_EVERY_FRAMES = 32;
-
-const clamp = (value, min, max) => Math.min(Math.max(value, min), max);
-
-export const selectFftSize = (sampleRate) => {
-  if (!Number.isFinite(sampleRate) || sampleRate <= 0) return MIN_FFT_SIZE;
-  const target = sampleRate * TARGET_WINDOW_SECONDS;
-  const powerOfTwo = 2 ** Math.ceil(Math.log2(Math.max(1, target)));
-  return clamp(powerOfTwo, MIN_FFT_SIZE, MAX_FFT_SIZE);
-};
+const MAX_PROGRESS_UPDATES = 64;
 
 export const createHannWindow = (length) => {
   const window = new Float64Array(length);
@@ -64,17 +57,14 @@ const buildFrameStarts = ({ startSample, endSample, fftSize, maxFrames }) => {
   if (lastStart < firstStart) lastStart = firstStart;
 
   const span = Math.max(1, lastStart - firstStart);
-  let hop = Math.max(1, Math.floor(fftSize / 2), Math.ceil(span / Math.max(1, maxFrames - 1)));
+  // The frame budget alone decides the hop, so the time-detail control works
+  // for short and long recordings alike.
+  const hop = Math.max(1, Math.ceil(span / Math.max(1, maxFrames - 1)));
   let starts = [];
   for (let start = firstStart; start <= lastStart; start += hop) starts.push(start);
   if (starts.length === 0) starts = [firstStart];
 
-  if (starts.length > maxFrames) {
-    hop = Math.max(1, Math.ceil(span / Math.max(1, maxFrames - 1)));
-    starts = [];
-    for (let start = firstStart; start <= lastStart; start += hop) starts.push(start);
-    if (starts.length > maxFrames) starts = starts.slice(0, maxFrames);
-  }
+  if (starts.length > maxFrames) starts = starts.slice(0, maxFrames);
 
   // Always include the frame centered on the requested end so the time axis
   // endpoint is exact, even when the hop does not land on it.
@@ -97,8 +87,8 @@ export const computeSpectrogram = async ({
   duration,
   timeRange,
   frequencyRange,
-  maxFrames = MAX_FRAMES,
-  maxBins = MAX_BINS,
+  maxFrames = DEFAULT_MAX_FRAMES,
+  maxBins = DEFAULT_MAX_BINS,
   displayMinDb = DEFAULT_DISPLAY_MIN_DB,
   displayMaxDb = DEFAULT_DISPLAY_MAX_DB,
   analysisId = 0,
@@ -148,6 +138,10 @@ export const computeSpectrogram = async ({
   const frame = new Float64Array(fftSize);
   const db = new Float32Array(frameCount * binCount);
   const minAmp = 10 ** (displayMinDb / 20);
+  const yieldEvery = Math.max(
+    YIELD_EVERY_FRAMES,
+    Math.ceil(frameCount / MAX_PROGRESS_UPDATES),
+  );
   let minDb = Infinity;
   let maxDb = -Infinity;
 
@@ -188,7 +182,7 @@ export const computeSpectrogram = async ({
       if (groupDb > maxDb) maxDb = groupDb;
     }
 
-    if (frameIndex % YIELD_EVERY_FRAMES === 0) {
+    if (frameIndex % yieldEvery === 0) {
       onProgress?.((frameIndex + 1) / frameCount);
       // Yield so the worker can process a cancel message.
       await new Promise((resolve) => setTimeout(resolve, 0));

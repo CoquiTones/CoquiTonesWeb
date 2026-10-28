@@ -155,4 +155,39 @@ describe('useSpectrogram', () => {
     expect(analyzeCount()).toBe(1);
     expect(result.current.status).toBe('ready');
   });
+
+  it('regenerates with new detail without decoding the file again', async () => {
+    const samples = new Float32Array(8000);
+    window.AudioContext = makeAudioContext(samples);
+    window.webkitAudioContext = window.AudioContext;
+    vi.stubGlobal('Worker', FakeWorker);
+
+    const file = makeSineFile({ sampleRate: 8000, duration: 1 });
+    const { result, rerender } = renderHook(
+      ({ maxFrames, maxBins }) => useSpectrogram({ audioFile: file, maxFrames, maxBins }),
+      { initialProps: { maxFrames: 2048, maxBins: 1024 } },
+    );
+
+    await waitFor(() => expect(result.current.status).toBe('ready'));
+    const initialAnalysis = result.current.analysis;
+    const worker = FakeWorker.instances[0];
+    const messagesOfType = (type) => worker.messages.filter((message) => message.type === type);
+
+    expect(messagesOfType('analyze')).toHaveLength(1);
+    expect(messagesOfType('init')).toHaveLength(1);
+
+    rerender({ maxFrames: 512, maxBins: 256 });
+
+    await waitFor(() => expect(messagesOfType('analyze')).toHaveLength(2));
+    await waitFor(() => expect(result.current.status).toBe('ready'));
+
+    const analyses = messagesOfType('analyze');
+    expect(analyses[1].maxFrames).toBe(512);
+    expect(analyses[1].maxBins).toBe(256);
+    // The worker is reused and keeps the decoded samples; only the STFT reruns.
+    expect(FakeWorker.instances).toHaveLength(1);
+    expect(messagesOfType('init')).toHaveLength(1);
+    expect(result.current.analysis).not.toBe(initialAnalysis);
+    expect(result.current.analysis.timeRange).toEqual([0, 1]);
+  });
 });

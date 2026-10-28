@@ -100,7 +100,7 @@ describe('spectrogramAnalysis', () => {
     expect(analysis.db[bin]).toBeCloseTo(direct, 1);
   });
 
-  it('locates a tone onset within one frame', async () => {
+  it('locates a tone onset within one analysis window', async () => {
     const signal = makeSine({
       sampleRate: 8000,
       duration: 1,
@@ -119,7 +119,9 @@ describe('spectrogramAnalysis', () => {
       }
     }
     expect(firstFrame).not.toBeNull();
-    expect(Math.abs(analysis.times[firstFrame] - 0.5)).toBeLessThanOrEqual(analysis.timeResolution + 0.02);
+    const windowSeconds = analysis.fftSize / analysis.sampleRate;
+    expect(Math.abs(analysis.times[firstFrame] - 0.5))
+      .toBeLessThanOrEqual(Math.max(analysis.timeResolution, windowSeconds / 2) + 0.02);
   });
 
   it('renders silence at the floor and constant input at DC', async () => {
@@ -157,6 +159,37 @@ describe('spectrogramAnalysis', () => {
     expect(analysis.frameCount).toBeLessThanOrEqual(16);
     expect(analysis.binCount).toBeLessThanOrEqual(16);
     expect(analysis.frequencyPooling).toBeGreaterThan(1);
+    expect(validateAnalysis(analysis)).toEqual([]);
+  });
+
+  it('honours the requested frame and bin budgets for short recordings', async () => {
+    const signal = makeSine({ sampleRate: 8000, duration: 1, frequency: 1000 });
+    const detailed = await computeTone(signal, { maxFrames: 512, maxBins: 256 });
+    const sparse = await computeTone(signal, { maxFrames: 64, maxBins: 256 });
+
+    expect(detailed.frameCount).toBeGreaterThan(sparse.frameCount);
+    expect(detailed.frameCount).toBeLessThanOrEqual(512);
+    expect(sparse.frameCount).toBeLessThanOrEqual(64);
+    expect(detailed.binCount).toBe(256);
+    expect(sparse.binCount).toBe(256);
+    expect(validateAnalysis(detailed)).toEqual([]);
+    expect(validateAnalysis(sparse)).toEqual([]);
+  });
+
+  it('supports the maximum frequency detail', async () => {
+    const signal = makeSine({ sampleRate: 44100, duration: 1, frequency: 1000 });
+    const analysis = await computeSpectrogram({
+      samples: signal.samples,
+      sampleRate: signal.sampleRate,
+      duration: signal.duration,
+      timeRange: [0, signal.duration],
+      frequencyRange: [0, signal.sampleRate / 2],
+      fftSize: 4096,
+      maxFrames: 64,
+      maxBins: 2048,
+    });
+
+    expect(analysis.binCount).toBe(2048);
     expect(validateAnalysis(analysis)).toEqual([]);
   });
 });

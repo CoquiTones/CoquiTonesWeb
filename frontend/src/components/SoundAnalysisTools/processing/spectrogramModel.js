@@ -1,12 +1,37 @@
 export const DEFAULT_DISPLAY_MIN_DB = -100;
 export const DEFAULT_DISPLAY_MAX_DB = 0;
-export const MAX_FRAMES = 2048;
-export const MAX_BINS = 1024;
+
+export const DEFAULT_DETAIL_PROFILE = 'medium';
+export const DETAIL_PROFILES = Object.freeze({
+  low: Object.freeze({ label: 'Low', maxFrames: 1024, maxBins: 512 }),
+  medium: Object.freeze({ label: 'Medium', maxFrames: 2048, maxBins: 1024 }),
+  high: Object.freeze({ label: 'High', maxFrames: 4096, maxBins: 2048 }),
+});
+
+const PROFILE_VALUES = Object.values(DETAIL_PROFILES);
+export const DEFAULT_MAX_FRAMES = DETAIL_PROFILES[DEFAULT_DETAIL_PROFILE].maxFrames;
+export const DEFAULT_MAX_BINS = DETAIL_PROFILES[DEFAULT_DETAIL_PROFILE].maxBins;
+export const MAX_FRAMES = Math.max(...PROFILE_VALUES.map((profile) => profile.maxFrames));
+export const MAX_BINS = Math.max(...PROFILE_VALUES.map((profile) => profile.maxBins));
+
 export const MIN_FFT_SIZE = 1024;
 export const MAX_FFT_SIZE = 4096;
 export const MAX_DECODED_BYTES = 250 * 1024 * 1024;
 
+const TARGET_WINDOW_SECONDS = 0.09;
+
 const isFiniteNumber = (value) => typeof value === 'number' && Number.isFinite(value);
+
+export const getDetailProfile = (name) => (
+  DETAIL_PROFILES[name] ?? DETAIL_PROFILES[DEFAULT_DETAIL_PROFILE]
+);
+
+export const selectFftSize = (sampleRate) => {
+  if (!isFiniteNumber(sampleRate) || sampleRate <= 0) return MIN_FFT_SIZE;
+  const target = sampleRate * TARGET_WINDOW_SECONDS;
+  const powerOfTwo = 2 ** Math.ceil(Math.log2(Math.max(1, target)));
+  return Math.min(Math.max(powerOfTwo, MIN_FFT_SIZE), MAX_FFT_SIZE);
+};
 
 const isStrictlyIncreasing = (values) => {
   for (let index = 1; index < values.length; index += 1) {

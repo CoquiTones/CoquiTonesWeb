@@ -121,6 +121,48 @@ describe('spectrogram worker protocol', () => {
     expect(scope.messages.some((message) => message.type === 'error')).toBe(false);
   });
 
+  it('reuses the initialized samples for a new detail request', async () => {
+    const { scope, handler } = makeScope();
+    const signal = makeSine({ sampleRate: 8000, duration: 0.5, frequency: 1000 });
+    await handler.handleMessage({
+      data: {
+        type: 'init',
+        fileId: 'tone',
+        sampleRate: signal.sampleRate,
+        duration: signal.duration,
+        samples: signal.samples,
+      },
+    });
+
+    await handler.handleMessage({
+      data: {
+        type: 'analyze',
+        requestId: 10,
+        timeRange: [0, signal.duration],
+        frequencyRange: [0, signal.sampleRate / 2],
+        maxFrames: 8,
+        maxBins: 16,
+      },
+    });
+    await handler.handleMessage({
+      data: {
+        type: 'analyze',
+        requestId: 11,
+        timeRange: [0, signal.duration],
+        frequencyRange: [0, signal.sampleRate / 2],
+        maxFrames: 16,
+        maxBins: 8,
+      },
+    });
+
+    const results = scope.messages.filter((message) => message.type === 'result');
+    expect(results).toHaveLength(2);
+    expect(results[0].analysis.frameCount).toBeLessThanOrEqual(8);
+    expect(results[0].analysis.binCount).toBe(16);
+    expect(results[1].analysis.frameCount).toBeLessThanOrEqual(16);
+    expect(results[1].analysis.binCount).toBe(8);
+  });
+
   it('disposes the worker scope', async () => {
     const { scope, handler } = makeScope();
     await handler.handleMessage({ data: { type: 'dispose' } });
