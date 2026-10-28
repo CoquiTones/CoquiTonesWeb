@@ -1,116 +1,88 @@
-import { Suspense, useMemo } from 'react';
-import { Canvas } from '@react-three/fiber';
+import { useEffect, useMemo } from 'react';
+import PropTypes from 'prop-types';
 import Box from '@mui/material/Box';
-import Typography from '@mui/material/Typography';
-import GraphicEqRoundedIcon from '@mui/icons-material/GraphicEqRounded';
+import { useTheme } from '@mui/material/styles';
+import useMediaQuery from '@mui/material/useMediaQuery';
 
-import Axis from './Axis';
-import SpectrogramMesh from './SpectrogramMesh';
+import SpectrogramLegend from './SpectrogramLegend';
+import SpectrogramPlot from './SpectrogramPlot';
+import { useSpectrogram } from '../processing/useSpectrogram';
+import { DEFAULT_DISPLAY_MAX_DB, DEFAULT_DISPLAY_MIN_DB } from '../processing/spectrogramModel';
 
-const X_SIZE = 60;
-const Y_SIZE = 20;
-const FREQUENCY_SAMPLES = 4096;
-const TIME_SAMPLES = 1024;
+const DEFAULT_DISPLAY_RANGE = [DEFAULT_DISPLAY_MIN_DB, DEFAULT_DISPLAY_MAX_DB];
 
-/**
- * 3D spectrogram canvas with time/frequency axes.
- */
-export default function Spectrogram({ audioFile, colorscale, currentTimeRange, currentFrequencyRange }) {
-  const frequencyTicks = useMemo(() => {
-    if (!currentFrequencyRange) return [];
-    const [minFreq, maxFreq] = currentFrequencyRange;
-    const step = (maxFreq - minFreq) / 5;
-    return Array.from({ length: 6 }, (_, index) => {
-      const value = minFreq + index * step;
-      return value >= 1000 ? `${(value / 1000).toFixed(1)}k` : `${value.toFixed(0)}`;
-    });
-  }, [currentFrequencyRange]);
+export default function Spectrogram({
+  audioFile,
+  timeRange,
+  frequencyRange,
+  colorscale,
+  displayRange = DEFAULT_DISPLAY_RANGE,
+  onProcessingChange,
+}) {
+  const theme = useTheme();
+  const isDesktop = useMediaQuery(theme.breakpoints.up('md'));
+  const { status, progress, error, analysis, retry } = useSpectrogram({
+    audioFile,
+    timeRange,
+    frequencyRange,
+    displayMinDb: displayRange[0],
+    displayMaxDb: displayRange[1],
+  });
 
-  const timeTicks = useMemo(() => {
-    if (!currentTimeRange) return [];
-    const [minTime, maxTime] = currentTimeRange;
-    const step = (maxTime - minTime) / 5;
-    return Array.from({ length: 6 }, (_, index) => (minTime + index * step).toFixed(1));
-  }, [currentTimeRange]);
+  useEffect(() => {
+    onProcessingChange?.({ status, progress, error });
+  }, [status, progress, error, onProcessingChange]);
 
-  if (!audioFile) {
-    return (
-      <Box
-        sx={{
-          height: '100%',
-          minHeight: 360,
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center',
-          gap: 1.5,
-          textAlign: 'center',
-          border: '1px dashed',
-          borderColor: 'divider',
-          borderRadius: 3,
-          color: 'text.secondary',
-        }}
-      >
-        <GraphicEqRoundedIcon sx={{ fontSize: 44 }} aria-hidden="true" />
-        <Typography component="p" variant="subtitle1" color="text.primary">
-          No recording loaded
-        </Typography>
-        <Typography variant="body2" color="text.secondary" sx={{ maxWidth: 380 }}>
-          Upload a file or load a stored recording to render its spectrogram.
-        </Typography>
-      </Box>
-    );
-  }
+  const plotTimeRange = useMemo(
+    () => (status === 'analyzing' && analysis
+      ? [analysis.analysisStart, analysis.analysisEnd]
+      : timeRange),
+    [status, analysis, timeRange],
+  );
 
   return (
     <Box
-      sx={{ width: '100%', height: '100%', minHeight: 360 }}
-      role="img"
-      aria-label={`Spectrogram of ${audioFile.name}, showing ${currentTimeRange[0]} to ${currentTimeRange[1]} seconds and ${currentFrequencyRange[0]} to ${currentFrequencyRange[1]} hertz`}
+      sx={{
+        display: 'flex',
+        flexDirection: isDesktop ? 'row' : 'column',
+        gap: 2,
+        width: '100%',
+        height: '100%',
+        minHeight: 360,
+      }}
     >
-      <Canvas
-        camera={{ position: [0, 0, 90], fov: 20 }}
-        dpr={[1, 2]}
-        gl={{ antialias: true, powerPreference: 'high-performance' }}
-      >
-        <ambientLight intensity={0.6} />
-        <directionalLight position={[10, 10, 5]} intensity={1} />
-
-        <Suspense fallback={null}>
-          <SpectrogramMesh
-            audioFile={audioFile}
+      <Box sx={{ flex: 1, minWidth: 0, minHeight: 360 }}>
+        <SpectrogramPlot
+          analysis={analysis}
+          fileName={audioFile?.name ?? ''}
+          timeRange={plotTimeRange}
+          frequencyRange={frequencyRange}
+          colorscale={colorscale}
+          displayRange={displayRange}
+          status={status}
+          progress={progress}
+          error={error}
+          onRetry={retry}
+        />
+      </Box>
+      {analysis && (
+        <Box sx={{ flexShrink: 0, alignSelf: isDesktop ? 'stretch' : 'stretch' }}>
+          <SpectrogramLegend
             colorscale={colorscale}
-            currentTimeRange={currentTimeRange}
-            currentFrequencyRange={currentFrequencyRange}
-            xSize={X_SIZE}
-            ySize={Y_SIZE}
-            frequencySamples={FREQUENCY_SAMPLES}
-            timeSamples={TIME_SAMPLES}
+            displayRange={displayRange}
+            orientation={isDesktop ? 'vertical' : 'horizontal'}
           />
-        </Suspense>
-
-        {currentTimeRange?.length === 2 && (
-          <Axis
-            orientation="x"
-            axisLength={X_SIZE}
-            numTicks={6}
-            position={[0, -Y_SIZE / 2 - 2, 0]}
-            tickLabels={timeTicks}
-            label="Time (s)"
-          />
-        )}
-
-        {currentFrequencyRange?.length === 2 && (
-          <Axis
-            orientation="y"
-            axisLength={Y_SIZE}
-            numTicks={6}
-            position={[-X_SIZE / 2 - 2, 0, 0]}
-            tickLabels={frequencyTicks}
-            label="Frequency (Hz)"
-          />
-        )}
-      </Canvas>
+        </Box>
+      )}
     </Box>
   );
 }
+
+Spectrogram.propTypes = {
+  audioFile: PropTypes.instanceOf(File),
+  timeRange: PropTypes.arrayOf(PropTypes.number).isRequired,
+  frequencyRange: PropTypes.arrayOf(PropTypes.number).isRequired,
+  colorscale: PropTypes.string.isRequired,
+  displayRange: PropTypes.arrayOf(PropTypes.number),
+  onProcessingChange: PropTypes.func,
+};

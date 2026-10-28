@@ -25,6 +25,7 @@ export default function SpectrogramControls({
   setYrange,
   defaultX,
   defaultY,
+  disabled = false,
 }) {
   const [tempX, setTempX] = useState(xrange);
   const [tempY, setTempY] = useState(yrange);
@@ -66,12 +67,13 @@ export default function SpectrogramControls({
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-      <FormControl fullWidth size="small">
+      <FormControl fullWidth size="small" disabled={disabled}>
         <InputLabel id="colorscale-label">Color scale</InputLabel>
         <Select
           labelId="colorscale-label"
           value={colorscale}
           label="Color scale"
+          disabled={disabled}
           onChange={(event) => setColorscale(event.target.value)}
         >
           <MenuItem value="RdBu">Red–blue</MenuItem>
@@ -95,6 +97,7 @@ export default function SpectrogramControls({
         </Typography>
         <StyledSlider
           disableSwap
+          disabled={disabled}
           sx={{ mt: 3 }}
           value={tempX}
           onChange={handleXChange}
@@ -117,6 +120,7 @@ export default function SpectrogramControls({
         </Typography>
         <StyledSlider
           disableSwap
+          disabled={disabled}
           sx={{ mt: 3 }}
           value={tempY}
           onChange={handleYChange}
@@ -142,4 +146,5 @@ SpectrogramControls.propTypes = {
   setYrange: PropTypes.func.isRequired,
   defaultX: PropTypes.arrayOf(PropTypes.number).isRequired,
   defaultY: PropTypes.arrayOf(PropTypes.number).isRequired,
+  disabled: PropTypes.bool,
 };

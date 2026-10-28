@@ -23,7 +23,6 @@ export default defineConfig({
             '@emotion/react',
             '@emotion/styled',
           ],
-          'vendor-three': ['three', '@react-three/fiber', '@react-three/drei', 'three-stdlib'],
           'vendor-map': ['mapbox-gl'],
         },
       },
@@ -32,6 +31,7 @@ export default defineConfig({
   test: {
     globals: true,
     environment: 'jsdom',
+    setupFiles: ['./tests/setup.js'],
     css: true,
     reporters: ['verbose'],
     coverage: {

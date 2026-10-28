@@ -43,6 +43,7 @@ export default function SpectralAnalysis() {
   const [panelOpen, setPanelOpen] = useState(false);
   const [stats, setStats] = useState(null);
   const [fileInfoOpen, setFileInfoOpen] = useState(false);
+  const [processing, setProcessing] = useState({ status: 'idle', progress: null, error: null });
 
   useEffect(() => {
     const [min, max] = defaultX;
@@ -64,6 +65,7 @@ export default function SpectralAnalysis() {
       setYrange={setYrange}
       defaultX={defaultX}
       defaultY={defaultY}
+      disabled={processing.status !== 'ready'}
     />
   );
 
@@ -156,8 +158,9 @@ export default function SpectralAnalysis() {
               <Spectrogram
                 audioFile={audioFile}
                 colorscale={colorscale}
-                currentTimeRange={xrange}
-                currentFrequencyRange={yrange}
+                timeRange={xrange}
+                frequencyRange={yrange}
+                onProcessingChange={setProcessing}
               />
             </Box>
           </Paper>
