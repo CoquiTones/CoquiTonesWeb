@@ -11,6 +11,8 @@ import { formatDbfs, formatFrequency, formatTime } from '../processing/spectrogr
 import {
   cellFromPoint,
   createPlotRect,
+  findBinWindow,
+  findFrameWindow,
   frequencyToY,
   isInsidePlot,
   timeToX,
@@ -170,8 +172,18 @@ export default function SpectrogramPlot({
 
   const handleFocus = () => {
     if (!analysis || keyboardRef.current) return;
-    const frameIndex = Math.floor(analysis.frameCount / 2);
-    const binIndex = Math.floor(analysis.binCount / 2);
+    const [frameStart, frameEnd] = findFrameWindow(analysis.times, timeRange);
+    const [binStart, binEnd] = findBinWindow(analysis.frequencies, frequencyRange);
+    const frameIndex = clamp(
+      Math.floor((frameStart + frameEnd) / 2),
+      0,
+      analysis.frameCount - 1,
+    );
+    const binIndex = clamp(
+      Math.floor((binStart + binEnd) / 2),
+      0,
+      analysis.binCount - 1,
+    );
     keyboardRef.current = { frameIndex, binIndex };
     showCell(cellAt(frameIndex, binIndex), true);
   };
@@ -189,9 +201,18 @@ export default function SpectrogramPlot({
       return;
     }
 
+    // Keep keyboard navigation inside the visible window; the analysis now
+    // covers the whole recording rather than just the displayed slice.
+    const [frameStart, frameEnd] = findFrameWindow(analysis.times, timeRange);
+    const [binStart, binEnd] = findBinWindow(analysis.frequencies, frequencyRange);
+    const minFrame = clamp(frameStart, 0, analysis.frameCount - 1);
+    const maxFrame = clamp(Math.max(frameStart, frameEnd), 0, analysis.frameCount - 1);
+    const minBin = clamp(binStart, 0, analysis.binCount - 1);
+    const maxBin = clamp(Math.max(binStart, binEnd), 0, analysis.binCount - 1);
+
     const current = keyboardRef.current ?? {
-      frameIndex: Math.floor(analysis.frameCount / 2),
-      binIndex: Math.floor(analysis.binCount / 2),
+      frameIndex: Math.floor((minFrame + maxFrame) / 2),
+      binIndex: Math.floor((minBin + maxBin) / 2),
     };
     let next = { ...current };
 
@@ -199,14 +220,14 @@ export default function SpectrogramPlot({
     else if (event.key === 'ArrowRight') next.frameIndex += 1;
     else if (event.key === 'ArrowUp') next.binIndex += 1;
     else if (event.key === 'ArrowDown') next.binIndex -= 1;
-    else if (event.key === 'Home') next.frameIndex = 0;
-    else if (event.key === 'End') next.frameIndex = analysis.frameCount - 1;
+    else if (event.key === 'Home') next.frameIndex = minFrame;
+    else if (event.key === 'End') next.frameIndex = maxFrame;
     else return;
 
     event.preventDefault();
     next = {
-      frameIndex: clamp(next.frameIndex, 0, analysis.frameCount - 1),
-      binIndex: clamp(next.binIndex, 0, analysis.binCount - 1),
+      frameIndex: clamp(next.frameIndex, minFrame, maxFrame),
+      binIndex: clamp(next.binIndex, minBin, maxBin),
     };
     keyboardRef.current = next;
     showCell(cellAt(next.frameIndex, next.binIndex), true, pinned);

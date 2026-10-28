@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from 'react';
+import { memo, useEffect } from 'react';
 import PropTypes from 'prop-types';
 import Box from '@mui/material/Box';
 import { useTheme } from '@mui/material/styles';
@@ -11,7 +11,7 @@ import { DEFAULT_DISPLAY_MAX_DB, DEFAULT_DISPLAY_MIN_DB } from '../processing/sp
 
 const DEFAULT_DISPLAY_RANGE = [DEFAULT_DISPLAY_MIN_DB, DEFAULT_DISPLAY_MAX_DB];
 
-export default function Spectrogram({
+const Spectrogram = memo(function Spectrogram({
   audioFile,
   timeRange,
   frequencyRange,
@@ -21,24 +21,11 @@ export default function Spectrogram({
 }) {
   const theme = useTheme();
   const isDesktop = useMediaQuery(theme.breakpoints.up('md'));
-  const { status, progress, error, analysis, retry } = useSpectrogram({
-    audioFile,
-    timeRange,
-    frequencyRange,
-    displayMinDb: displayRange[0],
-    displayMaxDb: displayRange[1],
-  });
+  const { status, progress, error, analysis, retry } = useSpectrogram({ audioFile });
 
   useEffect(() => {
     onProcessingChange?.({ status, progress, error });
   }, [status, progress, error, onProcessingChange]);
-
-  const plotTimeRange = useMemo(
-    () => (status === 'analyzing' && analysis
-      ? [analysis.analysisStart, analysis.analysisEnd]
-      : timeRange),
-    [status, analysis, timeRange],
-  );
 
   return (
     <Box
@@ -55,7 +42,7 @@ export default function Spectrogram({
         <SpectrogramPlot
           analysis={analysis}
           fileName={audioFile?.name ?? ''}
-          timeRange={plotTimeRange}
+          timeRange={timeRange}
           frequencyRange={frequencyRange}
           colorscale={colorscale}
           displayRange={displayRange}
@@ -76,8 +63,10 @@ export default function Spectrogram({
       )}
     </Box>
   );
-}
+});
 
+// The audio player no longer re-renders the page while playing, but memoising
+// the plot also keeps unrelated parent updates from reconciling this subtree.
 Spectrogram.propTypes = {
   audioFile: PropTypes.instanceOf(File),
   timeRange: PropTypes.arrayOf(PropTypes.number).isRequired,
@@ -86,3 +75,5 @@ Spectrogram.propTypes = {
   displayRange: PropTypes.arrayOf(PropTypes.number),
   onProcessingChange: PropTypes.func,
 };
+
+export default Spectrogram;

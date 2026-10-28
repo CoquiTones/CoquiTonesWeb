@@ -88,7 +88,7 @@ describe('useSpectrogram', () => {
 
     const file = makeSineFile({ sampleRate: 8000, duration: 1 });
     const { result } = renderHook(() =>
-      useSpectrogram({ audioFile: file, timeRange: [0, 1], frequencyRange: [0, 4000] }),
+      useSpectrogram({ audioFile: file }),
     );
 
     await waitFor(() => expect(result.current.status).toBe('ready'));
@@ -102,14 +102,32 @@ describe('useSpectrogram', () => {
     Object.defineProperty(file, 'size', { value: 20 * 1024 * 1024 });
 
     const { result } = renderHook(() =>
-      useSpectrogram({ audioFile: file, timeRange: [0, 1], frequencyRange: [0, 4000] }),
+      useSpectrogram({ audioFile: file }),
     );
 
     await waitFor(() => expect(result.current.status).toBe('failed'));
     expect(result.current.error.code).toBe('over-budget');
   });
 
-  it('crops a time range that is inside the cached analysis', async () => {
+  it('analyzes the whole file in a single worker request', async () => {
+    const samples = new Float32Array(8000);
+    window.AudioContext = makeAudioContext(samples);
+    window.webkitAudioContext = window.AudioContext;
+    vi.stubGlobal('Worker', FakeWorker);
+
+    const file = makeSineFile({ sampleRate: 8000, duration: 1 });
+    const { result } = renderHook(() =>
+      useSpectrogram({ audioFile: file }),
+    );
+
+    await waitFor(() => expect(result.current.status).toBe('ready'));
+    const worker = FakeWorker.instances[0];
+    const analyze = worker.messages.find((message) => message.type === 'analyze');
+    expect(analyze.timeRange).toEqual([0, 1]);
+    expect(analyze.frequencyRange).toEqual([0, 4000]);
+  });
+
+  it('does not re-analyze when the visible range changes', async () => {
     const samples = new Float32Array(8000);
     window.AudioContext = makeAudioContext(samples);
     window.webkitAudioContext = window.AudioContext;
@@ -117,13 +135,24 @@ describe('useSpectrogram', () => {
 
     const file = makeSineFile({ sampleRate: 8000, duration: 1 });
     const { result, rerender } = renderHook(
-      ({ timeRange }) =>
-        useSpectrogram({ audioFile: file, timeRange, frequencyRange: [0, 4000] }),
-      { initialProps: { timeRange: [0, 1] } },
+      ({ timeRange, frequencyRange }) =>
+        useSpectrogram({ audioFile: file, timeRange, frequencyRange }),
+      { initialProps: { timeRange: [0, 1], frequencyRange: [0, 4000] } },
     );
 
     await waitFor(() => expect(result.current.status).toBe('ready'));
-    rerender({ timeRange: [0.5, 1] });
-    await waitFor(() => expect(result.current.analysis.analysisStart).toBe(0.5));
+    const initialAnalysis = result.current.analysis;
+    const worker = FakeWorker.instances[0];
+    const analyzeCount = () => worker.messages.filter((message) => message.type === 'analyze').length;
+
+    expect(analyzeCount()).toBe(1);
+
+    rerender({ timeRange: [0.25, 0.75], frequencyRange: [500, 2000] });
+
+    // Viewport changes are presentation-only: the cached full-file analysis is
+    // returned untouched and no new worker request is issued.
+    expect(result.current.analysis).toBe(initialAnalysis);
+    expect(analyzeCount()).toBe(1);
+    expect(result.current.status).toBe('ready');
   });
 });

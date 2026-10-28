@@ -12,9 +12,25 @@ import StyledSlider from '../../shared/StyledSlider';
 const MIN_FREQUENCY_DISTANCE = 1000;
 const MIN_TIME_DISTANCE_SECONDS = 5;
 
+const clampTimeRange = (value, activeThumb, [min, max]) => (
+  activeThumb === 0
+    ? [Math.max(min, Math.min(value[0], value[1] - MIN_TIME_DISTANCE_SECONDS)), value[1]]
+    : [value[0], Math.min(max, Math.max(value[1], value[0] + MIN_TIME_DISTANCE_SECONDS))]
+);
+
+const clampFrequencyRange = (value, activeThumb, [min, max]) => (
+  activeThumb === 0
+    ? [Math.max(min, Math.min(value[0], value[1] - MIN_FREQUENCY_DISTANCE)), value[1]]
+    : [value[0], Math.min(max, Math.max(value[1], value[0] + MIN_FREQUENCY_DISTANCE))]
+);
+
 /**
  * Spectrogram display controls: colour scale plus the visible time and
  * frequency window.
+ *
+ * The sliders update local state while dragging so the thumb and value label
+ * stay responsive, but the parent range (which redraws the plot) is only
+ * updated on commit. Changing a range never re-runs the audio analysis.
  */
 export default function SpectrogramControls({
   colorscale,
@@ -34,35 +50,19 @@ export default function SpectrogramControls({
   useEffect(() => setTempY(yrange), [yrange]);
 
   const handleXChange = (_event, newValue, activeThumb) => {
-    if (activeThumb === 0) {
-      setTempX([Math.min(newValue[0], tempX[1] - MIN_TIME_DISTANCE_SECONDS), tempX[1]]);
-    } else {
-      setTempX([tempX[0], Math.max(newValue[1], tempX[0] + MIN_TIME_DISTANCE_SECONDS)]);
-    }
+    setTempX(clampTimeRange(newValue, activeThumb, defaultX));
   };
 
-  const handleXCommit = (_event, _newValue, activeThumb) => {
-    if (activeThumb === 0) {
-      setXrange([Math.min(tempX[0], tempX[1] - MIN_TIME_DISTANCE_SECONDS), tempX[1]]);
-    } else {
-      setXrange([tempX[0], Math.max(tempX[1], tempX[0] + MIN_TIME_DISTANCE_SECONDS)]);
-    }
+  const handleXCommit = (_event, newValue, activeThumb) => {
+    setXrange(clampTimeRange(newValue, activeThumb, defaultX));
   };
 
   const handleYChange = (_event, newValue, activeThumb) => {
-    if (activeThumb === 0) {
-      setTempY([Math.min(newValue[0], tempY[1] - MIN_FREQUENCY_DISTANCE), tempY[1]]);
-    } else {
-      setTempY([tempY[0], Math.max(newValue[1], tempY[0] + MIN_FREQUENCY_DISTANCE)]);
-    }
+    setTempY(clampFrequencyRange(newValue, activeThumb, defaultY));
   };
 
-  const handleYCommit = (_event, _newValue, activeThumb) => {
-    if (activeThumb === 0) {
-      setYrange([Math.min(tempY[0], tempY[1] - MIN_FREQUENCY_DISTANCE), tempY[1]]);
-    } else {
-      setYrange([tempY[0], Math.max(tempY[1], tempY[0] + MIN_FREQUENCY_DISTANCE)]);
-    }
+  const handleYCommit = (_event, newValue, activeThumb) => {
+    setYrange(clampFrequencyRange(newValue, activeThumb, defaultY));
   };
 
   return (

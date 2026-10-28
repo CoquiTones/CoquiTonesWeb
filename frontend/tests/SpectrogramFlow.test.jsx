@@ -37,6 +37,9 @@ describe('Spectrogram flow', () => {
     expect(screen.getByRole('application', { name: /Spectrogram of fixture.wav/ })).toBeTruthy();
     expect(screen.getByText('Intensity')).toBeTruthy();
     expect(screen.getByText('-100.0 dBFS')).toBeTruthy();
+    // Viewport ranges are rendering concerns only; they must not trigger a
+    // new analysis of the decoded recording.
+    expect(useSpectrogram).toHaveBeenCalledWith({ audioFile: file });
   });
 
   it('emits the processing state to the page', async () => {

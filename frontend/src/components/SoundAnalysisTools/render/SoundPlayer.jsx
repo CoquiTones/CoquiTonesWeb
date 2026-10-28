@@ -1,11 +1,15 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import PropTypes from 'prop-types';
 import Box from '@mui/material/Box';
 
 /**
  * Plays the loaded recording through a band-pass filter that follows the
  * visible spectrogram window, so the audio matches what is on screen.
+ *
+ * Playback time is handled inside the element (rather than lifted to React
+ * state) so time updates do not re-render the spectrogram while audio plays.
  */
-export default function SoundPlayer({ file, setCurrentTime, yrange, xrange, currentTime }) {
+export default function SoundPlayer({ file, yrange, xrange }) {
   const [audioUrl, setAudioUrl] = useState(null);
   const audioRef = useRef(null);
   const audioContextRef = useRef(null);
@@ -22,7 +26,7 @@ export default function SoundPlayer({ file, setCurrentTime, yrange, xrange, curr
     return () => URL.revokeObjectURL(url);
   }, [file]);
 
-  const applyFilterWindow = (filter) => {
+  const applyFilterWindow = useCallback((filter) => {
     const [low, high] = yrange ?? [];
     if (!filter || !Number.isFinite(low) || !Number.isFinite(high) || high <= low) return;
 
@@ -30,17 +34,17 @@ export default function SoundPlayer({ file, setCurrentTime, yrange, xrange, curr
     filter.type = 'bandpass';
     filter.frequency.value = center;
     filter.Q.value = center / (high - low);
-  };
-
-  useEffect(() => {
-    applyFilterWindow(filterRef.current);
   }, [yrange]);
 
   useEffect(() => {
+    applyFilterWindow(filterRef.current);
+  }, [applyFilterWindow]);
+
+  useEffect(() => {
     const audio = audioRef.current;
-    if (!audio || !xrange || currentTime <= xrange[1]) return;
+    if (!audio || !xrange || audio.currentTime <= xrange[1]) return;
     audio.currentTime = xrange[0];
-  }, [currentTime, xrange]);
+  }, [xrange]);
 
   useEffect(
     () => () => {
@@ -76,6 +80,12 @@ export default function SoundPlayer({ file, setCurrentTime, yrange, xrange, curr
     await audioContextRef.current?.resume?.();
   };
 
+  const handleTimeUpdate = (event) => {
+    const audio = event.currentTarget;
+    if (!xrange || audio.currentTime <= xrange[1]) return;
+    audio.currentTime = xrange[0];
+  };
+
   if (!file || !audioUrl) return null;
 
   return (
@@ -83,7 +93,7 @@ export default function SoundPlayer({ file, setCurrentTime, yrange, xrange, curr
       <audio
         ref={audioRef}
         src={audioUrl}
-        onTimeUpdate={(event) => setCurrentTime(event.target.currentTime)}
+        onTimeUpdate={handleTimeUpdate}
         onPlay={handlePlay}
         controls
         loop
@@ -94,3 +104,9 @@ export default function SoundPlayer({ file, setCurrentTime, yrange, xrange, curr
     </Box>
   );
 }
+
+SoundPlayer.propTypes = {
+  file: PropTypes.instanceOf(File),
+  yrange: PropTypes.arrayOf(PropTypes.number),
+  xrange: PropTypes.arrayOf(PropTypes.number),
+};

@@ -2,22 +2,7 @@ import { useEffect, useMemo, useRef } from 'react';
 import PropTypes from 'prop-types';
 
 import { buildLut, dbToLutIndex } from '../processing/spectrogramColormap';
-
-const findFrameWindow = (times, timeRange) => {
-  let start = 0;
-  while (start < times.length && times[start] < timeRange[0] - 1e-6) start += 1;
-  let end = times.length - 1;
-  while (end >= 0 && times[end] > timeRange[1] + 1e-6) end -= 1;
-  return [start, end];
-};
-
-const findBinWindow = (frequencies, frequencyRange) => {
-  let start = 0;
-  while (start < frequencies.length && frequencies[start] < frequencyRange[0] - 1e-6) start += 1;
-  let end = frequencies.length - 1;
-  while (end >= 0 && frequencies[end] > frequencyRange[1] + 1e-6) end -= 1;
-  return [start, end];
-};
+import { findBinWindow, findFrameWindow } from '../processing/spectrogramTransforms';
 
 export default function SpectrogramCanvas({
   analysis = null,
@@ -48,29 +33,38 @@ export default function SpectrogramCanvas({
     const binCount = binEnd - binStart + 1;
     const [displayMinDb, displayMaxDb] = displayRange;
 
+    // Never build more pixels than the plot can display. Zoomed-out views of a
+    // full-file analysis can otherwise touch millions of cells per redraw.
+    const dpr = window.devicePixelRatio || 1;
+    const targetWidth = Math.max(1, Math.min(frameCount, Math.round(plotRect.width * dpr)));
+    const targetHeight = Math.max(1, Math.min(binCount, Math.round(plotRect.height * dpr)));
+
     const offscreen = document.createElement('canvas');
-    offscreen.width = frameCount;
-    offscreen.height = binCount;
+    offscreen.width = targetWidth;
+    offscreen.height = targetHeight;
     const offscreenContext = offscreen.getContext('2d');
     if (!offscreenContext) return;
 
-    const image = offscreenContext.createImageData(frameCount, binCount);
-    for (let frameIndex = 0; frameIndex < frameCount; frameIndex += 1) {
-      for (let binIndex = 0; binIndex < binCount; binIndex += 1) {
-        const sourceFrame = frameStart + frameIndex;
-        const sourceBin = binStart + binIndex;
+    const image = offscreenContext.createImageData(targetWidth, targetHeight);
+    const frameStep = frameCount / targetWidth;
+    const binStep = binCount / targetHeight;
+
+    for (let row = 0; row < targetHeight; row += 1) {
+      const sourceBin = binStart + (binCount - 1 - Math.floor(row * binStep));
+      let pixel = row * targetWidth * 4;
+      for (let column = 0; column < targetWidth; column += 1) {
+        const sourceFrame = frameStart + Math.floor(column * frameStep);
         const dbfs = analysis.db[sourceFrame * analysis.binCount + sourceBin];
         const lutIndex = dbToLutIndex(dbfs, displayMinDb, displayMaxDb) * 4;
-        const pixel = ((binCount - 1 - binIndex) * frameCount + frameIndex) * 4;
         image.data[pixel] = lut[lutIndex];
         image.data[pixel + 1] = lut[lutIndex + 1];
         image.data[pixel + 2] = lut[lutIndex + 2];
         image.data[pixel + 3] = lut[lutIndex + 3];
+        pixel += 4;
       }
     }
     offscreenContext.putImageData(image, 0, 0);
 
-    const dpr = window.devicePixelRatio || 1;
     canvas.width = Math.max(1, Math.round(plotRect.width * dpr));
     canvas.height = Math.max(1, Math.round(plotRect.height * dpr));
     context.imageSmoothingEnabled = false;

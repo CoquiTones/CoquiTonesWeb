@@ -34,7 +34,6 @@ export default function SpectralAnalysis() {
   const isDesktop = useMediaQuery(theme.breakpoints.up('md'));
 
   const [audioFile, setAudioFile] = useState(null);
-  const [currentTime, setCurrentTime] = useState(0);
   const [colorscale, setColorscale] = useState('jet');
   const [xrange, setXrange] = useState([0, 15]);
   const [yrange, setYrange] = useState([0, 10000]);
@@ -132,10 +131,8 @@ export default function SpectralAnalysis() {
                 <>
                   <SoundPlayer
                     file={audioFile}
-                    setCurrentTime={setCurrentTime}
                     yrange={yrange}
                     xrange={xrange}
-                    currentTime={currentTime}
                   />
                   <IconButton aria-label="Show file details" onClick={() => setFileInfoOpen(true)}>
                     <InfoOutlinedIcon />

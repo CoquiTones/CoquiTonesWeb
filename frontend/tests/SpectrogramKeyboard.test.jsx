@@ -5,7 +5,7 @@ import SpectrogramPlot from '../src/components/SoundAnalysisTools/render/Spectro
 import { makeAnalysis } from './helpers/spectrogramFixtures';
 import { renderWithTheme } from './helpers/renderWithTheme';
 
-const renderPlot = () =>
+const renderPlot = (props = {}) =>
   renderWithTheme(
     <SpectrogramPlot
       analysis={makeAnalysis()}
@@ -18,6 +18,7 @@ const renderPlot = () =>
       progress={null}
       error={null}
       onRetry={() => {}}
+      {...props}
     />,
   );
 
@@ -47,5 +48,11 @@ describe('Spectrogram keyboard readout', () => {
     expect(screen.getByRole('status')).toBeTruthy();
     fireEvent.keyDown(plot, { key: 'Escape' });
     expect(screen.queryByRole('status')).toBeNull();
+  });
+
+  it('keeps the keyboard readout inside the visible time window', () => {
+    renderPlot({ timeRange: [0.9, 1] });
+    fireEvent.focus(screen.getByRole('application'));
+    expect(screen.getByTestId('spectrogram-announcement').textContent).toMatch(/Time 1\.00 s/);
   });
 });

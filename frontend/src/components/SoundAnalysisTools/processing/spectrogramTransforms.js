@@ -7,6 +7,45 @@ export const PLOT_MARGIN = Object.freeze({
 
 const clamp = (value, min, max) => Math.min(Math.max(value, min), max);
 
+const lowerBound = (values, target) => {
+  let low = 0;
+  let high = values.length;
+  while (low < high) {
+    const middle = (low + high) >> 1;
+    if (values[middle] < target) low = middle + 1;
+    else high = middle;
+  }
+  return low;
+};
+
+const upperBound = (values, target) => {
+  let low = 0;
+  let high = values.length;
+  while (low < high) {
+    const middle = (low + high) >> 1;
+    if (values[middle] <= target) low = middle + 1;
+    else high = middle;
+  }
+  return low;
+};
+
+/**
+ * Index range of the analysis cells that fall inside the visible window.
+ * When the window sits between two cells, `start` is after `end`; callers can
+ * clamp that to the nearest cell.
+ */
+export const findFrameWindow = (times, timeRange) => {
+  const start = lowerBound(times, timeRange[0] - 1e-6);
+  const end = upperBound(times, timeRange[1] + 1e-6) - 1;
+  return [start, end];
+};
+
+export const findBinWindow = (frequencies, frequencyRange) => {
+  const start = lowerBound(frequencies, frequencyRange[0] - 1e-6);
+  const end = upperBound(frequencies, frequencyRange[1] + 1e-6) - 1;
+  return [start, end];
+};
+
 export const createPlotRect = ({
   width,
   height,

@@ -168,16 +168,20 @@ export const computeSpectrogram = async ({
 
     for (let groupIndex = 0; groupIndex < binCount; groupIndex += 1) {
       const [binStart, binEnd] = groups[groupIndex];
-      let groupDb = displayMinDb;
+      // Track the largest scaled power in the group. Amplitude comparison is
+      // monotonic in power, so sqrt/log only run once per output bin instead
+      // of once per raw FFT bin.
+      let maxPower = 0;
       for (let bin = binStart; bin < binEnd; bin += 1) {
         const real = complex[2 * bin];
         const imaginary = complex[2 * bin + 1];
-        const magnitude = Math.hypot(real, imaginary);
         const isEdgeBin = bin === 0 || bin === fftSize / 2;
-        const amplitude = magnitude * ((isEdgeBin ? 1 : 2) / windowSum);
-        const rawDb = amplitude > 0 ? 20 * Math.log10(Math.max(amplitude, minAmp)) : displayMinDb;
-        groupDb = Math.max(groupDb, Math.max(displayMinDb, rawDb));
+        const power = (real * real + imaginary * imaginary) * (isEdgeBin ? 1 : 4);
+        if (power > maxPower) maxPower = power;
       }
+      const amplitude = Math.sqrt(maxPower) / windowSum;
+      const rawDb = amplitude > 0 ? 20 * Math.log10(Math.max(amplitude, minAmp)) : displayMinDb;
+      const groupDb = Math.max(displayMinDb, rawDb);
       const matrixIndex = frameIndex * binCount + groupIndex;
       db[matrixIndex] = groupDb;
       if (groupDb < minDb) minDb = groupDb;

@@ -6,11 +6,8 @@ import {
   MAX_BINS,
   MAX_DECODED_BYTES,
   MAX_FRAMES,
-  createAnalysis,
   createAnalysisError,
 } from './spectrogramModel';
-
-const DEBOUNCE_MS = 150;
 
 const fileKey = (file) => `${file.name}:${file.size}:${file.lastModified}`;
 
@@ -78,48 +75,17 @@ export const decodeAudioFile = async (file) => {
   }
 };
 
-const cropAnalysisToTime = (analysis, timeRange) => {
-  const { times, binCount, db } = analysis;
-  let startIndex = 0;
-  while (startIndex < times.length && times[startIndex] < timeRange[0] - 1e-6) startIndex += 1;
-  let endIndex = times.length - 1;
-  while (endIndex >= 0 && times[endIndex] > timeRange[1] + 1e-6) endIndex -= 1;
-  if (startIndex > endIndex) return null;
-
-  const frameCount = endIndex - startIndex + 1;
-  const croppedDb = new Float32Array(frameCount * binCount);
-  croppedDb.set(db.subarray(startIndex * binCount, (endIndex + 1) * binCount));
-  const croppedTimes = times.slice(startIndex, endIndex + 1);
-
-  let minDb = Infinity;
-  let maxDb = -Infinity;
-  for (let index = 0; index < croppedDb.length; index += 1) {
-    if (croppedDb[index] < minDb) minDb = croppedDb[index];
-    if (croppedDb[index] > maxDb) maxDb = croppedDb[index];
-  }
-
-  return createAnalysis({
-    ...analysis,
-    frameCount,
-    times: croppedTimes,
-    db: croppedDb,
-    analysisStart: croppedTimes[0],
-    analysisEnd: croppedTimes[frameCount - 1],
-    timeRange,
-    minDb,
-    maxDb,
-  });
-};
-
+/**
+ * Decode a recording once and analyze the whole file in the worker. The result
+ * is a full-file time/frequency matrix; callers only change which slice of it
+ * is drawn, so moving the display sliders never triggers another analysis.
+ */
 export const useSpectrogram = ({
   audioFile,
-  timeRange,
-  frequencyRange,
-  displayMinDb = DEFAULT_DISPLAY_MIN_DB,
-  displayMaxDb = DEFAULT_DISPLAY_MAX_DB,
   maxFrames = MAX_FRAMES,
   maxBins = MAX_BINS,
-  debounceMs = DEBOUNCE_MS,
+  displayMinDb = DEFAULT_DISPLAY_MIN_DB,
+  displayMaxDb = DEFAULT_DISPLAY_MAX_DB,
 } = {}) => {
   const [status, setStatus] = useState('idle');
   const [progress, setProgress] = useState(null);
@@ -130,16 +96,11 @@ export const useSpectrogram = ({
   const workerRef = useRef(null);
   const fileTokenRef = useRef(0);
   const requestIdRef = useRef(0);
-  const analysisRef = useRef(null);
-  const decodedRef = useRef(null);
-  const latestRangeRef = useRef({ timeRange, frequencyRange });
-  const debounceRef = useRef(null);
-  const [timeStart, timeEnd] = timeRange ?? [0, 0];
-  const [frequencyStart, frequencyEnd] = frequencyRange ?? [0, 0];
+  const displayRef = useRef({ displayMinDb, displayMaxDb });
 
   useEffect(() => {
-    latestRangeRef.current = { timeRange, frequencyRange };
-  }, [timeStart, timeEnd, frequencyStart, frequencyEnd]);
+    displayRef.current = { displayMinDb, displayMaxDb };
+  }, [displayMinDb, displayMaxDb]);
 
   const terminateWorker = useCallback(() => {
     const worker = workerRef.current;
@@ -150,34 +111,9 @@ export const useSpectrogram = ({
     workerRef.current = null;
   }, []);
 
-  const requestAnalysis = useCallback(
-    (nextTimeRange, nextFrequencyRange) => {
-      const worker = workerRef.current;
-      if (!worker) return;
-      const requestId = requestIdRef.current + 1;
-      requestIdRef.current = requestId;
-      setStatus('analyzing');
-      setProgress(null);
-      setError(null);
-      worker.postMessage({
-        type: 'analyze',
-        requestId,
-        timeRange: nextTimeRange,
-        frequencyRange: nextFrequencyRange,
-        maxFrames,
-        maxBins,
-        displayMinDb,
-        displayMaxDb,
-      });
-    },
-    [displayMaxDb, displayMinDb, maxBins, maxFrames],
-  );
-
   useEffect(() => {
     if (!audioFile) {
       terminateWorker();
-      analysisRef.current = null;
-      decodedRef.current = null;
       setStatus('idle');
       setProgress(null);
       setError(null);
@@ -188,8 +124,6 @@ export const useSpectrogram = ({
     const token = fileTokenRef.current + 1;
     fileTokenRef.current = token;
     requestIdRef.current = 0;
-    analysisRef.current = null;
-    decodedRef.current = null;
     let cancelled = false;
 
     terminateWorker();
@@ -219,7 +153,6 @@ export const useSpectrogram = ({
 
         const decoded = await decodeAudioFile(audioFile);
         if (cancelled || token !== fileTokenRef.current) return;
-        decodedRef.current = decoded;
 
         if (typeof Worker === 'undefined') {
           throw createAnalysisError(
@@ -240,7 +173,6 @@ export const useSpectrogram = ({
           if (!message || token !== fileTokenRef.current) return;
           if (message.type === 'result') {
             if (message.requestId !== requestIdRef.current) return;
-            analysisRef.current = message.analysis;
             setAnalysis(message.analysis);
             setProgress(null);
             setError(null);
@@ -280,9 +212,21 @@ export const useSpectrogram = ({
           [decoded.samples.buffer],
         );
 
-        const { timeRange: tr, frequencyRange: fr } = latestRangeRef.current;
+        // Analyze the complete recording once. The display ranges are applied
+        // later by cropping the returned matrix while drawing.
+        const requestId = requestIdRef.current + 1;
+        requestIdRef.current = requestId;
         setStatus('analyzing');
-        requestAnalysis(tr, fr);
+        worker.postMessage({
+          type: 'analyze',
+          requestId,
+          timeRange: [0, decoded.duration],
+          frequencyRange: [0, decoded.sampleRate / 2],
+          maxFrames,
+          maxBins,
+          displayMinDb: displayRef.current.displayMinDb,
+          displayMaxDb: displayRef.current.displayMaxDb,
+        });
       } catch (nextError) {
         fail(nextError);
       }
@@ -294,39 +238,7 @@ export const useSpectrogram = ({
       cancelled = true;
       terminateWorker();
     };
-  }, [audioFile, retryCount, requestAnalysis, terminateWorker]);
-
-  useEffect(() => {
-    if (status !== 'ready' || !analysisRef.current) return undefined;
-    const current = analysisRef.current;
-    const nextTimeRange = latestRangeRef.current.timeRange;
-    const inside =
-      nextTimeRange[0] >= current.analysisStart - 1e-6 &&
-      nextTimeRange[1] <= current.analysisEnd + 1e-6;
-
-    if (inside) {
-      const cropped = cropAnalysisToTime(current, nextTimeRange);
-      if (cropped) {
-        analysisRef.current = cropped;
-        setAnalysis(cropped);
-        setStatus('ready');
-        return undefined;
-      }
-    }
-
-    if (debounceRef.current) clearTimeout(debounceRef.current);
-    debounceRef.current = setTimeout(() => {
-      debounceRef.current = null;
-      requestAnalysis(nextTimeRange, latestRangeRef.current.frequencyRange);
-    }, debounceMs);
-
-    return () => {
-      if (debounceRef.current) {
-        clearTimeout(debounceRef.current);
-        debounceRef.current = null;
-      }
-    };
-  }, [timeStart, timeEnd, frequencyStart, frequencyEnd, status, debounceMs, requestAnalysis]);
+  }, [audioFile, retryCount, maxFrames, maxBins, terminateWorker]);
 
   const retry = useCallback(() => {
     setRetryCount((count) => count + 1);
@@ -338,6 +250,5 @@ export const useSpectrogram = ({
     error,
     analysis,
     retry,
-    decoded: decodedRef.current,
   };
 };

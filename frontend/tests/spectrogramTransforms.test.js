@@ -4,6 +4,8 @@ import {
   binIndexAtY,
   cellFromPoint,
   createPlotRect,
+  findBinWindow,
+  findFrameWindow,
   frequencyCellBoundaries,
   frequencyToY,
   frameIndexAtX,
@@ -57,6 +59,17 @@ describe('spectrogramTransforms', () => {
     };
     const cell = cellFromPoint(analysis, point, timeRange, frequencyRange, plotRect);
     expect(cell).toMatchObject({ frameIndex: 1, binIndex: 1, time: 0.5, frequency: 1000, dbfs: -30 });
+  });
+
+  it('finds the analysis window visible in a range', () => {
+    const analysis = makeAnalysis();
+    expect(findFrameWindow(analysis.times, [0, 1])).toEqual([0, 2]);
+    expect(findFrameWindow(analysis.times, [0.5, 1])).toEqual([1, 2]);
+    expect(findBinWindow(analysis.frequencies, [0, 4000])).toEqual([0, 2]);
+    expect(findBinWindow(analysis.frequencies, [0, 1000])).toEqual([0, 1]);
+    // A window narrower than the frame spacing yields an empty range that the
+    // caller can clamp to the nearest cell.
+    expect(findFrameWindow(analysis.times, [0.1, 0.2])).toEqual([1, 0]);
   });
 
   it('computes cell boundaries and plot containment', () => {
