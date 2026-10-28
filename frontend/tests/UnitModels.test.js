@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { NodeList } from '../src/services/rest/ResponseORM/NetworkMonitor/NodeResponse';
 import { WeekSpeciesSummary } from '../src/services/rest/ResponseORM/Dashboard/WeekSpeciesSummary';
 import { RecentData } from '../src/services/rest/ResponseORM/Dashboard/RecenDataResponse';
-import { escapeCsvValue, formatRelativeTime, toCsv } from '../src/utils/format';
+import { escapeCsvValue, formatRelativeTime, parseApiDate, toCsv } from '../src/utils/format';
 
 describe('NodeList', () => {
   const response = [
@@ -67,6 +67,27 @@ describe('RecentData', () => {
 
   it('handles non-array payloads', () => {
     expect(new RecentData(null).length).toBe(0);
+  });
+
+  it('treats naive API timestamps as UTC and keeps explicit zones', () => {
+    const data = new RecentData([
+      { tid: 1, nid: 1, afid: 2, time: '2026-10-28T02:29:10.788' },
+      { tid: 2, nid: 1, afid: 3, time: '2026-10-28T02:29:10.788Z' },
+      { tid: 3, nid: 1, afid: 4, time: '2026-10-27T22:29:10.788-04:00' },
+    ]);
+    const [naive, utc, offset] = data.getData();
+    expect(naive.timestamp).toBe(Date.parse('2026-10-28T02:29:10.788Z'));
+    expect(utc.timestamp).toBe(naive.timestamp);
+    expect(offset.timestamp).toBe(naive.timestamp);
+  });
+});
+
+describe('parseApiDate', () => {
+  it('appends UTC to naive ISO strings only', () => {
+    expect(parseApiDate('2026-10-28T02:29:10.788').toISOString()).toBe('2026-10-28T02:29:10.788Z');
+    expect(parseApiDate('2026-10-28T02:29:10.788Z').toISOString()).toBe('2026-10-28T02:29:10.788Z');
+    expect(parseApiDate('2026-10-27T22:29:10.788-04:00').toISOString()).toBe('2026-10-28T02:29:10.788Z');
+    expect(parseApiDate(new Date('2026-10-28T02:29:10.788Z')).toISOString()).toBe('2026-10-28T02:29:10.788Z');
   });
 });
 

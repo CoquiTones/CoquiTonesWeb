@@ -1,4 +1,4 @@
-import GlobalStateManager from '../../Authentication/GlobalStateManager';
+import { getSessionToken } from '../../Authentication/sessionToken';
 import { BackendError } from './Errors';
 
 /**
@@ -13,7 +13,7 @@ export default class APIHandlerBase {
   }
 
   getAuthenticationHeader() {
-    const token = GlobalStateManager.getAuthenticationToken();
+    const token = getSessionToken();
     return token ? { Authorization: `Bearer ${token}` } : {};
   }
 
@@ -64,11 +64,13 @@ export default class APIHandlerBase {
   }
 
   /**
+   * The backend exposes this route at `/api/audio/` (trailing slash). Calling
+   * `/api/audio` without it returns 405 instead of redirecting for POST.
    * @param {import('../RequestORM/Shared/AudioFileRequest').default} audioFileRequest
    * @returns {Promise<Blob>}
    */
   async getAudioById(audioFileRequest) {
-    return this.request('/api/audio', {
+    return this.request('/api/audio/', {
       method: 'POST',
       body: audioFileRequest.toFormData(),
       expect: 'blob',

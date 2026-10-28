@@ -1,30 +1,32 @@
-import Cookies from 'js-cookie';
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { APIHandlerAuthentication } from '../rest/APIHandler/APIHandlerAuthentication';
+import {
+  ACCESS_TOKEN_EXPIRE_HOURS,
+  SESSION_TOKEN_KEY,
+  clearSessionToken,
+  getSessionToken,
+  hasSessionToken,
+  setSessionToken,
+} from './sessionToken';
 
 class GlobalStateManager {
-  static ACCESS_TOKEN_EXPIRE_HOURS = 24;
-  static SESSION_TOKEN_KEY = 'session_token';
+  static ACCESS_TOKEN_EXPIRE_HOURS = ACCESS_TOKEN_EXPIRE_HOURS;
+  static SESSION_TOKEN_KEY = SESSION_TOKEN_KEY;
 
   static getAuthenticationToken() {
-    return Cookies.get(this.SESSION_TOKEN_KEY);
+    return getSessionToken();
   }
 
   static hasAuthenticationToken() {
-    const token = this.getAuthenticationToken();
-    return Boolean(token && token.length > 0);
+    return hasSessionToken();
   }
 
   static setAuthenticationToken(sessionToken) {
-    Cookies.set(this.SESSION_TOKEN_KEY, sessionToken, {
-      expires: this.ACCESS_TOKEN_EXPIRE_HOURS / 24,
-      secure: window.location.protocol === 'https:',
-      sameSite: 'strict',
-    });
+    setSessionToken(sessionToken);
   }
 
   static clearAuthenticationToken() {
-    Cookies.remove(this.SESSION_TOKEN_KEY);
+    clearSessionToken();
   }
 }
 
@@ -43,7 +45,7 @@ export const GlobalStateProvider = ({ children }) => {
     let cancelled = false;
 
     const checkInitialAuth = async () => {
-      if (!GlobalStateManager.hasAuthenticationToken()) {
+      if (!hasSessionToken()) {
         if (!cancelled) setAuthStatus(AuthenticationStatus.UNAUTHENTICATED);
         return;
       }
@@ -70,19 +72,16 @@ export const GlobalStateProvider = ({ children }) => {
   }, []);
 
   const login = useCallback((token) => {
-    GlobalStateManager.setAuthenticationToken(token);
+    setSessionToken(token);
     setAuthStatus(AuthenticationStatus.AUTHENTICATED);
   }, []);
 
   const logout = useCallback(() => {
-    GlobalStateManager.clearAuthenticationToken();
+    clearSessionToken();
     setAuthStatus(AuthenticationStatus.UNAUTHENTICATED);
   }, []);
 
-  const getAuthenticationToken = useCallback(
-    () => GlobalStateManager.getAuthenticationToken(),
-    [],
-  );
+  const getAuthenticationToken = useCallback(() => getSessionToken(), []);
 
   const value = useMemo(
     () => ({ authStatus, login, logout, getAuthenticationToken }),

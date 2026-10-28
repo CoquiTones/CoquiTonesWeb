@@ -98,15 +98,31 @@ class AudioFile(DAO):
 
     afid: int
     tid: int
-    ownerid: int
+    ownerid: int | None = None
     data: bytes | None = None
 
     @staticmethod
     def table(): return sql.Identifier("audiofile")
     @staticmethod
     def id_column(): return sql.Identifier("afid")
+
     @staticmethod
-    def owner_table(): return sql.SQL("audiofile")
+    def owner_table() -> sql.SQL:
+        """
+        Ownership is derived through timestampindex -> node instead of relying
+        on audiofile.ownerid, which is NULL for rows written before ownership
+        was persisted.
+        """
+        return sql.SQL(
+            """
+            (
+                SELECT af.afid, n.ownerid
+                FROM audiofile af
+                INNER JOIN timestampindex ti ON ti.tid = af.tid
+                INNER JOIN node n ON n.nid = ti.nid
+            )
+            """
+        )
 
     @classmethod
     async def get_all(cls, owner: int, db: AsyncConnection) -> list:
@@ -115,9 +131,12 @@ class AudioFile(DAO):
             try:
                 await curs.execute(
                     """
-                    SELECT afid, tid, ownerid
-                    FROM audiofile
-                    WHERE ownerid = %s
+                    SELECT af.afid, af.tid, n.ownerid
+                    FROM audiofile af
+                    INNER JOIN timestampindex ti ON ti.tid = af.tid
+                    INNER JOIN node n ON n.nid = ti.nid
+                    WHERE n.ownerid = %s
+                    ORDER BY af.afid
                     """,
                     (owner,),
                 )
@@ -140,16 +159,19 @@ class AudioFile(DAO):
                 await curs.execute(
                     sql.SQL(
                         """
-INSERT INTO {} (tid, data)
-VALUES (%s, %s)
+INSERT INTO {my_table} (tid, data, ownerid)
+SELECT %s, %s, n.ownerid
+FROM node n
+WHERE n.nid = %s
 RETURNING afid
 """
-                    ).format(cls.table()),
-                    (tid, data),
+                    ).format(my_table=cls.table()),
+                    (tid, data, nid),
                 )
 
                 db_response = await curs.fetchone()
-                assert(db_response is not None)
+                if db_response is None:
+                    raise ValueError(f"Node {nid} does not exist; cannot store its audio file.")
                 return db_response
 
             except PGError as e:
@@ -185,9 +207,11 @@ RETURNING afid
                     sql.SQL(
                         """
                     SELECT EXISTS (
-                        SELECT afid 
-                        FROM audiofile 
-                        WHERE afid = %s AND ownerid = %s
+                        SELECT 1
+                        FROM audiofile af
+                        INNER JOIN timestampindex ti ON ti.tid = af.tid
+                        INNER JOIN node n ON n.nid = ti.nid
+                        WHERE af.afid = %s AND n.ownerid = %s
                         )
                 """
                     ),

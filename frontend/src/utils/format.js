@@ -1,5 +1,18 @@
 const rtf = new Intl.RelativeTimeFormat(undefined, { numeric: 'auto' });
 
+// The API historically returned naive ISO timestamps (no `Z`/offset) that are
+// stored as UTC. Appending `Z` avoids the browser interpreting them as local
+// time, which used to shift readings by the timezone offset.
+const NAIVE_ISO_PATTERN = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?$/;
+
+export const parseApiDate = (value) => {
+  if (value instanceof Date) return value;
+  if (typeof value === 'string' && NAIVE_ISO_PATTERN.test(value)) {
+    return new Date(`${value}Z`);
+  }
+  return new Date(value);
+};
+
 /**
  * Converts an epoch-ms timestamp into a short relative label ("3 hours ago").
  */
@@ -26,13 +39,13 @@ export const formatRelativeTime = (timestamp) => {
 };
 
 export const formatDateTime = (value) => {
-  const date = value instanceof Date ? value : new Date(value);
+  const date = parseApiDate(value);
   if (Number.isNaN(date.getTime())) return '—';
   return date.toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });
 };
 
 export const formatShortDateTime = (value) => {
-  const date = value instanceof Date ? value : new Date(value);
+  const date = parseApiDate(value);
   if (Number.isNaN(date.getTime())) return '—';
   return date.toLocaleString(undefined, {
     month: 'short',

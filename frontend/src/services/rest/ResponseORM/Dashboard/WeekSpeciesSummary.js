@@ -1,3 +1,5 @@
+import { parseApiDate } from '../../../../utils/format';
+
 /**
  * Encapsulation of the `/api/dashboard/week-species-summary` response.
  */
@@ -27,7 +29,7 @@ export class WeekSpeciesSummary {
 
   getXData() {
     return this.date_bin.map((date) =>
-      new Date(date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }),
+      parseApiDate(date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }),
     );
   }
 

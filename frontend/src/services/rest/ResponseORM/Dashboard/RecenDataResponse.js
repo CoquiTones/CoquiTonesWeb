@@ -1,3 +1,5 @@
+import { parseApiDate } from '../../../../utils/format';
+
 /**
  * Wrapper for the `/api/dashboard/recent-data` response.
  */
@@ -34,7 +36,7 @@ class RecentDataEntry {
     this.pressure = APIResponseObjectRecentDataEntry.pressure;
     this.rain = APIResponseObjectRecentDataEntry.rain;
 
-    const parsed = new Date(APIResponseObjectRecentDataEntry.time);
+    const parsed = parseApiDate(APIResponseObjectRecentDataEntry.time);
     this.timestamp = Number.isNaN(parsed.getTime()) ? null : parsed.getTime();
     this.time = Number.isNaN(parsed.getTime())
       ? String(APIResponseObjectRecentDataEntry.time ?? '—')

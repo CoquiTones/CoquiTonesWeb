@@ -4,7 +4,7 @@ import { AuthenticateUserResponse } from '../ResponseORM/Authentication/Authenti
 import { AuthenticateUserRequest } from '../RequestORM/Authentication/CheckUserRequest';
 import { SignUpResponse } from '../ResponseORM/Authentication/SignUpResponse';
 import { SignUpRequest } from '../RequestORM/Authentication/SignUpRequest';
-import GlobalStateManager from '../../Authentication/GlobalStateManager';
+import { clearSessionToken } from '../../Authentication/sessionToken';
 
 export class APIHandlerAuthentication extends APIHandlerBase {
   /**
@@ -60,7 +60,7 @@ export class APIHandlerAuthentication extends APIHandlerBase {
       const isAuthenticated = Boolean(data?.is_authenticated);
 
       if (!isAuthenticated) {
-        GlobalStateManager.clearAuthenticationToken();
+        clearSessionToken();
       }
 
       return isAuthenticated;

@@ -18,6 +18,24 @@ file_router = APIRouter(prefix="/audio", tags=["File"])
 audio_slices_router = APIRouter(prefix="/audioslices", tags=["Audio Slices"])
 classify_router = APIRouter(tags=["Classification"])
 
+
+def detect_audio_media_type(data: bytes) -> str:
+    """Best-effort MIME detection so downloads keep the right file extension."""
+    if data[:4] == b"RIFF" and data[8:12] == b"WAVE":
+        return "audio/wav"
+    if data[:4] == b"OggS":
+        return "audio/ogg"
+    if data[:4] == b"fLaC":
+        return "audio/flac"
+    if data[4:8] == b"ftyp":
+        return "audio/mp4"
+    if data[:3] == b"ID3" or (
+        len(data) > 1 and data[0] == 0xFF and (data[1] & 0xE0) == 0xE0
+    ):
+        return "audio/mpeg"
+    return "application/octet-stream"
+
+
 @file_router.get("/all")
 async def audio_all(
     current_user: Annotated[LightWeightUser, Depends(get_current_user)],
@@ -26,6 +44,7 @@ async def audio_all(
     return await repository.AudioFile.get_all(current_user.auid, transaction.connection)
 
 
+@file_router.post(path="", response_class=Response, include_in_schema=False)
 @file_router.post(path="/", response_class=Response)
 async def audio_get(
     afid: Annotated[int, Form()],
@@ -39,7 +58,8 @@ async def audio_get(
         raise HTTPException(status_code=404, detail="Audio file not found")
     data = audio_file.data
     assert data is not None
-    return Response(content=bytes(data), media_type="audio/mpeg")
+    audio_bytes = bytes(data)
+    return Response(content=audio_bytes, media_type=detect_audio_media_type(audio_bytes))
 
 class AudioInsertReceipt(BaseModel):
     afid: int

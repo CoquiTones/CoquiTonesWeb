@@ -1,3 +1,5 @@
+import { parseApiDate } from '../../../../utils/format';
+
 /**
  * Wrapper for `/api/dashboard/node-health-check`.
  */
@@ -27,7 +29,7 @@ class NodeReport {
     this.node_description = APIReponseReport.ndescription;
     this.node_type = APIReponseReport.ntype;
 
-    const parsed = new Date(this.latest_time);
+    const parsed = parseApiDate(this.latest_time);
     this.latestTimestamp = Number.isNaN(parsed.getTime()) ? null : parsed.getTime();
   }
 }

@@ -1,6 +1,6 @@
 from typing import List
 from psycopg.connection_async import AsyncConnection
-from pydantic import Field, BaseModel
+from pydantic import Field, BaseModel, field_validator
 from dbutil import default_HTTP_exception
 from datetime import datetime, timezone
 from psycopg import sql, errors
@@ -22,6 +22,11 @@ class RecordTimestampIndex(BaseModel):
     timestamp_index_id: int
 
 
+def _as_utc(value: datetime) -> datetime:
+    """The DB stores naive UTC timestamps; make the API contract explicit."""
+    return value.replace(tzinfo=timezone.utc) if value.tzinfo is None else value.astimezone(timezone.utc)
+
+
 class RecentData(BaseModel):
     """Recent reports dashboard operation response object"""
     nid: int
@@ -32,6 +37,11 @@ class RecentData(BaseModel):
     rain: float
     time: datetime
     tid: int
+
+    @field_validator("time")
+    @classmethod
+    def _time_as_utc(cls, value: datetime) -> datetime:
+        return _as_utc(value)
 
 
 class ReportTableEntry(BaseModel):
@@ -51,6 +61,11 @@ class ReportTableEntry(BaseModel):
     wdpressure: float
     wddid_rain: bool
     afid: int  # Front end should generate URL to audio file by using get audio file endpoint
+
+    @field_validator("ttime")
+    @classmethod
+    def _ttime_as_utc(cls, value: datetime) -> datetime:
+        return _as_utc(value)
 
 
 class WeeklySummaryEntry(BaseModel):
@@ -78,12 +93,22 @@ class WeeklySummaryTable(BaseModel):
     total_richmondi: List[int] = Field(default_factory=lambda: list())
     date_bin: List[datetime] = Field(default_factory=lambda: list())
 
+    @field_validator("date_bin")
+    @classmethod
+    def _date_bin_as_utc(cls, values: List[datetime]) -> List[datetime]:
+        return [_as_utc(value) for value in values]
+
 class NodeReport(BaseModel):
     """Node health report response object"""
 
     latest_time: datetime
     ndescription: str
     ntype: str
+
+    @field_validator("latest_time")
+    @classmethod
+    def _latest_time_as_utc(cls, value: datetime) -> datetime:
+        return _as_utc(value)
 
 class Dashboard:
     """Collection of queries for dashboard endpoints"""
