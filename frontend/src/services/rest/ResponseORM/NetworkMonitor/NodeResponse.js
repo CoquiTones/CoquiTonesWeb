@@ -1,50 +1,73 @@
 export class Node {
-    constructor(nid, ntype, nlatitude, nlongitude, ndescription, nname) {
-        this.nid = nid;
-        this.nname = nname;
-        this.ntype = ntype;
-        this.nlatitude = nlatitude;
-        this.nlongitude = nlongitude;
-        this.ndescription = ndescription;
-    }
+  constructor(nid, ntype, nlatitude, nlongitude, ndescription, nname) {
+    this.nid = nid;
+    this.nname = nname;
+    this.ntype = ntype;
+    this.nlatitude = nlatitude;
+    this.nlongitude = nlongitude;
+    this.ndescription = ndescription;
+  }
 
-    printNodeInfo() {
-        console.log("Node ID: ", this.nid);
-        console.log("Node name: ", this.nname)
-        console.log("Node type: ", this.ntype)
-        console.log(`Node Location: (lat,lon): [", ${this.lat}, ${this.lon}]`);
-        console.log("Node Description: ", this.ndescription);
-    }
+  get hasLocation() {
+    const latitude = Number(this.nlatitude);
+    const longitude = Number(this.nlongitude);
+    return Number.isFinite(latitude) && Number.isFinite(longitude);
+  }
 
-    getNodeIdFormData() {
-        let formData = new FormData();
-        formData.append("nid", this.nid);
-        return formData;
-    }
+  getNodeIdFormData() {
+    const formData = new FormData();
+    formData.append('nid', this.nid);
+    return formData;
+  }
 }
 
 /**
- * Array of Node {Node} Objects
+ * Immutable-ish list wrapper around the `/api/node/*` responses.
  */
 export class NodeList {
-    constructor(apiResponse) {
-        this.nodeList = []
-        this.nodeList = apiResponse.map((nodeObject) => (
-            new Node(nodeObject.nid, nodeObject.ntype, nodeObject.nlatitude, nodeObject.nlongitude, nodeObject.ndescription, nodeObject.nname)
-        ))
-    }
+  constructor(apiResponse = []) {
+    this.nodeList = Array.isArray(apiResponse)
+      ? apiResponse.map(
+          (nodeObject) =>
+            new Node(
+              nodeObject.nid,
+              nodeObject.ntype,
+              nodeObject.nlatitude,
+              nodeObject.nlongitude,
+              nodeObject.ndescription,
+              nodeObject.nname,
+            ),
+        )
+      : [];
+  }
 
-    map(callback) {
-        return this.nodeList.map(callback)
-    }
+  get length() {
+    return this.nodeList.length;
+  }
 
-    isEmpty() {
-        return this.nodeList.length === 0;
-    }
+  map(callback) {
+    return this.nodeList.map(callback);
+  }
 
-    find(callback) {
-        return this.nodeList.find(callback)
-    }
+  filter(callback) {
+    return this.nodeList.filter(callback);
+  }
+
+  find(callback) {
+    return this.nodeList.find(callback);
+  }
+
+  toArray() {
+    return [...this.nodeList];
+  }
+
+  isEmpty() {
+    return this.nodeList.length === 0;
+  }
+
+  [Symbol.iterator]() {
+    return this.nodeList[Symbol.iterator]();
+  }
 }
 
-
+export default NodeList;

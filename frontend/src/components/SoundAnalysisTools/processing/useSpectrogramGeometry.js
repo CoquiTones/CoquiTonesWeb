@@ -35,6 +35,7 @@ export const useSpectrogramGeometry = ({
         const arrayBuffer = await audioFile.arrayBuffer();
         const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
         const fullDuration = audioBuffer.duration;
+        await audioContext.close();
 
         // Calculate spectrogram for ENTIRE file
         const { heightMap, sampleRate, nyquist } = await computeSpectrogramData(
@@ -81,6 +82,8 @@ export const useSpectrogramGeometry = ({
 
     return () => {
       isCancelled = true;
+      geometryRef.current?.dispose?.();
+      geometryRef.current = null;
     };
   }, [audioFile]);
 

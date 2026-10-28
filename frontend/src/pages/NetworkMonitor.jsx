@@ -1,260 +1,220 @@
-import React, { useState, useMemo, useEffect, useContext } from "react";
-import {
-  NodeContainer,
-  NodeWrapper,
-  NodeCard,
-  NodeTitle,
-  NodeInfo,
-} from "../components/shared/NodeStyle";
-import Grid from "@mui/material/Grid";
-import Paper from "@mui/material/Paper";
-import Link from "@mui/material/Link";
-import { APIHandlerNetworkMonitor } from "../services/rest/APIHandler/APIHandlerNetworkMonitor";
-import NewNodeDialog from "../components/shared/NewNodeDialog";
-import HeroSectionCDN from "../components/shared/HeroSectionCDN";
-import MapEmbed from "../components/NetworkMonitor/Map";
-import { Alert, Container, Typography, Button, Stack, Snackbar, TextField, CircularProgress, Box } from "@mui/material";
-import CheckCircleIcon from "@mui/icons-material/CheckCircle";
-import ErrorIcon from "@mui/icons-material/Error";
-import { useGlobalState } from "../services/Authentication/GlobalStateManager";
-import { ErrorContext } from "../components/shared/ErrorContext";
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import Alert from '@mui/material/Alert';
+import Box from '@mui/material/Box';
+import Button from '@mui/material/Button';
+import Container from '@mui/material/Container';
+import Grid from '@mui/material/Grid';
+import LinearProgress from '@mui/material/LinearProgress';
+import Paper from '@mui/material/Paper';
+import Typography from '@mui/material/Typography';
 
-const NetworkMonitor = () => {
+import PageHero from '../components/layout/PageHero';
+import EmptyState from '../components/shared/EmptyState';
+import NewNodeDialog from '../components/shared/NewNodeDialog';
+import NodeCard from '../components/NetworkMonitor/NodeCard';
+import MapEmbed from '../components/NetworkMonitor/Map';
+import { useErrors } from '../components/shared/ErrorContext';
+import { APIHandlerNetworkMonitor } from '../services/rest/APIHandler/APIHandlerNetworkMonitor';
+import networkBackground from '../components/assets/images/CDNBackground.webp';
+
+export default function NetworkMonitor() {
+  const { addError } = useErrors();
+  const apiHandler = useMemo(() => new APIHandlerNetworkMonitor(), []);
   const [nodes, setNodes] = useState([]);
-  const [nodesWithNoClient, setNodesWithNoClient] = useState([]);
-  const [nodePasswords, setNodePasswords] = useState([]);
-  const [syncingNodeIds, setSyncingNodeIds] = useState(new Set());
-  const [failedNodeIds, setFailedNodeIds] = useState(new Set());
-  const apiHandler = useMemo(() => new APIHandlerNetworkMonitor());
-  const { errors, setErrors } = useContext(ErrorContext);
+  const [needsClient, setNeedsClient] = useState(() => new Set());
+  const [status, setStatus] = useState('loading');
+  const [passwords, setPasswords] = useState({});
+  const [syncing, setSyncing] = useState(() => new Set());
+  const [failed, setFailed] = useState(() => new Set());
+  const [warningDismissed, setWarningDismissed] = useState(false);
 
-  const fetchNodes = async () => {
-    const nodes = await apiHandler.get_all_nodes();
-    setNodes(nodes);
-  };
-
-  const checkNodesWithNoClient = async () => {
-    const nodes_with_no_client = await apiHandler.get_nodes_with_no_client();
-    if (!nodes_with_no_client.isEmpty()) {
-      setIsWarningOpen(true)
-      setNodesWithNoClient(nodes_with_no_client);
-    } else {
-      setNodesWithNoClient([]);
-      setIsWarningOpen(false);
-    }
-  };
-
-  const handleChangePasswordForNode = async (node, nodePassword) => {
-    setNodePasswords((prevPasswords) => {
-      const exists = prevPasswords.find((np) => np.node === node.nid);
-
-      if (exists) {
-        // Update existing password
-        return prevPasswords.map((np) =>
-          np.node === node.nid ? { node: node.nid, password: nodePassword } : np
-        );
-      } else {
-        // Add new password entry
-        return [...prevPasswords, { node: node.nid, password: nodePassword }];
+  const fetchNodes = useCallback(
+    async ({ silent = false } = {}) => {
+      if (!silent) setStatus('loading');
+      try {
+        const [allNodes, nodesWithoutClient] = await Promise.all([
+          apiHandler.get_all_nodes(),
+          apiHandler.get_nodes_with_no_client(),
+        ]);
+        setNodes(allNodes.toArray());
+        setNeedsClient(new Set(nodesWithoutClient.map((node) => node.nid)));
+        setStatus('ready');
+      } catch (error) {
+        addError(error);
+        setStatus('error');
       }
+    },
+    [apiHandler, addError],
+  );
+
+  useEffect(() => {
+    fetchNodes();
+  }, [fetchNodes]);
+
+  const markFailed = (nid) => {
+    setFailed((current) => new Set(current).add(nid));
+    window.setTimeout(() => {
+      setFailed((current) => {
+        const next = new Set(current);
+        next.delete(nid);
+        return next;
+      });
+    }, 4000);
+  };
+
+  const setSyncingFor = (nid, isSyncing) => {
+    setSyncing((current) => {
+      const next = new Set(current);
+      if (isSyncing) next.add(nid);
+      else next.delete(nid);
+      return next;
     });
   };
 
   const createClientForNode = async (node) => {
+    const password = passwords[node.nid];
+
+    if (!password) {
+      addError(`Enter the MQTT client password for node ${node.nid}.`);
+      return;
+    }
+
+    setSyncingFor(node.nid, true);
     try {
-      const nodePasswordObj = nodePasswords.find(
-        (nodePasswords) => nodePasswords.node === node.nid
-      );
-
-      // Safety check - ensure the password object exists
-      if (!nodePasswordObj) {
-        setErrors([...errors, `No password provided for node ${node.nid}`]);
-        setFailedNodeIds((prev) => new Set([...prev, node.nid]));
-        return;
-      }
-
-      // Set loading state
-      setSyncingNodeIds((prev) => new Set([...prev, node.nid]));
-
-      await apiHandler.create_client_for_node(node, nodePasswordObj.password);
-
-      // Remove password after successful creation
-      setNodePasswords((prevPasswords) =>
-        prevPasswords.filter((np) => np.node !== node.nid)
-      );
-
-      // Fetch updated nodes
-      await fetchNodes();
-      await checkNodesWithNoClient();
-
-      // Clear loading state
-      setSyncingNodeIds((prev) => {
-        const updated = new Set(prev);
-        updated.delete(node.nid);
-        return updated;
+      await apiHandler.create_client_for_node(node, password);
+      setPasswords((current) => {
+        const next = { ...current };
+        delete next[node.nid];
+        return next;
       });
-    } catch (apiException) {
-      setErrors([...errors, apiException]);
-
-      // Set failure state
-      setFailedNodeIds((prev) => new Set([...prev, node.nid]));
-
-      // Clear loading state
-      setSyncingNodeIds((prev) => {
-        const updated = new Set(prev);
-        updated.delete(node.nid);
-        return updated;
-      });
-
-      // Clear failure status after 3 seconds
-      setTimeout(() => {
-        setFailedNodeIds((prev) => {
-          const updated = new Set(prev);
-          updated.delete(node.nid);
-          return updated;
-        });
-      }, 3000);
+      await fetchNodes({ silent: true });
+    } catch (error) {
+      addError(error);
+      markFailed(node.nid);
+    } finally {
+      setSyncingFor(node.nid, false);
     }
   };
 
-  useEffect(() => {
-    fetchNodes();
-  }, []);
+  const pendingClientNodes = nodes.filter((node) => needsClient.has(node.nid));
 
   useEffect(() => {
-    checkNodesWithNoClient();
-  }, [nodes]);
-
-  const [isOpen, setIsOpen] = useState(false);
-  const toggle = () => {
-    setIsOpen(!isOpen);
-  };
-  const [isWarningOpen, setIsWarningOpen] = useState(false)
-
-  const isSyncing = (nodeId) => syncingNodeIds.has(nodeId);
-  const isFailed = (nodeId) => failedNodeIds.has(nodeId);
-  const hasClient = (nodeId) => !nodesWithNoClient.find((node) => node.nid === nodeId);
+    if (pendingClientNodes.length > 0) setWarningDismissed(false);
+  }, [pendingClientNodes.length]);
 
   return (
     <>
-      {/* Warning Snackbars */}
-      <Snackbar
-        open={isWarningOpen}
-        anchorOrigin={{ vertical: "top", horizontal: "center" }}
-      >
-        <Alert
-          severity="warning"
-          action={
-            <>
-              <Button
-                size="small"
-                onClick={() => setIsWarningOpen(false)}>
-                Hide
-              </Button>
-            </>
-          }
+      <PageHero
+        compact
+        eyebrow="Cluster Duck protocol"
+        title="Cluster Duck network"
+        description="Field nodes collect acoustic and meteorological data, then forward it over a low-power LoRa mesh."
+        image={networkBackground}
+      />
+
+      <Container maxWidth="lg" sx={{ py: { xs: 3, md: 5 } }}>
+        <Box
+          sx={{
+            display: 'flex',
+            flexDirection: { xs: 'column', sm: 'row' },
+            alignItems: { xs: 'stretch', sm: 'flex-end' },
+            justifyContent: 'space-between',
+            gap: 2,
+            mb: 3,
+          }}
         >
-          Some Nodes were found to not have mqtt clients. Nodes: {nodesWithNoClient.map((node) => (node.nid)).join(", ")}
-        </Alert>
-      </Snackbar >
+          <Box>
+            <Typography component="h2" variant="h3" color="text.primary">
+              Field nodes
+            </Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+              Register devices, provision MQTT clients, and monitor where each node is deployed.
+            </Typography>
+          </Box>
+          <NewNodeDialog onCreated={() => fetchNodes({ silent: true })} />
+        </Box>
 
-      <Stack>
-        <HeroSectionCDN />
-        <NodeContainer>
-          <Typography
-            sx={{ display: "flex", justifyContent: "center" }}
-            color="primary"
-            variant="h3"
+        {pendingClientNodes.length > 0 && !warningDismissed && (
+          <Alert
+            severity="warning"
+            sx={{ mb: 3 }}
+            onClose={() => setWarningDismissed(true)}
           >
-            Duck Network
-          </Typography>
-          <NewNodeDialog
-            style={{
-              display: "flex",
-              justifyContent: "flex-end",
-              marginTop: "5vh",
-            }}
-          />
-          <NodeWrapper>
-            {nodes.length === 0 ? (
-              <Typography
-                sx={{ display: "flex", justifyContent: "center" }}
-                color="primary"
-                variant={"h3"}
-              >
-                {" "}
-                No Ducks to display
-              </Typography>
-            ) : (
-              nodes.map((node) => (
-                <NodeCard item key={node.nid}>
-                  <NodeTitle>Duck ID: {node.nid}</NodeTitle>
-                  <NodeInfo>Type: {node.ntype}</NodeInfo>
-                  <NodeInfo>Description: {node.ndescription}</NodeInfo>
-                  <NodeInfo>Latitude: {node.nlatitude}</NodeInfo>
-                  <NodeInfo>Longitude: {node.nlongitude}</NodeInfo>
-                  {nodesWithNoClient.find((node_from_list) => node.nid === node_from_list.nid) && // if node doesn't have mqtt client.
-                    <>
-                      <TextField
-                        required
-                        margin="dense"
-                        id={`node-${node.nid}-password`}
-                        label="mqtt-node-password"
-                        type="password"
-                        fullWidth
-                        variant="standard"
-                        onChange={(event) => handleChangePasswordForNode(node, event.target.value)}
-                        disabled={isSyncing(node.nid)}
-                      />
-                      <Box sx={{ display: "flex", alignItems: "center", gap: 1, mt: 2 }}>
-                        <Button
-                          onClick={() => createClientForNode(node)}
-                          disabled={isSyncing(node.nid)}
-                        >
-                          Create Client
-                        </Button>
-                        {isSyncing(node.nid) && (
-                          <CircularProgress size={24} />
-                        )}
-                        {isFailed(node.nid) && (
-                          <ErrorIcon sx={{ color: "error.main", fontSize: 28 }} />
-                        )}
-                      </Box>
-                    </>
-                  }
-                  {hasClient(node.nid) && (
-                    <Box sx={{ display: "flex", alignItems: "center", gap: 1, mt: 2 }}>
-                      <CheckCircleIcon sx={{ color: "success.main", fontSize: 28 }} />
-                      <Typography variant="body2" sx={{ color: "success.main" }}>
-                        MQTT Client Created
-                      </Typography>
-                    </Box>
-                  )}
-                </NodeCard>
-              ))
-            )}
-          </NodeWrapper>
-        </NodeContainer>
+            {pendingClientNodes.length} node{pendingClientNodes.length === 1 ? ' still needs' : 's still need'} an
+            MQTT client before they can publish readings:{' '}
+            {pendingClientNodes.map((node) => node.nid).join(', ')}.
+          </Alert>
+        )}
 
-        <Container id="map-embed-id" sx={{ mt: 4, mb: 4, width: "100%" }}>
-          <Grid item lg={8}>
-            <Paper
-              elevation={4}
-              sx={{
-                p: 2,
-                display: "flex",
-                flexDirection: "column",
-                height: "95%",
-                width: "95%",
-              }}
-            >
-              <MapEmbed Nodes={nodes} />
-            </Paper>
+        {status === 'loading' && (
+          <Box aria-live="polite" aria-busy="true">
+            <LinearProgress sx={{ mb: 2 }} />
+            <Grid container spacing={3}>
+              {[0, 1, 2].map((item) => (
+                <Grid key={item} size={{ xs: 12, sm: 6, lg: 4 }}>
+                  <Box sx={{ height: 300, borderRadius: 3, backgroundColor: 'background.paper' }} />
+                </Grid>
+              ))}
+            </Grid>
+          </Box>
+        )}
+
+        {status === 'error' && (
+          <Alert
+            severity="error"
+            action={
+              <Button color="inherit" size="small" onClick={() => fetchNodes()}>
+                Retry
+              </Button>
+            }
+          >
+            The node network could not be loaded.
+          </Alert>
+        )}
+
+        {status === 'ready' && nodes.length === 0 && (
+          <Paper sx={{ p: 4 }}>
+            <EmptyState
+              title="No nodes registered yet"
+              description="Add your first field node to start collecting acoustic and weather data."
+            />
+          </Paper>
+        )}
+
+        {status === 'ready' && nodes.length > 0 && (
+          <Grid container spacing={3}>
+            {nodes.map((node) => (
+              <Grid key={node.nid} size={{ xs: 12, sm: 6, lg: 4 }}>
+                <NodeCard
+                  node={node}
+                  needsClient={needsClient.has(node.nid)}
+                  password={passwords[node.nid] ?? ''}
+                  onPasswordChange={(value) =>
+                    setPasswords((current) => ({ ...current, [node.nid]: value }))
+                  }
+                  onCreateClient={() => createClientForNode(node)}
+                  syncing={syncing.has(node.nid)}
+                  failed={failed.has(node.nid)}
+                />
+              </Grid>
+            ))}
           </Grid>
-        </Container>
-      </Stack>
+        )}
+      </Container>
+
+      <Container maxWidth="lg" sx={{ pb: { xs: 6, md: 9 } }}>
+        <Paper sx={{ p: { xs: 2, md: 3 } }}>
+          <Typography component="h2" variant="h6" color="text.primary">
+            Node locations
+          </Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            Select a marker to see node details.
+          </Typography>
+          <Box sx={{ height: { xs: 380, md: 480 } }}>
+            <MapEmbed Nodes={nodes} />
+          </Box>
+        </Paper>
+      </Container>
     </>
   );
-};
-
-export default NetworkMonitor;
+}

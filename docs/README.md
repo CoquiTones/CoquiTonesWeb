@@ -29,6 +29,19 @@ Note: This step requires you have jupyter dependencies installed
 
 Simply `docker compose up -d --build`
 
+Or use the launcher script, which rebuilds the images, waits for the backend,
+and follows the container logs (`Ctrl+C` stops the stack):
+
+```bash
+./scripts/launch.sh              # rebuild + start + follow logs
+./scripts/launch.sh --no-build   # restart with the existing images
+```
+
+The app is then available at:
+
+- <https://localhost:5173> — frontend dev server
+- <https://localhost:8080> — backend API and built frontend
+
 ## [Scripts](../scripts/)
 
 **Scripts but only for based unix users.**
@@ -38,7 +51,7 @@ Example: `./scripts/build.sh`
 
 [build.sh](../scripts/build.sh): setup backend installation, and frontend installation
 
-[launch.sh](../scripts/launch.sh): deploy database, start backend server, start frontend server
+[launch.sh](../scripts/launch.sh): rebuild and start the full Docker Compose stack (frontend, backend, database, MQTT), wait for the backend, and follow logs. `Ctrl+C` stops and removes the containers; pass `--no-build` to reuse existing images
 
 [clean.sh](../scripts/clean.sh): removed all build files
 
@@ -46,4 +59,4 @@ Example: `./scripts/build.sh`
 
 ## Known Issues and Fixes
 
-1. **Issue**: since we use development certificates for ssl connections, some browsers don't trust it. This leads to failed requests from frontend to backend. **To fix this:** you have to boot up docker container or local coquitones instance -> open localhost:8080 first -> proceed after warning (this creates an exception for this ip / certificate) -> restart browser -> open localhost:5173 should work
+1. **Issue**: since we use development certificates for ssl connections, some browsers don't trust it. This leads to failed requests from frontend to backend. **To fix this:** boot the stack, open <https://localhost:8080> first, accept the certificate warning (this creates an exception for this address), then open <https://localhost:5173>.

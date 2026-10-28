@@ -163,32 +163,35 @@ export const computeSpectrogramData = async ({
     timeSamples
 }) => {
     const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-    const arrayBuffer = await audioFile.arrayBuffer();
-    const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
 
-    const result = processAudioData({
-        channelData: audioBuffer.getChannelData(0),
-        sampleRate: audioBuffer.sampleRate,
-        currentTimeRange,
-        frequencySamples,
-        timeSamples
-    });
+    try {
+        const arrayBuffer = await audioFile.arrayBuffer();
+        const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
 
-    const heightMap = createHeightMap({
-        magnitudes: result.magnitudes,
-        minDb: result.minDb,
-        maxDb: result.maxDb,
-        frequencySamples,
-        actualTimeSamples: result.actualTimeSamples
-    });
+        const result = processAudioData({
+            channelData: audioBuffer.getChannelData(0),
+            sampleRate: audioBuffer.sampleRate,
+            currentTimeRange,
+            frequencySamples,
+            timeSamples
+        });
 
-    await audioContext.close();
+        const heightMap = createHeightMap({
+            magnitudes: result.magnitudes,
+            minDb: result.minDb,
+            maxDb: result.maxDb,
+            frequencySamples,
+            actualTimeSamples: result.actualTimeSamples
+        });
 
-    return {
-        heightMap,
-        sampleRate: audioBuffer.sampleRate,
-        nyquist: result.nyquist
-    };
+        return {
+            heightMap,
+            sampleRate: audioBuffer.sampleRate,
+            nyquist: result.nyquist
+        };
+    } finally {
+        await audioContext.close();
+    }
 };
 
 // Function to create spectrogram geometry (pure)

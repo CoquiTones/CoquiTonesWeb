@@ -1,46 +1,23 @@
-import React, { useState } from 'react';
-import { BrowserRouter, Routes, Route } from 'react-router-dom'
-import './App.css';
-import { GlobalStateProvider } from './services/Authentication/GlobalStateManager';
-import ProtectedRoute from './pages/ProtectedRoute';
-import About from './pages/About';
-import NetworkMonitor from './pages/NetworkMonitor'
-import Dashboard from './pages/Dashboard';
-import Classifier from './pages/Classifier';
-import SpectralAnalysis from './pages/SpectralAnalysis';
-import theme from './components/shared/Theme';
+import { BrowserRouter } from 'react-router-dom';
+import CssBaseline from '@mui/material/CssBaseline';
 import { ThemeProvider } from '@mui/material/styles';
-import Home from './pages/Home';
-import PageNotFound from './pages/Page404';
-import SignUpPage from './pages/SignUp';
-import Navbar from './components/shared/Navbar';
-import Sidebar from './components/shared/Sidebar';
-function App() {
-  const [open, setOpen] = useState(false);
-  const toggle = () => {
-    setOpen(!open);
-  }
-  return (
-    <div>
-      <GlobalStateProvider>
-        <BrowserRouter>
-          <Routes>
-            <Route path='/' element={<ThemeProvider theme={theme} > <Navbar toggle={toggle} isHome={true} /> <Home /> </ThemeProvider>} />
-            <Route element={<ProtectedRoute />} >
-              <Route path='/Dashboard' element={<ThemeProvider theme={theme} > <Navbar toggle={toggle} isHome={false} />  <Sidebar isOpen={open} toggle={toggle} /> <Dashboard /> </ThemeProvider>} />
-              <Route path='/NetworkMonitor' element={<ThemeProvider theme={theme} > <Navbar toggle={toggle} isHome={false} />   <Sidebar isOpen={open} toggle={toggle} /> <NetworkMonitor /> </ThemeProvider>} />
-            </Route>
-            <Route path='/About' element={<ThemeProvider theme={theme} > <Navbar toggle={toggle} isHome={false} />   <Sidebar isOpen={open} toggle={toggle} /> <About /> </ThemeProvider>} />
-            <Route path='/Classifier' element={<ThemeProvider theme={theme} > <Navbar toggle={toggle} isHome={false} />   <Sidebar isOpen={open} toggle={toggle} /> <Classifier /> </ThemeProvider>} />
-            <Route path='/SpectralAnalysis' element={<ThemeProvider theme={theme} > <Navbar toggle={toggle} isHome={false} />   <Sidebar isOpen={open} toggle={toggle} /> <SpectralAnalysis /> </ThemeProvider>} />
-            <Route path='/SignUp' element={<ThemeProvider theme={theme} > <SignUpPage /> </ThemeProvider>} />
-            <Route path='*' element={<ThemeProvider theme={theme} > <Navbar toggle={toggle} isHome={false} />  <PageNotFound /> </ThemeProvider>} />
-          </Routes>
-        </BrowserRouter>
-      </GlobalStateProvider>
 
-    </div>
+import AppRoutes from './routes';
+import theme from './theme/theme';
+import { ErrorProvider } from './components/shared/ErrorContext';
+import { GlobalStateProvider } from './services/Authentication/GlobalStateManager';
+
+export default function App() {
+  return (
+    <ThemeProvider theme={theme}>
+      <CssBaseline />
+      <ErrorProvider>
+        <GlobalStateProvider>
+          <BrowserRouter>
+            <AppRoutes />
+          </BrowserRouter>
+        </GlobalStateProvider>
+      </ErrorProvider>
+    </ThemeProvider>
   );
 }
-
-export default App;

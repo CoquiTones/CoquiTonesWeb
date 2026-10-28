@@ -1,94 +1,62 @@
+import APIHandlerBase from './APIHandlerBase';
+import { APIHandlerError } from './Errors';
+import { NodeList } from '../ResponseORM/NetworkMonitor/NodeResponse';
+import { InsertNewNodeRequest } from '../RequestORM/NetworkMonitor/NewNodeRequest';
 
-import APIHandlerBase from "./APIHandlerBase";
-import { APIHandlerError, BackendError } from "./Errors";
-import { Node, NodeList } from "../ResponseORM/NetworkMonitor/NodeResponse";
-import { InsertNewNodeRequest } from "../RequestORM/NetworkMonitor/NewNodeRequest"
-// import NodeDeleteRequest from "../RequestORM/NetworkMonitor/NodeDeleteRequest";
 export class APIHandlerNetworkMonitor extends APIHandlerBase {
-    async get_all_nodes() {
-        try {
-
-            const response = await fetch(this.web_url + "/api/node/all", {
-                method: "GET",
-                headers: this.getAuthenticationHeader()
-            });
-
-            if (!response.ok) {
-                throw new BackendError(response.statusText)
-            }
-            const getNodeAPIResopnse = await response.json()
-            return new NodeList(getNodeAPIResopnse);
-        } catch (error) {
-            throw new APIHandlerError('Error with fetching all nodes from database: ' + error.message);
-        }
+  /** @returns {Promise<NodeList>} */
+  async get_all_nodes() {
+    try {
+      const data = await this.request('/api/node/all');
+      return new NodeList(data);
+    } catch (error) {
+      throw new APIHandlerError(`Could not load the node list: ${error.message}`);
     }
+  }
 
-    /**
-     * 
-     * @param {InsertNewNodeRequest} insert_new_node_request 
-     */
-    async insert_new_node(insert_new_node_request) {
-        try {
-            const response = await fetch(this.web_url + "/api/node/insert", {
-                method: "POST",
-                headers: this.getAuthenticationHeader(),
-                body: insert_new_node_request.toFormData()
-            })
-
-            if (!response.ok) {
-                throw new APIHandlerError(response.statusText);
-            }
-        } catch (error) {
-            throw new APIHandlerError("Error Inserting nodes in database for Network Monitor: " + error.message);
-        }
+  /**
+   * @param {InsertNewNodeRequest} insertNewNodeRequest
+   */
+  async insert_new_node(insertNewNodeRequest) {
+    try {
+      await this.request('/api/node/insert', {
+        method: 'POST',
+        body: insertNewNodeRequest.toFormData(),
+        expect: 'none',
+      });
+    } catch (error) {
+      throw new APIHandlerError(`Could not add the node: ${error.message}`);
     }
+  }
 
-    /**
-     * 
-     * @returns {NodeList}
-     */
-    async get_nodes_with_no_client() {
-        try {
-            const response = await fetch(this.web_url + "/api/node/noclient", {
-                method: "GET",
-                headers: this.getAuthenticationHeader(),
-            })
-
-            if (!response.ok) {
-                throw new BackendError("Network error when attempting to retrieve list of nodse with no mqtt client");
-            }
-            const apiResponseObject = await response.json()
-            return new NodeList(apiResponseObject);
-        } catch (error) {
-            console.error("Error with Getting Node Sync with MQTT");
-            throw new APIHandlerError("Error with Getting Node Sync with MQTT" + error.message);
-        }
+  /** @returns {Promise<NodeList>} */
+  async get_nodes_with_no_client() {
+    try {
+      const data = await this.request('/api/node/noclient');
+      return new NodeList(data);
+    } catch (error) {
+      throw new APIHandlerError(`Could not check MQTT client status: ${error.message}`);
     }
+  }
 
-    /**
-     * 
-     * @param {Node} node 
-     */
-    async create_client_for_node(node, clientPasword) {
-        try {
-            let formData = new FormData();
-            formData.append("nid", node.nid);
-            formData.append("password", clientPasword);
-            const response = await fetch(this.web_url + "/api/node/mqtt", {
-                method: "POST",
-                headers: this.getAuthenticationHeader(),
-                body: formData
-            });
-
-            if (!response.ok) {
-                throw new BackendError("Network error when attempting to add client for node  with no mqtt client");
-            }
-
-            const apiResponseObject = await response.json();
-            return apiResponseObject.nodeCreationStatus;
-        } catch (error) {
-            console.error("Error with Creating client for node");
-            throw new APIHandlerError("Error with creating client for node" + node.nid);
-        }
+  /**
+   * @param {import('../ResponseORM/NetworkMonitor/NodeResponse').Node} node
+   * @param {string} clientPassword
+   */
+  async create_client_for_node(node, clientPassword) {
+    try {
+      const formData = new FormData();
+      formData.append('nid', node.nid);
+      formData.append('password', clientPassword);
+      const data = await this.request('/api/node/mqtt', {
+        method: 'POST',
+        body: formData,
+      });
+      return data?.nodeCreationStatus;
+    } catch (error) {
+      throw new APIHandlerError(`Could not create an MQTT client for node ${node.nid}: ${error.message}`);
     }
+  }
 }
+
+export default APIHandlerNetworkMonitor;

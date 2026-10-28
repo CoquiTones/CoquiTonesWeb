@@ -1,24 +1,31 @@
-import React, { useContext, useEffect, useRef } from 'react';
-import { Navigate, Outlet } from 'react-router-dom';
-import { useGlobalState, AuthenticationStatus } from '../services/Authentication/GlobalStateManager';
-import { ErrorContext } from "../components/shared/ErrorContext"
-import CircularProgress from '@mui/material/CircularProgress';
-import { ValidationError } from '../services/rest/APIHandler/Errors';
+import { useEffect } from 'react';
+import { Navigate, Outlet, useLocation } from 'react-router-dom';
 
-const ProtectedRoute = () => {
+import RouteFallback from '../components/shared/RouteFallback';
+import { useErrors } from '../components/shared/ErrorContext';
+import {
+  AuthenticationStatus,
+  useGlobalState,
+} from '../services/Authentication/GlobalStateManager';
+
+/**
+ * Guards the authenticated area. Session status is resolved by
+ * `GlobalStateProvider`, so this only renders a loader, a redirect, or the
+ * protected route tree.
+ */
+export default function ProtectedRoute() {
   const { authStatus } = useGlobalState();
-  const { errors, setErrors } = useContext(ErrorContext);
-  const errorAddedRef = useRef(false);
+  const { addError } = useErrors();
+  const location = useLocation();
 
   useEffect(() => {
-    if (authStatus === AuthenticationStatus.UNAUTHENTICATED && !errorAddedRef.current) {
-      setErrors([...errors, new ValidationError("You must be Signed In to view this page!")])
-      errorAddedRef.current = true;
+    if (authStatus === AuthenticationStatus.UNAUTHENTICATED) {
+      addError('Sign in to view the Dashboard and IoT Network.');
     }
-  }, [authStatus])
+  }, [authStatus, addError, location.pathname]);
 
   if (authStatus === AuthenticationStatus.LOADING) {
-    return <CircularProgress />
+    return <RouteFallback label="Checking your session…" />;
   }
 
   if (authStatus === AuthenticationStatus.UNAUTHENTICATED) {
@@ -26,6 +33,4 @@ const ProtectedRoute = () => {
   }
 
   return <Outlet />;
-};
-
-export default ProtectedRoute;
+}

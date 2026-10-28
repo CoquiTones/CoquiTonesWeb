@@ -1,6 +1,7 @@
 {
-  "short_name": "React App",
-  "name": "Create React App Sample",
+  "short_name": "CoquiTones",
+  "name": "CoquiTones — Acoustic monitoring for amphibian conservation",
+  "description": "Open-source tools for monitoring amphibian species with acoustics: IoT sensors, species classification and spectral analysis.",
   "icons": [
     {
       "src": "favicon.ico",
@@ -20,6 +21,6 @@
   ],
   "start_url": ".",
   "display": "standalone",
-  "theme_color": "#000000",
-  "background_color": "#ffffff"
+  "theme_color": "#14120F",
+  "background_color": "#14120F"
 }

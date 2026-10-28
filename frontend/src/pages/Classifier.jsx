@@ -1,373 +1,126 @@
-import React, { useState, useEffect, useMemo, useContext } from "react";
-import Box from "@mui/material/Box";
-import Typography from "@mui/material/Typography";
-import Container from "@mui/material/Container";
-import Grid from "@mui/material/Grid";
-import Paper from "@mui/material/Paper";
-import Table from "@mui/material/Table";
-import TableBody from "@mui/material/TableBody";
-import TableCell from "@mui/material/TableCell";
-import TableContainer from "@mui/material/TableContainer";
-import TableHead from "@mui/material/TableHead";
-import TableRow from "@mui/material/TableRow";
-import TablePagination from "@mui/material/TablePagination";
-import Chip from "@mui/material/Chip";
-import CircularProgress from "@mui/material/CircularProgress";
-import Skeleton from "@mui/material/Skeleton";
-import Alert from "@mui/material/Alert";
-import Button from "@mui/material/Button";
-import DownloadIcon from "@mui/icons-material/Download";
-import { useTheme } from "@mui/material/styles";
+import { useEffect, useMemo, useState } from 'react';
+import Alert from '@mui/material/Alert';
+import Box from '@mui/material/Box';
+import Container from '@mui/material/Container';
+import LinearProgress from '@mui/material/LinearProgress';
+import Paper from '@mui/material/Paper';
+import Typography from '@mui/material/Typography';
 
-import FileUpload from "../components/shared/FileUpload";
-import Footer from "../components/shared/Footer";
-import HeroSectionClassifier from "../components/shared/HeroSectionClassifier";
+import PageHero from '../components/layout/PageHero';
+import FileUpload from '../components/shared/FileUpload';
+import ClassificationResults from '../components/classifier/ClassificationResults';
+import { useErrors } from '../components/shared/ErrorContext';
+import { APIHandlerClassifier } from '../services/rest/APIHandler/APIHandlerClassifier';
+import { ClassifyAudioRequest } from '../services/rest/RequestORM/Classifier/ClassifyAudioRequest';
+import classifierBackground from '../components/assets/images/ClassifierBackground.webp';
 
-import { APIHandlerClassifier } from "../services/rest/APIHandler/APIHandlerClassifier";
-import { ClassifyAudioRequest } from "../services/rest/RequestORM/Classifier/ClassifyAudioRequest";
-import ErrorAlerts from "../components/shared/ErrorAlerts";
-import { ErrorContext } from "../components/shared/ErrorContext";
-
-const Classifier = () => {
-  const species = [
-    "coqui",
-    "wightmanae",
-    "gryllus",
-    "portoricensis",
-    "unicolor",
-    "hedricki",
-    "locustus",
-    "richmondi",
-  ];
-  const column_headers = ["Time Slice", ...species];
-
-  const theme = useTheme();
-  const { errors, setErrors } = useContext(ErrorContext);
-  const apiHandler = useMemo(() => new APIHandlerClassifier());
-  const [rawAudioFile, setRawAudioFile] = useState(null);
-  const [classifierReport, setClassifierReport] = useState(null);
-  const [isLoading, setIsLoading] = useState(false);
-  const [page, setPage] = useState(0);
-  const [rowsPerPage, setRowsPerPage] = useState(10);
-
-  const classifyAudiofile = async () => {
-    try {
-      if (rawAudioFile) {
-        setIsLoading(true);
-        const classifyAudioFileRequest = new ClassifyAudioRequest(rawAudioFile);
-        let report = await apiHandler.fetchClassification(
-          classifyAudioFileRequest
-        );
-        setClassifierReport(report);
-        setPage(0);
-      }
-    } catch (error) {
-      setErrors([...errors, error]);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+export default function Classifier() {
+  const { addError } = useErrors();
+  const apiHandler = useMemo(() => new APIHandlerClassifier(), []);
+  const [audioFile, setAudioFile] = useState(null);
+  const [report, setReport] = useState(null);
+  const [status, setStatus] = useState('idle');
 
   useEffect(() => {
-    classifyAudiofile();
-  }, [rawAudioFile]);
+    if (!audioFile) {
+      setReport(null);
+      setStatus('idle');
+      return undefined;
+    }
 
-  const handleChangePage = (event, newPage) => {
-    setPage(newPage);
-  };
+    let cancelled = false;
 
-  const handleChangeRowsPerPage = (event) => {
-    setRowsPerPage(parseInt(event.target.value, 10));
-    setPage(0);
-  };
+    const runClassification = async () => {
+      setStatus('loading');
+      setReport(null);
 
-  const getDetectionChip = (isDetected) => {
-    return (
-      <Chip
-        label={isDetected ? "Detected" : "Not Found"}
-        color={isDetected ? "success" : "default"}
-        variant="outlined"
-        size="small"
-        sx={{
-          fontWeight: 600,
-        }}
-      />
-    );
-  };
+      try {
+        const result = await apiHandler.fetchClassification(new ClassifyAudioRequest(audioFile));
+        if (cancelled) return;
+        setReport(result);
+        setStatus('ready');
+      } catch (error) {
+        if (cancelled) return;
+        addError(error);
+        setStatus('error');
+      }
+    };
 
-  const renderSpeciesCell = (slice, speciesName) => {
-    const isDetected = slice[speciesName];
-    return (
-      <TableCell key={speciesName} align="center">
-        {getDetectionChip(isDetected)}
-      </TableCell>
-    );
-  };
+    runClassification();
 
-  const paginatedData = classifierReport
-    ? classifierReport.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
-    : [];
-
-  const exportToCSV = () => {
-    if (!classifierReport || classifierReport.length === 0) return;
-
-    // Create CSV header
-    const headers = column_headers.join(",");
-
-    // Create CSV rows
-    const rows = classifierReport.map((slice) => {
-      const timeCell = `"${slice.start_time}s – ${slice.end_time}s"`;
-      const speciesCells = species
-        .map((speciesName) => (slice[speciesName] ? "Detected" : "Not Found"))
-        .join(",");
-      return `${timeCell},${speciesCells}`;
-    });
-
-    // Combine header and rows
-    const csvContent = [headers, ...rows].join("\n");
-
-    // Create blob and download
-    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-    const link = document.createElement("a");
-    const url = URL.createObjectURL(blob);
-    link.setAttribute("href", url);
-    link.setAttribute(
-      "download",
-      `classification_report_${Date.now()}.csv`
-    );
-    link.style.visibility = "hidden";
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
+    return () => {
+      cancelled = true;
+    };
+  }, [audioFile, apiHandler, addError]);
 
   return (
     <>
-      <ErrorAlerts errors={errors} setErrors={setErrors} />
-      <HeroSectionClassifier />
-      <Box sx={{ display: "flex" }}>
-        <Box
-          component="main"
-          sx={{
-            backgroundColor: (theme) =>
-              theme.palette.mode === "light"
-                ? theme.palette.grey[100]
-                : theme.palette.grey[900],
-            flexGrow: 1,
-            minHeight: "100vh",
-            overflow: "auto",
-          }}
-        >
-          <Container maxWidth="lg" sx={{ mt: 10, mb: 10 }}>
-            <Grid container spacing={3}>
-              <Grid item xs={12}>
-                <Paper
-                  elevation={2}
-                  sx={{
-                    p: 3,
-                    display: "flex",
-                    flexDirection: "column",
-                  }}
-                >
-                  <FileUpload setAudioFile={setRawAudioFile} />
-                </Paper>
-              </Grid>
+      <PageHero
+        compact
+        eyebrow="Random Forest model"
+        title="Machine learning analysis"
+        description="Upload a field recording and see which coquí species the model detects in each time slice."
+        image={classifierBackground}
+      />
 
-              {isLoading && (
-                <Grid item xs={12}>
-                  <Paper
-                    elevation={2}
-                    sx={{
-                      p: 3,
-                      display: "flex",
-                      flexDirection: "column",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      minHeight: "400px",
-                      gap: 2,
-                    }}
-                  >
-                    <CircularProgress size={60} />
-                    <Typography variant="h6" color="textSecondary">
-                      Analyzing audio file...
-                    </Typography>
-                    <Typography
-                      variant="body2"
-                      color="textSecondary"
-                      align="center"
-                    >
-                      This may take a moment depending on the file size
-                    </Typography>
-                  </Paper>
-                </Grid>
-              )}
+      <Container maxWidth="lg" sx={{ py: { xs: 3, md: 5 } }}>
+        <Paper sx={{ p: { xs: 2, md: 3 }, mb: 3 }}>
+          <Typography component="h2" variant="h6" color="text.primary" sx={{ mb: 0.5 }}>
+            Audio file
+          </Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            WAV files give the best results. Classification runs on the server and can take a moment
+            for long recordings.
+          </Typography>
+          <FileUpload setAudioFile={setAudioFile} buttonLabel="Choose recording" />
+        </Paper>
 
-              {classifierReport && !isLoading && (
-                <Grid item xs={12}>
-                  <Paper
-                    elevation={2}
-                    sx={{
-                      p: 3,
-                      display: "flex",
-                      flexDirection: "column",
-                      overflow: "hidden",
-                    }}
-                  >
-                    <Box
-                      sx={{
-                        display: "flex",
-                        justifyContent: "space-between",
-                        alignItems: "center",
-                        mb: 3,
-                      }}
-                    >
-                      <Typography
-                        variant="h5"
-                        color="primary"
-                        sx={{
-                          fontWeight: 600,
-                        }}
-                      >
-                        Classification Report
-                      </Typography>
-                      <Button
-                        variant="contained"
-                        color="primary"
-                        startIcon={<DownloadIcon />}
-                        onClick={exportToCSV}
-                        disabled={
-                          !classifierReport || classifierReport.length === 0
-                        }
-                      >
-                        Export to CSV
-                      </Button>
-                    </Box>
+        {status === 'loading' && (
+          <Paper sx={{ p: { xs: 3, md: 5 } }} aria-live="polite">
+            <Typography component="h2" variant="h6" color="text.primary">
+              Analysing {audioFile?.name}…
+            </Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5, mb: 2 }}>
+              The model is scanning each time slice. This may take a moment for large files.
+            </Typography>
+            <LinearProgress />
+          </Paper>
+        )}
 
-                    <Typography
-                      variant="body2"
-                      color="textSecondary"
-                      sx={{ mb: 2 }}
-                    >
-                      File: <strong>{rawAudioFile.name}</strong>
-                    </Typography>
+        {status === 'error' && (
+          <Alert severity="error">
+            The file could not be classified. Choose another recording or try again later.
+          </Alert>
+        )}
 
-                    <Alert severity="info" sx={{ mb: 2 }}>
-                      Showing {paginatedData.length} of {classifierReport.length}{" "}
-                      time slices
-                    </Alert>
+        {status === 'ready' && report && report.length === 0 && (
+          <Alert severity="warning">
+            No species were detected in that recording. Try a longer or clearer sample.
+          </Alert>
+        )}
 
-                    <TableContainer>
-                      <Table
-                        sx={{
-                          minWidth: 650,
-                          "& thead": {
-                            backgroundColor:
-                              theme.palette.mode === "light"
-                                ? theme.palette.grey[200]
-                                : theme.palette.grey[800],
-                          },
-                          "& th": {
-                            fontWeight: 700,
-                            fontSize: "0.875rem",
-                            textTransform: "capitalize",
-                            color:
-                              theme.palette.mode === "light"
-                                ? theme.palette.grey[900]
-                                : theme.palette.grey[100],
-                          },
-                          "& tbody tr:hover": {
-                            backgroundColor:
-                              theme.palette.mode === "light"
-                                ? theme.palette.action.hover
-                                : theme.palette.action.hover,
-                          },
-                          "& tbody tr": {
-                            borderBottom: `1px solid ${theme.palette.divider}`,
-                          },
-                        }}
-                        aria-label="classification table"
-                      >
-                        <TableHead>
-                          <TableRow>
-                            {column_headers.map((header) => (
-                              <TableCell
-                                key={header}
-                                align={
-                                  header === "Time Slice" ? "left" : "center"
-                                }
-                                sx={{
-                                  py: 2,
-                                  px: 1.5,
-                                }}
-                              >
-                                {header === "Time Slice"
-                                  ? header
-                                  : header.charAt(0).toUpperCase() +
-                                  header.slice(1)}
-                              </TableCell>
-                            ))}
-                          </TableRow>
-                        </TableHead>
-                        <TableBody>
-                          {paginatedData.map((slice, index) => (
-                            <TableRow
-                              key={`slice-${page * rowsPerPage + index}`}
-                              sx={{
-                                "&:last-child td, &:last-child th": {
-                                  border: 0,
-                                },
-                              }}
-                            >
-                              <TableCell
-                                sx={{
-                                  fontWeight: 500,
-                                  py: 2,
-                                  px: 1.5,
-                                }}
-                              >
-                                {slice.start_time} – {slice.end_time}
-                              </TableCell>
-                              {species.map((speciesName) =>
-                                renderSpeciesCell(slice, speciesName)
-                              )}
-                            </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
-                    </TableContainer>
+        {status === 'ready' && report && report.length > 0 && (
+          <Paper sx={{ p: { xs: 2, md: 3 } }}>
+            <ClassificationResults report={report} fileName={audioFile?.name} />
+          </Paper>
+        )}
 
-                    <TablePagination
-                      rowsPerPageOptions={[5, 10, 25, 50]}
-                      component="div"
-                      count={classifierReport.length}
-                      rowsPerPage={rowsPerPage}
-                      page={page}
-                      onPageChange={handleChangePage}
-                      onRowsPerPageChange={handleChangeRowsPerPage}
-                      sx={{
-                        ".MuiTablePagination-toolbar": {
-                          pl: 0,
-                        },
-                      }}
-                    />
-                  </Paper>
-                </Grid>
-              )}
-
-              {!isLoading && !classifierReport && rawAudioFile && (
-                <Grid item xs={12}>
-                  <Alert severity="warning">
-                    No results available. Please try uploading another file.
-                  </Alert>
-                </Grid>
-              )}
-            </Grid>
-          </Container>
-        </Box>
-      </Box>
-      <Footer />
+        {status === 'idle' && (
+          <Box
+            sx={{
+              p: { xs: 3, md: 5 },
+              borderRadius: 3,
+              border: '1px dashed',
+              borderColor: 'divider',
+              textAlign: 'center',
+            }}
+          >
+            <Typography variant="body1" color="text.secondary">
+              Results will appear here once a recording is uploaded.
+            </Typography>
+          </Box>
+        )}
+      </Container>
     </>
   );
-};
-
-export default Classifier;
+}

@@ -13,35 +13,31 @@
     "@mui/x-date-pickers": "^8.27.2",
     "@react-three/drei": "^10.7.7",
     "@react-three/fiber": "^9.5.0",
-    "@vitejs/plugin-react-swc": "^4.2.3",
     "colormap": "^2.3.2",
     "dayjs": "^1.11.19",
     "fft.js": "^4.0.4",
     "js-cookie": "^3.0.5",
     "mapbox-gl": "^3.20.0",
+    "prop-types": "^15.8.1",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
-    "react-icons": "^5.5.0",
     "react-router-dom": "^7.13.0",
     "react-scroll": "^1.9.3",
-    "three": "^0.183.1",
-    "three-stdlib": "^2.36.1",
-    "vite": "^7.3.1",
-    "vite-plugin-svgr": "^4.5.0",
-    "vite-tsconfig-paths": "^6.1.1",
-    "web-vitals": "^5.1.0"
+    "three": "^0.183.1"
   },
   "scripts": {
     "start": "vite",
     "build": "vite build",
     "serve": "vite preview",
     "test": "vitest",
-    "test:coverage": "vitest run --coverage --watch=false"
+    "test:run": "vitest run",
+    "test:coverage": "vitest run --coverage"
   },
   "devDependencies": {
     "@vitejs/plugin-basic-ssl": "^2.1.4",
-    "babel-plugin-syntax-hermes-parser": "^0.33.3",
+    "@vitejs/plugin-react-swc": "^4.3.3",
     "jsdom": "^28.1.0",
+    "vite": "^7.3.7",
     "vitest": "^4.0.18"
   }
 }

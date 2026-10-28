@@ -1,82 +1,47 @@
-
 /**
- *  Encapsulation of expected reponse of endpoint 
- *
- * @export
- * @class WeekSpeciesSummary
- * @typedef {WeekSpeciesSummary}
+ * Encapsulation of the `/api/dashboard/week-species-summary` response.
  */
 export class WeekSpeciesSummary {
-    total_coqui;
-    total_wightmanae;
-    total_gryllus;
-    total_portoricensis;
-    total_unicolor;
-    total_hedricki;
-    total_locustus;
-    total_richmondi;
-    date_bin = [];
+  static SERIES = [
+    ['total_coqui', 'Coquí'],
+    ['total_wightmanae', 'Wightmanae'],
+    ['total_gryllus', 'Gryllus'],
+    ['total_portoricensis', 'Portoricensis'],
+    ['total_unicolor', 'Unicolor'],
+    ['total_hedricki', 'Hedricki'],
+    ['total_locustus', 'Locustus'],
+    ['total_richmondi', 'Richmondi'],
+  ];
 
-    constructor(APIResponse) {
-        this.total_coqui = APIResponse.total_coqui;
-        this.total_wightmanae = APIResponse.total_wightmanae;
-        this.total_gryllus = APIResponse.total_gryllus;
-        this.total_portoricensis = APIResponse.total_portoricensis;
-        this.total_unicolor = APIResponse.total_unicolor;
-        this.total_hedricki = APIResponse.total_hedricki;
-        this.total_locustus = APIResponse.total_locustus;
-        this.total_richmondi = APIResponse.total_richmondi;
-        this.date_bin = APIResponse.date_bin;
+  constructor(APIResponse = {}) {
+    this.total_coqui = APIResponse.total_coqui ?? [];
+    this.total_wightmanae = APIResponse.total_wightmanae ?? [];
+    this.total_gryllus = APIResponse.total_gryllus ?? [];
+    this.total_portoricensis = APIResponse.total_portoricensis ?? [];
+    this.total_unicolor = APIResponse.total_unicolor ?? [];
+    this.total_hedricki = APIResponse.total_hedricki ?? [];
+    this.total_locustus = APIResponse.total_locustus ?? [];
+    this.total_richmondi = APIResponse.total_richmondi ?? [];
+    this.date_bin = APIResponse.date_bin ?? [];
+  }
 
-    }
+  getXData() {
+    return this.date_bin.map((date) =>
+      new Date(date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }),
+    );
+  }
 
-    getXData() {
-        let xData = this.date_bin.map((date) => (
-            new Date(date).toUTCString()
-        ))
-        return xData;
-    }
+  getSeriesData() {
+    return WeekSpeciesSummary.SERIES.map(([key, label]) => ({
+      data: this[key] ?? [],
+      label,
+      valueFormatter: (value) => (value == null ? '—' : `${value} detected`),
+    }));
+  }
 
-    getSeriesData() {
-        let series = [
-            {
-                data: this.total_coqui,
-                label: "Coqui"
-            },
-            {
-                data: this.total_wightmanae,
-                label: "Wightmanae"
-            },
-            {
-                data: this.total_gryllus,
-                label: "Gryllus"
-            },
-            {
-                data: this.total_portoricensis,
-                label: "Portoricensis"
-            },
-            {
-                data: this.total_unicolor,
-                label: "Unicolor"
-            },
-            {
-                data: this.total_hedricki,
-                label: "Hedricki"
-            },
-            {
-                data: this.total_locustus,
-                label: "Locustus"
-            },
-            {
-                data: this.total_richmondi,
-                label: "Richmondi"
-            }
-        ]
-
-        return series;
-    }
-
-    isEmpty() {
-        return this.date_bin === undefined ? true : false;
-    }
+  isEmpty() {
+    return !Array.isArray(this.date_bin) || this.date_bin.length === 0;
+  }
 }
+
+export default WeekSpeciesSummary;

@@ -1,72 +1,68 @@
-import { useEffect, useRef } from "react"
-import { createPortal } from "react-dom"
-import mapboxgl from 'mapbox-gl'
-import { Node } from "../../services/rest/ResponseORM/NetworkMonitor/NodeResponse"
+import { useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
+import Box from '@mui/material/Box';
+import Typography from '@mui/material/Typography';
+import mapboxgl from 'mapbox-gl';
 
-import 'mapbox-gl/dist/mapbox-gl.css';
 /**
- * 
- * @param {*} mapRef
- * @param {Node} Node
- * @returns 
+ * Mapbox popup rendered through a React portal so content stays declarative.
  */
-const Popup = ({ map, Node }) => {
+export default function Popup({ map, node }) {
+  const popupRef = useRef(null);
+  const contentRef = useRef(document.createElement('div'));
 
-    // a ref to hold the popup instance
-    const popupRef = useRef()
-    // a ref for an element to hold the popup's content
-    const contentRef = useRef(document.createElement("div"))
+  useEffect(() => {
+    if (!map) return undefined;
 
-    // instantiate the popup on mount, remove it on unmount
-    useEffect(() => {
-        if (!map) return
+    const popup = new mapboxgl.Popup({
+      closeOnClick: false,
+      closeButton: true,
+      offset: 18,
+      maxWidth: '300px',
+    });
+    popup.setDOMContent(contentRef.current);
+    popupRef.current = popup;
 
-        // create a new popup instance, but do not set its location or content yet
-        popupRef.current = new mapboxgl.Popup({
-            closeOnClick: false,
-            offset: 20
-        })
+    return () => {
+      popup.remove();
+      popupRef.current = null;
+    };
+  }, [map]);
 
-        return () => {
-            popupRef.current.remove()
-        }
-    }, [])
+  useEffect(() => {
+    if (!popupRef.current || !node) return;
+    popupRef.current
+      .setLngLat([Number(node.nlongitude), Number(node.nlatitude)])
+      .addTo(map);
+  }, [map, node]);
 
-
-    // when Node changes, set the popup's location and content, and add it to the map
-    useEffect(() => {
-        if (!Node) return
-        popupRef.current
-            .setLngLat([Node.nlongitude, Node.nlatitude]) // set its position using Node's geometry
-            .setHTML(contentRef.current.outerHTML) // use contentRef's `outerHTML` to set the content of the popup
-            .addTo(map) // add the popup to the map
-    }, [Node])
-
-    // use a react portal to render the content to show in the popup, assigning it to contentRef
-    return (
-        <>{
-            createPortal(
-                <div className="portal-content" style={{ color: "black" }}>
-                    <table>
-                        <tbody>
-                            <tr>
-                                <td><strong>Node {Node.nid}: {Node.nname} </strong></td>
-                            </tr>
-                            <tr>
-                                <td><strong>Node Type: </strong></td>
-                                <td>{Node.ntype}</td>
-                            </tr>
-                            <tr>
-                                <td><strong>Description: </strong></td>
-                                <td>{Node.ndescription}</td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>,
-                contentRef.current
-            )
-        }</>
-    )
+  return createPortal(
+    <Box sx={{ color: 'text.primary', minWidth: 200 }}>
+      <Typography component="p" variant="subtitle2" sx={{ mb: 1 }}>
+        Node {node.nid}
+        {node.nname ? ` · ${node.nname}` : ''}
+      </Typography>
+      <Box component="dl" sx={{ m: 0, display: 'grid', gridTemplateColumns: 'auto 1fr', gap: 0.5, columnGap: 1.5 }}>
+        <Typography component="dt" variant="caption" color="text.secondary">
+          Type
+        </Typography>
+        <Typography component="dd" variant="caption" sx={{ m: 0, textTransform: 'capitalize' }}>
+          {node.ntype || '—'}
+        </Typography>
+        <Typography component="dt" variant="caption" color="text.secondary">
+          Description
+        </Typography>
+        <Typography component="dd" variant="caption" sx={{ m: 0 }}>
+          {node.ndescription || '—'}
+        </Typography>
+        <Typography component="dt" variant="caption" color="text.secondary">
+          Coordinates
+        </Typography>
+        <Typography component="dd" variant="caption" sx={{ m: 0, fontFamily: 'monospace' }}>
+          {node.nlatitude}, {node.nlongitude}
+        </Typography>
+      </Box>
+    </Box>,
+    contentRef.current,
+  );
 }
-
-export default Popup

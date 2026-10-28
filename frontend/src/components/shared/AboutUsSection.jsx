@@ -1,122 +1,82 @@
-import React from "react";
-import { styled } from "@mui/material/styles";
-import DiegoPFP from "../assets/images/DiegoProfessionalPFP.jpg";
-import EdwinPFP from "../assets/images/EdwinCamuyPFP.png";
-import RolandoPFP from "../assets/images/RolandoProfessionalPFP.jpg";
+import Box from '@mui/material/Box';
+import Container from '@mui/material/Container';
+import Grid from '@mui/material/Grid';
+import Paper from '@mui/material/Paper';
+import Typography from '@mui/material/Typography';
 
-export const AboutUsContainer = styled("div")(({ theme }) => ({
-  height: "800px",
-  display: "flex",
-  flexDirection: "column",
-  justifyContent: "center",
-  alignItems: "center",
-  marginTop: "-80px",
-  background: "#191716",
-  [theme.breakpoints.down("md")]: {
-    height: "1100px",
+import diegoPhoto from '../assets/images/DiegoProfessionalPFP.webp';
+import edwinPhoto from '../assets/images/EdwinCamuyPFP.webp';
+import rolandoPhoto from '../assets/images/RolandoProfessionalPFP.webp';
+
+const TEAM = [
+  {
+    name: 'Diego A. Santiago Uriarte',
+    role: 'Full-stack software engineer',
+    bio: 'A little bit of everything. Interested in hiking and swimming in the local rivers of Puerto Rico.',
+    photo: diegoPhoto,
   },
-  [theme.breakpoints.down("sm")]: {
-    height: "1300px",
-    marginTop: "0px",
+  {
+    name: 'Edwin J. Camuy Medina',
+    role: 'Software engineer · backend & AI',
+    bio: 'Interested in creating new and unorthodox things.',
+    photo: edwinPhoto,
   },
-}));
-
-export const AboutUsWrapper = styled("div")(({ theme }) => ({
-  maxWidth: "2000px",
-  margin: "0 auto",
-  display: "grid",
-  gridTemplateColumns: "1fr 1fr 1fr",
-  alignItems: "center",
-  gridGap: "16px",
-  padding: "0 50px",
-  [theme.breakpoints.down("lg")]: {
-    gridTemplateColumns: "1fr 1fr",
+  {
+    name: 'Rolando Ríos Bonilla',
+    role: 'Computer science & engineering · front end',
+    bio: 'Interested in anything sports-related and music.',
+    photo: rolandoPhoto,
   },
-  [theme.breakpoints.down("md")]: {
-    gridTemplateColumns: "1fr",
-    padding: "0 20px",
-  },
-}));
+];
 
-export const AboutUsCard = styled("div")({
-  background: "#fff",
-  display: "flex",
-  flexDirection: "column",
-  justifyContent: "flex-start",
-  alignItems: "center",
-  borderRadius: "10px",
-  maxHeight: "340px",
-  padding: "30px",
-  boxShadow: "0 1px 3px rgba(0,0,0,0.2)",
-  transition: "all 0.2s ease-in-out",
-  "&hover": {
-    transform: "scale(1.02)",
-    transition: "all 0.2s ease-in-out",
-    cursor: "pointer",
-  },
-});
-
-export const AboutUsPFP = styled("img")({
-  height: "200px",
-  width: "200px",
-  marginBottom: "10px",
-  borderRadius: "50%",
-});
-
-export const AboutUsH1 = styled("h1")(({ theme }) => ({
-  fontSize: "2.5rem",
-  color: "#ffc857",
-  marginBottom: "64px",
-
-  [theme.breakpoints.down("sm")]: {
-    fontSize: "2rem",
-  },
-}));
-
-export const AboutUsH2 = styled("h2")({
-  fontSize: "1.75rem",
-  color: "#a44200",
-  marginBottom: "10px",
-});
-
-export const AboutUsP = styled("p")({
-  fontSize: "1.25rem",
-  textAlign: "center",
-});
-
-const AboutUsSection = () => {
+export default function AboutUsSection() {
   return (
-    <AboutUsContainer>
-      <AboutUsH1>About Us</AboutUsH1>
-      <AboutUsWrapper>
-        <AboutUsCard>
-          <AboutUsPFP src={DiegoPFP} />
-          <AboutUsH2>Diego A. Santiago Uriarte</AboutUsH2>
-          <AboutUsP>
-            {" "}
-            Full-Stack Software Engineer. Role: A little bit of everything.
-            Interested in hiking and swimming in local rivers of Puerto Rico
-          </AboutUsP>
-        </AboutUsCard>
-        <AboutUsCard>
-          <AboutUsPFP src={EdwinPFP} />
-          <AboutUsH2>Edwin J. Camuy Medina</AboutUsH2>
-          <AboutUsP>
-            Software Engineer Graduate. Role: Backend Development and AI.
-            Interested in creating new unorthodox things
-          </AboutUsP>
-        </AboutUsCard>
-        <AboutUsCard>
-          <AboutUsPFP src={RolandoPFP} />
-          <AboutUsH2>Rolando Ríos Bonilla</AboutUsH2>
-          <AboutUsP>
-            Computer Science & Engineering Graduate. Role: Front-End
-            Development. Interested in anything sports-related and music
-          </AboutUsP>
-        </AboutUsCard>
-      </AboutUsWrapper>
-    </AboutUsContainer>
-  );
-};
+    <Box component="section" sx={{ py: { xs: 7, md: 10 }, backgroundColor: 'background.paper', borderTop: '1px solid', borderColor: 'divider' }}>
+      <Container maxWidth="lg">
+        <Typography component="h2" variant="h2" color="text.primary" sx={{ mb: 1.5 }}>
+          About us
+        </Typography>
+        <Typography variant="body1" color="text.secondary" sx={{ maxWidth: 620, mb: { xs: 4, md: 6 } }}>
+          A small team of engineers from Puerto Rico building tools that help researchers protect
+          the island&apos;s amphibian population.
+        </Typography>
 
-export default AboutUsSection;
+        <Grid container spacing={3}>
+          {TEAM.map((member) => (
+            <Grid key={member.name} size={{ xs: 12, sm: 6, lg: 4 }}>
+              <Paper
+                component="article"
+                sx={{ p: 3, height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center' }}
+              >
+                <Box
+                  component="img"
+                  src={member.photo}
+                  alt={`Portrait of ${member.name}`}
+                  loading="lazy"
+                  sx={{
+                    width: { xs: 132, sm: 160 },
+                    height: { xs: 132, sm: 160 },
+                    borderRadius: '50%',
+                    objectFit: 'cover',
+                    border: '3px solid',
+                    borderColor: 'divider',
+                    mb: 2,
+                  }}
+                />
+                <Typography component="h3" variant="h5" color="text.primary">
+                  {member.name}
+                </Typography>
+                <Typography variant="overline" component="p" sx={{ color: 'secondary.light', mt: 0.5 }}>
+                  {member.role}
+                </Typography>
+                <Typography variant="body2" color="text.secondary" sx={{ mt: 1.5 }}>
+                  {member.bio}
+                </Typography>
+              </Paper>
+            </Grid>
+          ))}
+        </Grid>
+      </Container>
+    </Box>
+  );
+}

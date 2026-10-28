@@ -1,251 +1,253 @@
-// src/components/auth/SignUpPage.jsx
-import React, { useState, useContext } from 'react';
-import { useNavigate, } from 'react-router-dom';
-import {
-  Box,
-  Typography,
-  TextField,
-  Button,
-  Stack,
-  Divider,
-  styled,
-} from '@mui/material';
-import logo from "../components/assets/images/logo512.png";
+import { useEffect, useRef, useState } from 'react';
+import { Link as RouterLink, useNavigate } from 'react-router-dom';
+import Alert from '@mui/material/Alert';
+import Box from '@mui/material/Box';
+import Button from '@mui/material/Button';
+import Container from '@mui/material/Container';
+import Divider from '@mui/material/Divider';
+import Paper from '@mui/material/Paper';
+import Stack from '@mui/material/Stack';
+import TextField from '@mui/material/TextField';
+import Typography from '@mui/material/Typography';
+import CheckCircleRoundedIcon from '@mui/icons-material/CheckCircleRounded';
+
+import logo from '../components/assets/images/logo512.png';
+import { useErrors } from '../components/shared/ErrorContext';
 import { APIHandlerAuthentication } from '../services/rest/APIHandler/APIHandlerAuthentication';
 import { SignUpRequest } from '../services/rest/RequestORM/Authentication/SignUpRequest';
-import { ErrorContext } from '../components/shared/ErrorContext';
 
-const PageContainer = styled(Box)(({ theme }) => ({
-  minHeight: '100vh',
-  position: 'relative',
-  overflow: 'hidden',
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  backgroundColor: '#000',
-  padding: theme.spacing(3),
+const EMPTY_FORM = { username: '', password: '', confirmPassword: '' };
+const EMPTY_ERRORS = { username: '', password: '', confirmPassword: '', form: '' };
 
-  '& .bgVideo': {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    width: '100%',
-    height: '100%',
-    objectFit: 'cover',
-    zIndex: 0,
-    pointerEvents: 'none',
-  },
+const BENEFITS = [
+  'Review weekly species detections and node health',
+  'Browse and export historical acoustic data',
+  'Manage the IoT node network and MQTT clients',
+];
 
-  '& .overlay': {
-    position: 'absolute',
-    inset: 0,
-    background: 'rgba(0,0,0,0.45)',
-    zIndex: 1,
-  },
-
-  '& .card': {
-    width: 420,
-    maxWidth: '90%',
-    backgroundColor: 'rgba(25,23,22,0.9)',
-    border: '2px solid #000',
-    boxShadow: 24,
-    padding: theme.spacing(4),
-    position: 'relative',
-    zIndex: 2,
-    backdropFilter: 'blur(4px)',
-  },
-
-  '& img': {
-    width: '50%',
-    height: '50%',
-    display: 'block',
-    margin: '0 auto 8px auto'
-  }
-}));
-
-
-const SignUpPage = () => {
+export default function SignUpPage() {
   const navigate = useNavigate();
-  const { addError } = useContext(ErrorContext); // Use addError from context for global errors
+  const { addError } = useErrors();
+  const usernameRef = useRef(null);
+  const passwordRef = useRef(null);
+  const confirmRef = useRef(null);
+  const summaryRef = useRef(null);
 
-  const [form, setForm] = useState({
-    username: '',
-    password: '',
-    confirmPassword: ''
-  });
-
-  // Local state for field-specific errors
-  const [fieldErrors, setFieldErrors] = useState({
-    username: '',
-    password: '',
-    confirmPassword: '',
-    form: ''
-  });
-
+  const [form, setForm] = useState(EMPTY_FORM);
+  const [fieldErrors, setFieldErrors] = useState(EMPTY_ERRORS);
   const [loading, setLoading] = useState(false);
-  const [snackbarOpen, setSnackbarOpen] = useState(false);
-  const [snackbarMessage, setSnackbarMessage] = useState('');
-  const [snackbarSeverity, setSnackbarSeverity] = useState('success');
+  const [success, setSuccess] = useState(false);
+  const hasErrors = Object.values(fieldErrors).some(Boolean);
 
-  const handleSnackbarClose = (event, reason) => {
-    if (reason === 'clickaway') {
-      return;
-    }
-    setSnackbarOpen(false);
+  useEffect(() => {
+    if (!success) return undefined;
+    const timer = window.setTimeout(() => navigate('/'), 2200);
+    return () => window.clearTimeout(timer);
+  }, [success, navigate]);
+
+  useEffect(() => {
+    if (hasErrors) summaryRef.current?.focus();
+  }, [hasErrors]);
+
+  const updateField = (field) => (event) => {
+    setForm((current) => ({ ...current, [field]: event.target.value }));
+    setFieldErrors((current) => ({ ...current, [field]: '', form: '' }));
   };
 
   const validate = () => {
-    const newErrors = {
-      username: '',
-      password: '',
-      confirmPassword: '',
-      form: ''
-    };
+    const errors = { ...EMPTY_ERRORS };
 
-    if (!form.username.trim()) {
-      newErrors.username = 'Username required';
-    }
-    if (!form.password) {
-      newErrors.password = 'Password required';
-    } else if (form.password.length < 8) {
-      newErrors.password = 'Minimum 8 characters';
-    }
-    if (form.password !== form.confirmPassword) {
-      newErrors.confirmPassword = 'Passwords do not match';
-    }
+    if (!form.username.trim()) errors.username = 'Choose a username.';
+    if (!form.password) errors.password = 'Choose a password.';
+    else if (form.password.length < 8) errors.password = 'Use at least 8 characters.';
+    if (form.confirmPassword !== form.password) errors.confirmPassword = 'The passwords do not match.';
 
-    setFieldErrors(newErrors);
+    setFieldErrors(errors);
 
-    // Return true if no errors
-    return !newErrors.username && !newErrors.password && !newErrors.confirmPassword;
+    const firstInvalid = ['username', 'password', 'confirmPassword'].find((field) => errors[field]);
+    if (firstInvalid) {
+      const refs = { username: usernameRef, password: passwordRef, confirmPassword: confirmRef };
+      refs[firstInvalid].current?.focus();
+      return false;
+    }
+    return true;
   };
 
-  const handleChange = (field) => (evt) => {
-    setForm((s) => ({ ...s, [field]: evt.target.value }));
-    // Clear field error when user starts typing
-    setFieldErrors((es) => ({ ...es, [field]: '' }));
-  };
-
-  const handleSubmit = async () => {
-    if (!validate()) return;
+  const handleSubmit = async (event) => {
+    event.preventDefault();
+    if (loading || !validate()) return;
 
     setLoading(true);
     try {
       const handler = new APIHandlerAuthentication();
-      const createNewUserRequest = new SignUpRequest(form.username, form.password)
-      const created = await handler.SignUpNewUser(createNewUserRequest)
+      const created = await handler.SignUpNewUser(
+        new SignUpRequest(form.username.trim(), form.password),
+      );
 
       if (created) {
-        // Show success Snackbar
-        setSnackbarMessage('Successfully signed up. Welcome to CoquiTones!');
-        setSnackbarSeverity('success');
-        setSnackbarOpen(true);
-        setTimeout(() => {
-          navigate('/');
-        }, 3000);
+        setSuccess(true);
       } else {
-        setFieldErrors((prev) => ({
-          ...prev,
-          form: "Registration Failed. Please try again."
-        }));
-        addError("Registration Failed. Please try again.");
+        const message = 'Registration failed. That username may already be taken.';
+        setFieldErrors((current) => ({ ...current, form: message }));
+        summaryRef.current?.focus();
       }
-    } catch (err) {
-      setFieldErrors((prev) => ({
-        ...prev,
-        form: "Registration Failed. Please try again."
-      }));
-      addError("Registration Failed. Please try again.");
+    } catch (error) {
+      const message = 'Registration failed. Please try again.';
+      setFieldErrors((current) => ({ ...current, form: message }));
+      addError(error instanceof Error ? error.message : message);
+      summaryRef.current?.focus();
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <PageContainer>
-      <video
-        className="bgVideo"
-        autoPlay
-        loop
-        muted
-        playsInline
-        src="https://videos.pexels.com/video-files/9777616/9777616-hd_1920_1080_30fps.mp4"
-        type="video/mp4"
-      />
-      <div className="overlay" />
-      <Box className="card">
-        <img src={logo} alt="logo" />
-        <Typography
-          variant="h5"
-          align="center"
-          sx={{ color: '#ffc857', fontWeight: 'bold', mb: 2 }}
-        >
-          Create Account
-        </Typography>
-
-        <TextField
-          fullWidth
-          margin="normal"
-          label="Username"
-          value={form.username}
-          onChange={handleChange('username')}
-          error={!!fieldErrors.username}
-          helperText={fieldErrors.username}
-        />
-
-        <TextField
-          fullWidth
-          margin="normal"
-          type="password"
-          label="Password"
-          value={form.password}
-          onChange={handleChange('password')}
-          error={!!fieldErrors.password}
-          helperText={fieldErrors.password}
-        />
-
-        <TextField
-          fullWidth
-          margin="normal"
-          type="password"
-          label="Confirm Password"
-          value={form.confirmPassword}
-          onChange={handleChange('confirmPassword')}
-          error={!!fieldErrors.confirmPassword}
-          helperText={fieldErrors.confirmPassword}
-        />
-
-        {fieldErrors.form && (
-          <Typography color="error" variant="body2" sx={{ mt: 1 }}>
-            {fieldErrors.form}
+    <Box
+      sx={{
+        minHeight: '100dvh',
+        display: 'grid',
+        gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' },
+        backgroundColor: 'background.default',
+      }}
+    >
+      <Box
+        sx={{
+          display: { xs: 'none', md: 'flex' },
+          flexDirection: 'column',
+          justifyContent: 'space-between',
+          p: 6,
+          background: 'linear-gradient(160deg, #1D1A16 0%, #14120F 60%, #2A1B0C 100%)',
+          borderRight: '1px solid',
+          borderColor: 'divider',
+        }}
+      >
+        <Box component={RouterLink} to="/" sx={{ display: 'inline-flex', alignItems: 'center', gap: 1.5, textDecoration: 'none' }}>
+          <Box component="img" src={logo} alt="" sx={{ width: 48, height: 48 }} />
+          <Typography component="span" sx={{ fontWeight: 800, fontSize: '1.25rem', color: 'primary.main' }}>
+            CoquiTones
           </Typography>
-        )}
+        </Box>
 
-        <Stack spacing={2} sx={{ mt: 2 }}>
-          <Button
-            variant="contained"
-            onClick={handleSubmit}
-            disabled={loading}
-            fullWidth
-          >
-            {loading ? 'Creating…' : 'Sign Up'}
-          </Button>
+        <Box sx={{ maxWidth: 420 }}>
+          <Typography component="p" variant="h2" color="text.primary">
+            Monitor amphibians with open technology.
+          </Typography>
+          <Typography variant="body1" color="text.secondary" sx={{ mt: 2 }}>
+            An account gives researchers access to the full CoquiTones toolkit.
+          </Typography>
+          <Stack component="ul" spacing={1.5} sx={{ mt: 4, pl: 0, listStyle: 'none' }}>
+            {BENEFITS.map((benefit) => (
+              <Stack key={benefit} component="li" direction="row" spacing={1.5} alignItems="flex-start">
+                <CheckCircleRoundedIcon color="primary" fontSize="small" sx={{ mt: '2px' }} />
+                <Typography variant="body2" color="text.secondary">
+                  {benefit}
+                </Typography>
+              </Stack>
+            ))}
+          </Stack>
+        </Box>
 
-          <Divider>
-            <Typography variant="body2" color="text.secondary">OR</Typography>
-          </Divider>
-
-          <Button variant="outlined" color="secondary" fullWidth onClick={() => navigate('/')}>
-            Already have an account? Sign In
-          </Button>
-
-          <Button variant="text" color="error" fullWidth onClick={() => navigate('/')}>
-            Cancel
-          </Button>
-        </Stack>
+        <Typography variant="caption" color="text.secondary">
+          Open source · Built with Proyecto Coquí
+        </Typography>
       </Box>
-    </PageContainer>
-  );
-};
 
-export default SignUpPage;
+      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', p: { xs: 2, sm: 4 } }}>
+        <Container maxWidth="xs" disableGutters>
+          <Paper sx={{ p: { xs: 3, sm: 4 } }}>
+            <Box sx={{ display: { xs: 'flex', md: 'none' }, justifyContent: 'center', mb: 2 }}>
+              <Box component="img" src={logo} alt="CoquiTones" sx={{ width: 64, height: 64 }} />
+            </Box>
+
+            <Typography component="h1" variant="h3" color="text.primary">
+              Create your account
+            </Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ mt: 1, mb: 3 }}>
+              Already registered?{' '}
+              <Box component={RouterLink} to="/" sx={{ color: 'primary.main', fontWeight: 600 }}>
+                Sign in from the home page
+              </Box>
+              .
+            </Typography>
+
+            {success && (
+              <Alert severity="success" sx={{ mb: 2 }} icon={<CheckCircleRoundedIcon />}>
+                Account created. Taking you to the home page…
+              </Alert>
+            )}
+
+            {hasErrors && (
+              <Alert
+                severity="error"
+                role="alert"
+                tabIndex={-1}
+                ref={summaryRef}
+                sx={{ mb: 2 }}
+              >
+                Please fix the highlighted fields and try again.
+                {fieldErrors.form ? ` ${fieldErrors.form}` : ''}
+              </Alert>
+            )}
+
+            <Box component="form" onSubmit={handleSubmit} noValidate>
+              <Stack spacing={2}>
+                <TextField
+                  inputRef={usernameRef}
+                  required
+                  fullWidth
+                  label="Username"
+                  name="username"
+                  autoComplete="username"
+                  value={form.username}
+                  onChange={updateField('username')}
+                  error={Boolean(fieldErrors.username)}
+                  helperText={fieldErrors.username}
+                  disabled={loading || success}
+                  autoFocus
+                />
+                <TextField
+                  inputRef={passwordRef}
+                  required
+                  fullWidth
+                  label="Password"
+                  name="password"
+                  type="password"
+                  autoComplete="new-password"
+                  value={form.password}
+                  onChange={updateField('password')}
+                  error={Boolean(fieldErrors.password)}
+                  helperText={fieldErrors.password || 'At least 8 characters.'}
+                  disabled={loading || success}
+                />
+                <TextField
+                  inputRef={confirmRef}
+                  required
+                  fullWidth
+                  label="Confirm password"
+                  name="confirmPassword"
+                  type="password"
+                  autoComplete="new-password"
+                  value={form.confirmPassword}
+                  onChange={updateField('confirmPassword')}
+                  error={Boolean(fieldErrors.confirmPassword)}
+                  helperText={fieldErrors.confirmPassword}
+                  disabled={loading || success}
+                />
+
+                <Button type="submit" variant="contained" size="large" disabled={loading || success} fullWidth>
+                  {loading ? 'Creating account…' : success ? 'Account created' : 'Sign up'}
+                </Button>
+              </Stack>
+            </Box>
+
+            <Divider sx={{ my: 3 }} />
+
+            <Button component={RouterLink} to="/" variant="text" fullWidth>
+              Back to home
+            </Button>
+          </Paper>
+        </Container>
+      </Box>
+    </Box>
+  );
+}

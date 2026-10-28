@@ -1,209 +1,297 @@
-import React, { useEffect, useState, useMemo, useCallback } from "react";
-import { DataGrid } from '@mui/x-data-grid'
-import { Box, Button, Stack, Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions, Alert } from "@mui/material";
-import CloudDownloadIcon from '@mui/icons-material/CloudDownload';
-import DeleteIcon from '@mui/icons-material/Delete';
-import FileDownloadIcon from '@mui/icons-material/FileDownload';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import dayjs from 'dayjs';
+import Alert from '@mui/material/Alert';
+import Box from '@mui/material/Box';
+import Button from '@mui/material/Button';
+import Dialog from '@mui/material/Dialog';
+import DialogActions from '@mui/material/DialogActions';
+import DialogContent from '@mui/material/DialogContent';
+import DialogContentText from '@mui/material/DialogContentText';
+import DialogTitle from '@mui/material/DialogTitle';
+import Stack from '@mui/material/Stack';
+import Typography from '@mui/material/Typography';
+import { DataGrid } from '@mui/x-data-grid';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import { DateTimePicker } from '@mui/x-date-pickers/DateTimePicker';
-import { APIHandlerDashboard } from "../../services/rest/APIHandler/APIHandlerDashboard";
-import RecentDataRequest from "../../services/rest/RequestORM/Dashboard/RecentDataRequest";
-import AudioFileRequest from "../../services/rest/RequestORM/Shared/AudioFileRequest";
-import { useAudioDownload } from "../../hooks/useAudioDownload";
-import DeleteRecordRequest from "../../services/rest/RequestORM/Dashboard/DeleteRecordRequest";
+import CloudDownloadRoundedIcon from '@mui/icons-material/CloudDownloadRounded';
+import DeleteOutlineRoundedIcon from '@mui/icons-material/DeleteOutlineRounded';
+import FileDownloadRoundedIcon from '@mui/icons-material/FileDownloadRounded';
+import RefreshRoundedIcon from '@mui/icons-material/RefreshRounded';
 
-export default function DataTable({ errors, setErrors }) {
-    const apiHandler = useMemo(() => new APIHandlerDashboard(), []);
-    const paginationModel = { page: 0, pageSize: 5 };
+import { APIHandlerDashboard } from '../../services/rest/APIHandler/APIHandlerDashboard';
+import RecentDataRequest from '../../services/rest/RequestORM/Dashboard/RecentDataRequest';
+import AudioFileRequest from '../../services/rest/RequestORM/Shared/AudioFileRequest';
+import DeleteRecordRequest from '../../services/rest/RequestORM/Dashboard/DeleteRecordRequest';
+import { useAudioDownload } from '../../hooks/useAudioDownload';
+import { useErrors } from './ErrorContext';
+import { downloadCsv, toCsv } from '../../utils/format';
 
-    const [rows, setRows] = useState([]);
-    // ms since epoch
-    const [minTime, setMinTime] = useState(new Date().getTime() - (1000 * 60 * 60 * 24 * 100));
-    const [maxTime, setMaxTime] = useState(new Date().getTime());
-    const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-    const [selectedRows, setSelectedRows] = useState([]); // needed for initial rendering
-    const [loading, setLoading] = useState(false);
-    const [downloadError, setDownloadError] = useState(null);
+const DEFAULT_RANGE_DAYS = 100;
+const PAGE_SIZE_OPTIONS = [5, 10, 25, 50];
 
-    const { downloadAudio, loading: downloadLoading } = useAudioDownload(apiHandler);
+export default function DataTable() {
+  const apiHandler = useMemo(() => new APIHandlerDashboard(), []);
+  const { addError } = useErrors();
+  const { downloadAudio } = useAudioDownload(apiHandler);
 
-    const fetchRecentDataRows = useCallback(async () => {
-        setLoading(true);
-        try {
-            const recentDataRequest = new RecentDataRequest(minTime, maxTime);
-            const rows = await apiHandler.get_recent_data(recentDataRequest);
-            setRows(rows.getData());
-        } catch (error) {
-            setDownloadError("Failed to fetch data");
-            setErrors([...errors, error])
-        } finally {
-            setLoading(false);
-        }
-    }, [minTime, maxTime, apiHandler]);
+  const [rows, setRows] = useState([]);
+  const [minTime, setMinTime] = useState(() => dayjs().subtract(DEFAULT_RANGE_DAYS, 'day'));
+  const [maxTime, setMaxTime] = useState(() => dayjs());
+  const [selectionModel, setSelectionModel] = useState({ type: 'include', ids: new Set() });
+  const [loading, setLoading] = useState(false);
+  const [downloadingAfid, setDownloadingAfid] = useState(null);
+  const [notice, setNotice] = useState(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 
-    useEffect(() => {
-        fetchRecentDataRows();
-    }, [fetchRecentDataRows]);
-    const handleSelectionChange = useCallback((newSelection) => {
+  const rangeError =
+    minTime && maxTime && minTime.isAfter(maxTime)
+      ? 'The start date must be before the end date.'
+      : null;
 
-        if (newSelection.type === "exclude") {
-            setSelectedRows(rows)
-        }
-        else {
+  const fetchRecentData = useCallback(async () => {
+    if (!minTime || !maxTime || minTime.isAfter(maxTime)) return;
 
-            const newSelectedRows = rows.filter((row) => newSelection.ids?.has(row.id));
-            setSelectedRows(newSelectedRows);
-        }
-    })
+    setLoading(true);
+    setNotice(null);
+    try {
+      const request = new RecentDataRequest(minTime.valueOf(), maxTime.valueOf());
+      const recentData = await apiHandler.get_recent_data(request);
+      setRows(recentData.getData());
+      setSelectionModel({ type: 'include', ids: new Set() });
+    } catch (error) {
+      addError(error);
+    } finally {
+      setLoading(false);
+    }
+  }, [apiHandler, addError, minTime, maxTime]);
 
-    const handleDeleteClick = () => {
-        setDeleteDialogOpen(true);
-    };
+  useEffect(() => {
+    fetchRecentData();
+  }, [fetchRecentData]);
 
-    const handleConfirmDelete = async () => {
-        if (selectedRows === null) return;
+  const handleDownloadAudio = useCallback(
+    async (afid) => {
+      setDownloadingAfid(afid);
+      try {
+        await downloadAudio(afid, new AudioFileRequest(afid));
+      } finally {
+        setDownloadingAfid(null);
+      }
+    },
+    [downloadAudio],
+  );
 
-        try {
-            setLoading(true)
-            const deleteRecordsRequest = new DeleteRecordRequest(selectedRows.map((selectedRow) => (selectedRow.tid)));
-            await apiHandler.delete_records(deleteRecordsRequest);
-            fetchRecentDataRows();
-        } catch (error) {
-            setDownloadError("Failed to delete record");
-        } finally {
-            setLoading(false)
-            setDeleteDialogOpen(false);
-        }
-    };
+  const selectedRows = useMemo(() => {
+    const { type, ids } = selectionModel;
+    return rows.filter((row) => (type === 'include' ? ids.has(row.id) : !ids.has(row.id)));
+  }, [rows, selectionModel]);
 
-    const handleDownloadAudio = useCallback(async (afid) => {
-        setDownloadError(null);
-        const audioFileRequest = new AudioFileRequest(afid);
-        await downloadAudio(afid, audioFileRequest);
-    }, []);
+  const handleExportCsv = () => {
+    const dataToExport = selectedRows.length > 0 ? selectedRows : rows;
+    if (dataToExport.length === 0) {
+      setNotice({ severity: 'warning', message: 'There are no rows to export yet.' });
+      return;
+    }
 
-    const handleExportCSV = () => {
-        // Use selected rows if any are selected, otherwise export all
-        const dataToExport = selectedRows;
-
-        if (dataToExport.length === 0) {
-            setDownloadError("No rows to export");
-            return;
-        }
-
-        const headers = ['Time', 'Node ID', 'Audio ID', 'Humidity', 'Temperature', 'Pressure', 'Rain'];
-        const csvContent = [
-            headers.join(','),
-            ...dataToExport.map((row) =>
-                [row.time, row.nid, row.afid, row.humidity, row.temperature, row.pressure, row.rain]
-                    .map((val) => `"${val}"`) // Wrap in quotes to handle commas in data
-                    .join(',')
-            )
-        ].join('\n');
-
-        const element = document.createElement('a');
-        element.setAttribute('href', 'data:text/csv;charset=utf-8,' + encodeURIComponent(csvContent));
-        element.setAttribute('download', `recent_data_${new Date().toISOString()}.csv`);
-        element.style.display = 'none';
-        document.body.appendChild(element);
-        element.click();
-        document.body.removeChild(element);
-    };
-
-    const columns = [
-        { field: 'time', headerName: 'Time', width: 115 },
-        { field: 'nid', headerName: 'Node ID', width: 115 },
-        { field: 'afid', headerName: 'Audio ID', width: 115 },
-        { field: 'humidity', headerName: 'Humidity (RH%)', width: 115 },
-        { field: 'temperature', headerName: 'Temperature (F)', width: 115 },
-        { field: 'pressure', headerName: 'Pressure (hPa)', width: 115 },
-        { field: 'rain', headerName: 'Rain', width: 115 },
-        {
-            field: 'actions',
-            headerName: 'Actions',
-            width: 250,
-            sortable: false,
-            renderCell: (params) => (
-                <Stack direction="row" spacing={1}>
-                    <Button
-                        size="small"
-                        variant="outlined"
-                        startIcon={<CloudDownloadIcon />}
-                        onClick={() => handleDownloadAudio(params.row.afid)}
-                        disabled={downloadLoading}
-                    >
-                        {downloadLoading ? 'Downloading...' : 'Audio'}
-                    </Button>
-
-                </Stack>
-            )
-        }
-    ];
-
-    return (
-        <Box sx={{ width: '100%' }}>
-            <Stack direction="row" spacing={2} sx={{ mb: 2 }}>
-                <Button
-                    variant="contained"
-                    color="success"
-                    startIcon={<FileDownloadIcon />}
-                    onClick={handleExportCSV}
-                >
-                    Export CSV {selectedRows.length > 0 && `(${selectedRows.length})`}
-                </Button>
-                <Button
-                    size="small"
-                    variant="contained"
-                    color="error"
-                    startIcon={<DeleteIcon />}
-                    onClick={() => handleDeleteClick()}
-                >
-                    Delete
-                </Button>
-                <LocalizationProvider dateAdapter={AdapterDayjs}>
-                    <DateTimePicker
-                        label="MinDateTime"
-                        onChange={(newMinDate) => setMinTime(new Date(newMinDate).getTime())}
-                    />
-                    <DateTimePicker
-                        label="MaxDateTime"
-                        onChange={(newMaxDate) => setMaxTime(new Date(newMaxDate).getTime())}
-                    />
-                </LocalizationProvider>
-            </Stack>
-
-            {(downloadError) && (
-                <Alert severity="error" sx={{ mb: 2 }} onClose={() => setDownloadError(null)}>
-                    {downloadError}
-                </Alert>
-            )}
-
-            <DataGrid
-                columns={columns}
-                rows={rows}
-                initialState={{ pagination: { paginationModel } }}
-                pageSizeOptions={[5, 10, 100]}
-                onRowSelectionModelChange={handleSelectionChange}
-                loading={loading || downloadLoading}
-                checkboxSelection
-                disableRowSelectionOnClick
-            />
-
-            <Dialog open={deleteDialogOpen} onClose={() => setDeleteDialogOpen(false)}>
-                <DialogTitle>Confirm Delete</DialogTitle>
-                <DialogContent>
-                    <DialogContentText>
-                        Are you sure you want to delete this record? This action cannot be undone.
-                    </DialogContentText>
-                </DialogContent>
-                <DialogActions>
-                    <Button onClick={() => setDeleteDialogOpen(false)}>Cancel</Button>
-                    <Button onClick={handleConfirmDelete} color="error" variant="contained">
-                        Delete
-                    </Button>
-                </DialogActions>
-            </Dialog>
-        </Box>
+    const csv = toCsv(
+      ['Time', 'Node ID', 'Audio ID', 'Humidity (RH%)', 'Temperature (F)', 'Pressure (hPa)', 'Rain'],
+      dataToExport.map((row) => [
+        row.time,
+        row.nid,
+        row.afid,
+        row.humidity,
+        row.temperature,
+        row.pressure,
+        row.rain,
+      ]),
     );
+
+    downloadCsv(`coquitones_recent_data_${dayjs().format('YYYY-MM-DD_HH-mm')}.csv`, csv);
+    setNotice({
+      severity: 'success',
+      message: `Exported ${dataToExport.length} row${dataToExport.length === 1 ? '' : 's'}.`,
+    });
+  };
+
+  const handleConfirmDelete = async () => {
+    if (selectedRows.length === 0) return;
+
+    setLoading(true);
+    try {
+      const request = new DeleteRecordRequest(selectedRows.map((row) => row.tid));
+      await apiHandler.delete_records(request);
+      setDeleteDialogOpen(false);
+      setNotice({
+        severity: 'success',
+        message: `Deleted ${selectedRows.length} record${selectedRows.length === 1 ? '' : 's'}.`,
+      });
+      await fetchRecentData();
+    } catch (error) {
+      addError(error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const columns = useMemo(
+    () => [
+      {
+        field: 'time',
+        headerName: 'Time',
+        minWidth: 190,
+        flex: 1,
+        valueGetter: (_value, row) => row.timestamp,
+        valueFormatter: (_value, row) => row.time,
+      },
+      { field: 'nid', headerName: 'Node ID', minWidth: 110, flex: 0.6 },
+      { field: 'afid', headerName: 'Audio ID', minWidth: 100, flex: 0.6 },
+      { field: 'humidity', headerName: 'Humidity %', minWidth: 130, flex: 0.6 },
+      { field: 'temperature', headerName: 'Temp °F', minWidth: 110, flex: 0.5 },
+      { field: 'pressure', headerName: 'Pressure hPa', minWidth: 150, flex: 0.6 },
+      { field: 'rain', headerName: 'Rain', minWidth: 80, flex: 0.4 },
+      {
+        field: 'actions',
+        headerName: 'Audio',
+        minWidth: 150,
+        sortable: false,
+        filterable: false,
+        renderCell: (params) => (
+          <Button
+            size="small"
+            variant="outlined"
+            startIcon={<CloudDownloadRoundedIcon />}
+            onClick={() => handleDownloadAudio(params.row.afid)}
+            disabled={downloadingAfid === params.row.afid}
+            aria-label={`Download audio for node ${params.row.nid}`}
+          >
+            {downloadingAfid === params.row.afid ? 'Saving…' : 'Download'}
+          </Button>
+        ),
+      },
+    ],
+    [downloadingAfid, handleDownloadAudio],
+  );
+
+  return (
+    <Box sx={{ width: '100%' }}>
+      <Box
+        sx={{
+          display: 'flex',
+          flexWrap: 'wrap',
+          gap: 2,
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          mb: 2,
+        }}
+      >
+        <Box>
+          <Typography component="h2" variant="h6" color="text.primary">
+            Recent recordings
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            {rows.length} record{rows.length === 1 ? '' : 's'} in the selected range
+          </Typography>
+        </Box>
+
+        <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap">
+          <Button
+            variant="outlined"
+            startIcon={<RefreshRoundedIcon />}
+            onClick={fetchRecentData}
+            disabled={loading || Boolean(rangeError)}
+          >
+            Refresh
+          </Button>
+          <Button
+            variant="outlined"
+            startIcon={<FileDownloadRoundedIcon />}
+            onClick={handleExportCsv}
+            disabled={loading || rows.length === 0}
+          >
+            Export CSV{selectedRows.length > 0 ? ` (${selectedRows.length})` : ''}
+          </Button>
+          <Button
+            variant="outlined"
+            color="error"
+            startIcon={<DeleteOutlineRoundedIcon />}
+            onClick={() => setDeleteDialogOpen(true)}
+            disabled={selectedRows.length === 0 || loading}
+          >
+            Delete{selectedRows.length > 0 ? ` (${selectedRows.length})` : ''}
+          </Button>
+        </Stack>
+      </Box>
+
+      <LocalizationProvider dateAdapter={AdapterDayjs}>
+        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} sx={{ mb: 2 }}>
+          <DateTimePicker
+            label="From"
+            value={minTime}
+            onChange={setMinTime}
+            maxDateTime={maxTime ?? undefined}
+            slotProps={{ textField: { size: 'small', error: Boolean(rangeError) } }}
+          />
+          <DateTimePicker
+            label="To"
+            value={maxTime}
+            onChange={setMaxTime}
+            minDateTime={minTime ?? undefined}
+            slotProps={{ textField: { size: 'small', error: Boolean(rangeError) } }}
+          />
+        </Stack>
+      </LocalizationProvider>
+
+      {rangeError && (
+        <Alert severity="warning" sx={{ mb: 2 }}>
+          {rangeError}
+        </Alert>
+      )}
+
+      {notice && (
+        <Alert severity={notice.severity} sx={{ mb: 2 }} onClose={() => setNotice(null)}>
+          {notice.message}
+        </Alert>
+      )}
+
+      <DataGrid
+        rows={rows}
+        columns={columns}
+        loading={loading}
+        checkboxSelection
+        disableRowSelectionOnClick
+        rowSelectionModel={selectionModel}
+        onRowSelectionModelChange={setSelectionModel}
+        initialState={{ pagination: { paginationModel: { page: 0, pageSize: 5 } } }}
+        pageSizeOptions={PAGE_SIZE_OPTIONS}
+        autoHeight
+        sx={{
+          minHeight: 420,
+          borderColor: 'divider',
+          '& .MuiDataGrid-cell:focus-visible, & .MuiDataGrid-columnHeader:focus-visible': {
+            outline: '2px solid',
+            outlineColor: 'primary.main',
+            outlineOffset: -2,
+          },
+        }}
+      />
+
+      <Dialog open={deleteDialogOpen} onClose={() => setDeleteDialogOpen(false)}>
+        <DialogTitle>Delete selected records?</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            This permanently deletes {selectedRows.length} record
+            {selectedRows.length === 1 ? '' : 's'}, together with the linked audio and weather data.
+            This action cannot be undone.
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setDeleteDialogOpen(false)}>Cancel</Button>
+          <Button onClick={handleConfirmDelete} color="error" variant="contained" disabled={loading}>
+            Delete
+          </Button>
+        </DialogActions>
+      </Dialog>
+    </Box>
+  );
 }

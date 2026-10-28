@@ -1,67 +1,77 @@
-import GlobalStateManager from "../../Authentication/GlobalStateManager";
-import AudioFileRequest from "../RequestORM/Shared/AudioFileRequest";
-import InsertAudioRequest from "../RequestORM/SpectralAnalysis/insertAudioRequest";
-import { APIHandlerError } from "./Errors";
-import { AllAudioResponse } from "../ResponseORM/Shared/AllAudioResponse";
+import GlobalStateManager from '../../Authentication/GlobalStateManager';
+import { BackendError } from './Errors';
+
 /**
- * Abstract APIHandler class for managing API calls to backend server
- * 
+ * Small fetch wrapper shared by every API handler.
+ *
+ * Keeps authentication, base URL resolution, error normalization and response
+ * decoding in one place instead of repeating `fetch(...)` per endpoint.
  */
 export default class APIHandlerBase {
-    web_url = import.meta.env.VITE_BACKEND_API_URL;
+  constructor() {
+    this.web_url = import.meta.env.VITE_BACKEND_API_URL ?? '';
+  }
 
-    constructor() { }
-    getAuthenticationHeader() {
-        const authenticated_header = { 'Authorization': 'Bearer ' + GlobalStateManager.getAuthenticationToken() }
-        return authenticated_header;
+  getAuthenticationHeader() {
+    const token = GlobalStateManager.getAuthenticationToken();
+    return token ? { Authorization: `Bearer ${token}` } : {};
+  }
+
+  /**
+   * @param {string} path
+   * @param {{
+   *   method?: string,
+   *   body?: BodyInit,
+   *   headers?: Record<string,string>,
+   *   auth?: boolean,
+   *   expect?: 'json'|'blob'|'text'|'none',
+   * }} [options]
+   */
+  async request(path, { method = 'GET', body, headers = {}, auth = true, expect = 'json' } = {}) {
+    if (!this.web_url) {
+      throw new BackendError('The API URL is not configured. Set VITE_BACKEND_API_URL.');
     }
 
-    /**
-     * 
-     * @param {InsertAudioRequest} insertAudioRequest 
-     * @returns 
-     */
-    async insertAudio(insertAudioRequest) {
+    const response = await fetch(`${this.web_url}${path}`, {
+      method,
+      body,
+      headers: {
+        ...(auth ? this.getAuthenticationHeader() : {}),
+        ...headers,
+      },
+    });
 
-        try {
-
-            const response = await fetch(`${this.web_url}/api/audio/insert`, {
-                method: "POST",
-                body: insertAudioRequest.toFormData(),
-                headers: this.getAuthenticationHeader()
-            });
-
-            if (!response.ok) {
-                throw new BackendError(`Unable to insert audio in db` + response.statusText);
-            }
-
-            const audioId = await response.json();
-            return audioId;
-        } catch (error) {
-            throw new APIHandlerError(error.message);
-        }
+    if (!response.ok) {
+      const detail = response.statusText ? ` ${response.statusText}` : '';
+      throw new BackendError(`${method} ${path} failed (${response.status}${detail}).`);
     }
 
-    /**
-     * 
-     * @param {AudioFileRequest} audioFileRequest 
-     */
-    async getAudioById(audioFileRequest) {
-        try {
-            const response = await fetch(`${this.web_url}/api/audio`, {
-                method: "POST",
-                body: audioFileRequest.toFormData(),
-                headers: this.getAuthenticationHeader(),
-            })
+    if (expect === 'none') return null;
+    if (expect === 'blob') return response.blob();
+    if (expect === 'text') return response.text();
+    return response.json();
+  }
 
-            if (!response.ok) {
-                throw new BackendError('Unable to get Audio File by ID');
-            }
+  /**
+   * Persist an uploaded audio file.
+   * @param {import('../RequestORM/SpectralAnalysis/insertAudioRequest').default} insertAudioRequest
+   */
+  async insertAudio(insertAudioRequest) {
+    return this.request('/api/audio/insert', {
+      method: 'POST',
+      body: insertAudioRequest.toFormData(),
+    });
+  }
 
-            const audioFile = await response.blob();
-            return audioFile;
-        } catch (error) {
-            throw new APIHandlerError(error.message);
-        }
-    }
+  /**
+   * @param {import('../RequestORM/Shared/AudioFileRequest').default} audioFileRequest
+   * @returns {Promise<Blob>}
+   */
+  async getAudioById(audioFileRequest) {
+    return this.request('/api/audio', {
+      method: 'POST',
+      body: audioFileRequest.toFormData(),
+      expect: 'blob',
+    });
+  }
 }

@@ -1,83 +1,107 @@
 import Cookies from 'js-cookie';
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { APIHandlerAuthentication } from '../rest/APIHandler/APIHandlerAuthentication';
-import React, { createContext, useState, useCallback, useEffect } from 'react';
 
 class GlobalStateManager {
-    static ACCESS_TOKEN_EXPIRE_HOURS = 24;
-    static SESSION_TOKEN_KEY = 'session_token'
+  static ACCESS_TOKEN_EXPIRE_HOURS = 24;
+  static SESSION_TOKEN_KEY = 'session_token';
 
-    static getAuthenticationToken() {
-        return Cookies.get(this.SESSION_TOKEN_KEY);
-    }
+  static getAuthenticationToken() {
+    return Cookies.get(this.SESSION_TOKEN_KEY);
+  }
 
-    static setAuthenticationToken(session_token) {
-        Cookies.set(this.SESSION_TOKEN_KEY, session_token, {
-            expires: this.ACCESS_TOKEN_EXPIRE_HOURS / 24,
-            secure: true,
-            sameSite: 'strict'
-        })
-    }
+  static hasAuthenticationToken() {
+    const token = this.getAuthenticationToken();
+    return Boolean(token && token.length > 0);
+  }
 
-    static clearAuthenticationToken() {
-        Cookies.remove(this.SESSION_TOKEN_KEY);
-    }
+  static setAuthenticationToken(sessionToken) {
+    Cookies.set(this.SESSION_TOKEN_KEY, sessionToken, {
+      expires: this.ACCESS_TOKEN_EXPIRE_HOURS / 24,
+      secure: window.location.protocol === 'https:',
+      sameSite: 'strict',
+    });
+  }
+
+  static clearAuthenticationToken() {
+    Cookies.remove(this.SESSION_TOKEN_KEY);
+  }
 }
 
-// Create Context
-export const GlobalStateContext = createContext();
+export const GlobalStateContext = createContext(null);
 
-export const AuthenticationStatus = {
-    AUTHENTICATED: "AUTHENTICATED",
-    LOADING: "LOADING", // used for initial state or when fetching
-    UNAUTHENTICATED: "UNAUTHENTICATED"
+export const AuthenticationStatus = Object.freeze({
+  AUTHENTICATED: 'AUTHENTICATED',
+  LOADING: 'LOADING',
+  UNAUTHENTICATED: 'UNAUTHENTICATED',
+});
 
-}
-// Provider Component
 export const GlobalStateProvider = ({ children }) => {
-    // Single state: 'loading' | AuthenticationStatus.AUTHENTICATED | 'unauthenticated'
-    const [authStatus, setAuthStatus] = useState(AuthenticationStatus.LOADING);
-    useEffect(() => {
-        const initialCheckAuth = async () => {
-            const token = GlobalStateManager.getAuthenticationToken();
+  const [authStatus, setAuthStatus] = useState(AuthenticationStatus.LOADING);
 
-            if (token !== undefined) {
-                const apiHandlerAuthentication = new APIHandlerAuthentication();
-                const authenticated = await apiHandlerAuthentication.isUserAuthenticated();
-                setAuthStatus(authenticated ? AuthenticationStatus.AUTHENTICATED : AuthenticationStatus.UNAUTHENTICATED);
-            } else {
-                setAuthStatus(AuthenticationStatus.UNAUTHENTICATED);
-            }
+  useEffect(() => {
+    let cancelled = false;
+
+    const checkInitialAuth = async () => {
+      if (!GlobalStateManager.hasAuthenticationToken()) {
+        if (!cancelled) setAuthStatus(AuthenticationStatus.UNAUTHENTICATED);
+        return;
+      }
+
+      try {
+        const apiHandler = new APIHandlerAuthentication();
+        const authenticated = await apiHandler.isUserAuthenticated();
+        if (!cancelled) {
+          setAuthStatus(
+            authenticated
+              ? AuthenticationStatus.AUTHENTICATED
+              : AuthenticationStatus.UNAUTHENTICATED,
+          );
         }
-        initialCheckAuth()
-    }, []);
+      } catch {
+        if (!cancelled) setAuthStatus(AuthenticationStatus.UNAUTHENTICATED);
+      }
+    };
 
-    const login = useCallback((token) => {
-        GlobalStateManager.setAuthenticationToken(token);
-        setAuthStatus(AuthenticationStatus.AUTHENTICATED);
-    }, []);
+    checkInitialAuth();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
-    const logout = useCallback(() => {
-        GlobalStateManager.clearAuthenticationToken();
-        setAuthStatus(AuthenticationStatus.UNAUTHENTICATED);
-    }, []);
+  const login = useCallback((token) => {
+    GlobalStateManager.setAuthenticationToken(token);
+    setAuthStatus(AuthenticationStatus.AUTHENTICATED);
+  }, []);
 
-    const getAuthenticationToken = useCallback(() => {
-        return GlobalStateManager.getAuthenticationToken();
-    }, []);
+  const logout = useCallback(() => {
+    GlobalStateManager.clearAuthenticationToken();
+    setAuthStatus(AuthenticationStatus.UNAUTHENTICATED);
+  }, []);
 
-    return (
-        <GlobalStateContext.Provider value={{ authStatus, login, logout, getAuthenticationToken }}>
-            {children}
-        </GlobalStateContext.Provider>
-    );
+  const getAuthenticationToken = useCallback(
+    () => GlobalStateManager.getAuthenticationToken(),
+    [],
+  );
+
+  const value = useMemo(
+    () => ({ authStatus, login, logout, getAuthenticationToken }),
+    [authStatus, login, logout, getAuthenticationToken],
+  );
+
+  return (
+    <GlobalStateContext.Provider value={value}>
+      {children}
+    </GlobalStateContext.Provider>
+  );
 };
 
 export const useGlobalState = () => {
-    const context = React.useContext(GlobalStateContext);
-    if (!context) {
-        throw new Error('useGlobalState must be used within GlobalStateProvider');
-    }
-    return context;
+  const context = useContext(GlobalStateContext);
+  if (!context) {
+    throw new Error('useGlobalState must be used within a GlobalStateProvider');
+  }
+  return context;
 };
 
 export default GlobalStateManager;
