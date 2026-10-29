@@ -1,20 +1,23 @@
 import { renderHook, waitFor } from '@testing-library/react';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 
 import { useWaveformPeaks } from '../src/components/classifier/useWaveformPeaks';
-import { estimateDecodedBytes } from '../src/components/SoundAnalysisTools/processing/useSpectrogram';
-import { MAX_DECODED_BYTES } from '../src/components/SoundAnalysisTools/processing/spectrogramModel';
-
-vi.mock('../src/components/SoundAnalysisTools/processing/useSpectrogram', async (importOriginal) => {
-  const actual = await importOriginal();
-  return {
-    ...actual,
-    estimateDecodedBytes: vi.fn(actual.estimateDecodedBytes),
-  };
-});
 
 const makeFile = (name = 'sample.mp3', size = 8) =>
   new File([new Uint8Array(size)], name, { type: 'audio/mpeg', lastModified: 0 });
+
+/**
+ * A tiny WAV header that advertises a huge data chunk. The decoder guard reads
+ * the header before touching audio data, so this exercises the over-budget
+ * branch without allocating a large buffer in the test.
+ */
+const makeOversizedWavFile = () => {
+  const bytes = new Uint8Array(44);
+  const view = new DataView(bytes.buffer);
+  view.setUint16(34, 16, true);
+  view.setUint32(40, 0xffffffff, true);
+  return new File([bytes], 'large.wav', { type: 'audio/wav', lastModified: 0 });
+};
 
 const makeAudioContext = (channels, { duration = 1, fail = false } = {}) =>
   class FakeAudioContext {
@@ -34,10 +37,6 @@ const makeAudioContext = (channels, { duration = 1, fail = false } = {}) =>
 
 const originalAudioContext = window.AudioContext;
 const originalWebkitAudioContext = window.webkitAudioContext;
-
-beforeEach(() => {
-  vi.mocked(estimateDecodedBytes).mockResolvedValue(1024);
-});
 
 afterEach(() => {
   window.AudioContext = originalAudioContext;
@@ -60,7 +59,8 @@ describe('useWaveformPeaks', () => {
       { duration: 0.5 },
     );
 
-    const { result } = renderHook(() => useWaveformPeaks(makeFile()));
+    const file = makeFile();
+    const { result } = renderHook(() => useWaveformPeaks(file));
 
     await waitFor(() => expect(result.current.status).toBe('ready'));
 
@@ -75,9 +75,9 @@ describe('useWaveformPeaks', () => {
         throw new Error('decode should not start');
       }
     };
-    vi.mocked(estimateDecodedBytes).mockResolvedValue(MAX_DECODED_BYTES + 1);
 
-    const { result } = renderHook(() => useWaveformPeaks(makeFile()));
+    const file = makeOversizedWavFile();
+    const { result } = renderHook(() => useWaveformPeaks(file));
 
     await waitFor(() => expect(result.current.status).toBe('skipped'));
     expect(result.current.peaks).toBeNull();
@@ -87,7 +87,8 @@ describe('useWaveformPeaks', () => {
   it('reports a failed decode without throwing', async () => {
     window.AudioContext = makeAudioContext([Float32Array.from([0.1, 0.2])], { fail: true });
 
-    const { result } = renderHook(() => useWaveformPeaks(makeFile()));
+    const file = makeFile();
+    const { result } = renderHook(() => useWaveformPeaks(file));
 
     await waitFor(() => expect(result.current.status).toBe('failed'));
     expect(result.current.error).toMatch(/decode failed/i);
@@ -98,7 +99,8 @@ describe('useWaveformPeaks', () => {
     window.AudioContext = undefined;
     window.webkitAudioContext = undefined;
 
-    const { result } = renderHook(() => useWaveformPeaks(makeFile()));
+    const file = makeFile();
+    const { result } = renderHook(() => useWaveformPeaks(file));
 
     await waitFor(() => expect(result.current.status).toBe('failed'));
     expect(result.current.error).toMatch(/unavailable/i);
