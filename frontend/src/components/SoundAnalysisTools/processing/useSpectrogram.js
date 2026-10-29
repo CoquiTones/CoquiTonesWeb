@@ -6,7 +6,9 @@ import {
   DEFAULT_MAX_BINS,
   DEFAULT_MAX_FRAMES,
   MAX_DECODED_BYTES,
+  clampRange,
   createAnalysisError,
+  selectFftSize,
 } from './spectrogramModel';
 
 const fileKey = (file) => `${file.name}:${file.size}:${file.lastModified}`;
@@ -75,14 +77,55 @@ export const decodeAudioFile = async (file) => {
   }
 };
 
+const FULL_FILE_EPSILON = 1e-6;
+
+const clampTimeRange = (range, duration, sampleRate) => {
+  const fftSize = selectFftSize(sampleRate);
+  return clampRange(range ?? [0, duration], 0, duration, fftSize / sampleRate);
+};
+
 /**
- * Decode a recording once and analyze the whole file in the worker. The result
- * is a full-file time/frequency matrix; viewport changes only select which
- * slice is drawn. Changing the generation detail reuses the decoded samples
- * already held by the worker, so it never decodes the file again.
+ * A full-file pass is safe only while the hop needed to fit the frame budget
+ * still overlaps or touches every window. Beyond that point the analysis would
+ * leave holes in the timeline, so the hook falls back to the visible window.
+ */
+export const canAnalyzeFullFile = (duration, sampleRate, maxFrames) => {
+  if (!(duration > 0) || !(sampleRate > 0) || !(maxFrames > 1)) return false;
+  const fftSize = selectFftSize(sampleRate);
+  const durationSamples = duration * sampleRate;
+  const budgetHop = Math.ceil(durationSamples / (maxFrames - 1));
+  return budgetHop <= fftSize;
+};
+
+const timeRangeCovers = (outer, inner) => Boolean(
+  outer
+  && inner
+  && outer[0] <= inner[0] + FULL_FILE_EPSILON
+  && outer[1] >= inner[1] - FULL_FILE_EPSILON,
+);
+
+const coversTimeRange = (analysis, timeRange) => Boolean(
+  analysis && timeRangeCovers(analysis.timeRange, timeRange),
+);
+
+const frequencyRangeCovers = (outer, inner) => Boolean(
+  outer
+  && inner
+  && outer[0] <= inner[0] + FULL_FILE_EPSILON
+  && outer[1] >= inner[1] - FULL_FILE_EPSILON,
+);
+
+/**
+ * Decode a recording once. When the whole file fits the frame budget it is
+ * analyzed once up front, so time and frequency zooming are just crops of the
+ * cached matrix. Longer recordings fall back to a debounced visible-window
+ * analysis. The decoded samples stay inside the worker, so nothing is ever
+ * decoded twice.
  */
 export const useSpectrogram = ({
   audioFile,
+  timeRange = null,
+  frequencyRange = null,
   maxFrames = DEFAULT_MAX_FRAMES,
   maxBins = DEFAULT_MAX_BINS,
   displayMinDb = DEFAULT_DISPLAY_MIN_DB,
@@ -91,7 +134,10 @@ export const useSpectrogram = ({
   const [status, setStatus] = useState('idle');
   const [progress, setProgress] = useState(null);
   const [error, setError] = useState(null);
-  const [analysis, setAnalysis] = useState(null);
+  const [primaryAnalysis, setPrimaryAnalysis] = useState(null);
+  const [detailAnalysis, setDetailAnalysis] = useState(null);
+  const [refining, setRefining] = useState(false);
+  const [refineProgress, setRefineProgress] = useState(null);
   const [retryCount, setRetryCount] = useState(0);
 
   const workerRef = useRef(null);
@@ -100,7 +146,18 @@ export const useSpectrogram = ({
   const requestIdRef = useRef(0);
   const metaRef = useRef({ duration: 0, sampleRate: 0 });
   const configRef = useRef({ maxFrames, maxBins });
+  const rangeRef = useRef({ timeRange, frequencyRange });
+  const inFlightRef = useRef(null);
+  const detailConfigRef = useRef(null);
   const displayRef = useRef({ displayMinDb, displayMaxDb });
+  const timeStart = timeRange?.[0] ?? null;
+  const timeEnd = timeRange?.[1] ?? null;
+  const frequencyStart = frequencyRange?.[0] ?? null;
+  const frequencyEnd = frequencyRange?.[1] ?? null;
+
+  useEffect(() => {
+    rangeRef.current = { timeRange, frequencyRange };
+  }, [timeStart, timeEnd, frequencyStart, frequencyEnd]);
 
   useEffect(() => {
     displayRef.current = { displayMinDb, displayMaxDb };
@@ -108,6 +165,10 @@ export const useSpectrogram = ({
 
   const terminateWorker = useCallback(() => {
     workerReadyRef.current = false;
+    inFlightRef.current = null;
+    detailConfigRef.current = null;
+    setRefining(false);
+    setRefineProgress(null);
     const worker = workerRef.current;
     if (worker) {
       worker.postMessage?.({ type: 'dispose' });
@@ -116,23 +177,50 @@ export const useSpectrogram = ({
     workerRef.current = null;
   }, []);
 
-  const requestAnalysis = useCallback((config) => {
+  const requestAnalysis = useCallback((config, kind = 'base') => {
     const worker = workerRef.current;
     const { duration, sampleRate } = metaRef.current;
     if (!worker || !workerReadyRef.current || !(duration > 0) || !(sampleRate > 0)) {
       return false;
     }
 
+    const fftSize = selectFftSize(sampleRate);
+    const requestedTime = config.timeRange ?? rangeRef.current.timeRange ?? [0, duration];
+    const clampedTime = clampTimeRange(requestedTime, duration, sampleRate);
+    const requestedFrequency = kind === 'base'
+      ? [0, sampleRate / 2]
+      : (config.frequencyRange ?? [0, sampleRate / 2]);
+    const clampedFrequency = clampRange(
+      requestedFrequency,
+      0,
+      sampleRate / 2,
+      sampleRate / fftSize,
+    );
+
     const requestId = requestIdRef.current + 1;
     requestIdRef.current = requestId;
-    setStatus('analyzing');
-    setProgress(null);
-    setError(null);
+    inFlightRef.current = {
+      kind,
+      timeRange: clampedTime,
+      frequencyRange: clampedFrequency,
+      maxFrames: config.maxFrames,
+      maxBins: config.maxBins,
+    };
+    if (kind === 'detail') {
+      setRefining(true);
+      setRefineProgress(null);
+    } else {
+      setStatus('analyzing');
+      setProgress(null);
+      setError(null);
+      setRefining(false);
+      setRefineProgress(null);
+    }
     worker.postMessage({
       type: 'analyze',
       requestId,
-      timeRange: [0, duration],
-      frequencyRange: [0, sampleRate / 2],
+      timeRange: clampedTime,
+      frequencyRange: clampedFrequency,
       maxFrames: config.maxFrames,
       maxBins: config.maxBins,
       displayMinDb: displayRef.current.displayMinDb,
@@ -148,7 +236,11 @@ export const useSpectrogram = ({
       setStatus('idle');
       setProgress(null);
       setError(null);
-      setAnalysis(null);
+      setPrimaryAnalysis(null);
+      setDetailAnalysis(null);
+      detailConfigRef.current = null;
+      setRefining(false);
+      setRefineProgress(null);
       return undefined;
     }
 
@@ -162,7 +254,11 @@ export const useSpectrogram = ({
     setStatus('decoding');
     setProgress(null);
     setError(null);
-    setAnalysis(null);
+    setPrimaryAnalysis(null);
+    setDetailAnalysis(null);
+    detailConfigRef.current = null;
+    setRefining(false);
+    setRefineProgress(null);
 
     const fail = (nextError) => {
       if (cancelled || token !== fileTokenRef.current) return;
@@ -205,28 +301,78 @@ export const useSpectrogram = ({
           if (!message || token !== fileTokenRef.current) return;
           if (message.type === 'result') {
             if (message.requestId !== requestIdRef.current) return;
-            setAnalysis(message.analysis);
+            const inFlight = inFlightRef.current;
+            inFlightRef.current = null;
+
+            if (inFlight?.kind === 'detail') {
+              setRefining(false);
+              setRefineProgress(null);
+              const { duration, sampleRate } = metaRef.current;
+              const requested = clampTimeRange(rangeRef.current.timeRange, duration, sampleRate);
+              const requestedFrequency = clampRange(
+                rangeRef.current.frequencyRange ?? [0, sampleRate / 2],
+                0,
+                sampleRate / 2,
+                sampleRate / selectFftSize(sampleRate),
+              );
+              if (
+                coversTimeRange(message.analysis, requested)
+                && frequencyRangeCovers(message.analysis.frequencyRange, requestedFrequency)
+              ) {
+                detailConfigRef.current = {
+                  maxFrames: inFlight.maxFrames,
+                  maxBins: inFlight.maxBins,
+                };
+                setDetailAnalysis(message.analysis);
+              }
+              return;
+            }
+
+            setPrimaryAnalysis(message.analysis);
+            setDetailAnalysis(null);
+            detailConfigRef.current = null;
             setProgress(null);
             setError(null);
             setStatus('ready');
+            setRefining(false);
+            setRefineProgress(null);
             return;
           }
           if (message.type === 'progress') {
             if (message.requestId !== requestIdRef.current) return;
-            setProgress(message.progress);
-            setStatus('analyzing');
+            if (inFlightRef.current?.kind === 'detail') {
+              setRefineProgress(message.progress);
+              setRefining(true);
+            } else {
+              setProgress(message.progress);
+              setStatus('analyzing');
+            }
             return;
           }
           if (message.type === 'error') {
             if (message.requestId !== requestIdRef.current) return;
+            const kind = inFlightRef.current?.kind;
+            inFlightRef.current = null;
+            if (kind === 'detail') {
+              // A failed refinement leaves the cached plot in place.
+              setRefining(false);
+              setRefineProgress(null);
+              return;
+            }
             setError(normalizeError(message.error, audioFile.name));
             setProgress(null);
             setStatus('failed');
+            setRefining(false);
+            setRefineProgress(null);
           }
         };
 
         worker.onerror = () => {
           workerReadyRef.current = false;
+          inFlightRef.current = null;
+          detailConfigRef.current = null;
+          setRefining(false);
+          setRefineProgress(null);
           fail(createAnalysisError(
             'worker-failed',
             'Audio analysis is unavailable in this browser.',
@@ -247,9 +393,17 @@ export const useSpectrogram = ({
         workerReadyRef.current = true;
         metaRef.current = { duration: decoded.duration, sampleRate: decoded.sampleRate };
 
-        // Generate the full-file matrix once. Later detail changes reuse the
-        // samples already inside the worker.
-        requestAnalysis(configRef.current);
+        // Precompute the whole file when it fits; otherwise analyze the
+        // requested visible window. Later zooms reuse this result when they fit
+        // inside the analyzed extent.
+        const targetTime = canAnalyzeFullFile(
+          decoded.duration,
+          decoded.sampleRate,
+          configRef.current.maxFrames,
+        )
+          ? [0, decoded.duration]
+          : clampTimeRange(rangeRef.current, decoded.duration, decoded.sampleRate);
+        requestAnalysis({ ...configRef.current, timeRange: targetTime }, 'base');
       } catch (nextError) {
         fail(nextError);
       }
@@ -263,22 +417,216 @@ export const useSpectrogram = ({
     };
   }, [audioFile, retryCount, requestAnalysis, terminateWorker]);
 
-  // Generation detail changes re-run the STFT, but never the audio decode.
+  // Time or generation-detail changes only request new work when the cached
+  // matrix cannot serve them. Frequency zoom never reaches this effect: the
+  // full-band matrix is already in memory.
   useEffect(() => {
-    configRef.current = { maxFrames, maxBins };
-    if (!workerReadyRef.current) return;
-    requestAnalysis(configRef.current);
-  }, [maxFrames, maxBins, requestAnalysis]);
+    const nextConfig = { maxFrames, maxBins };
+    const configChanged = configRef.current.maxFrames !== maxFrames
+      || configRef.current.maxBins !== maxBins;
+    configRef.current = nextConfig;
+    if (!workerReadyRef.current) return undefined;
+
+    const { duration, sampleRate } = metaRef.current;
+    if (!(duration > 0) || !(sampleRate > 0)) return undefined;
+
+    const requested = clampTimeRange(
+      timeRange ?? rangeRef.current ?? [0, duration],
+      duration,
+      sampleRate,
+    );
+    const targetTime = canAnalyzeFullFile(duration, sampleRate, maxFrames)
+      ? [0, duration]
+      : requested;
+
+    // A generation-profile change must always produce a new base matrix, so
+    // send it immediately instead of letting a range check cancel it.
+    if (configChanged) {
+      setStatus('analyzing');
+      setProgress(null);
+      setError(null);
+      setDetailAnalysis(null);
+      detailConfigRef.current = null;
+      setRefining(false);
+      setRefineProgress(null);
+      requestAnalysis({ ...nextConfig, timeRange: targetTime }, 'base');
+      return undefined;
+    }
+
+    const inFlight = inFlightRef.current;
+    const inFlightCovers = inFlight?.kind === 'base'
+      && inFlight.maxFrames === maxFrames
+      && inFlight.maxBins === maxBins
+      && timeRangeCovers(inFlight.timeRange, targetTime);
+    if (coversTimeRange(primaryAnalysis, targetTime) || inFlightCovers) {
+      return undefined;
+    }
+
+    setStatus('analyzing');
+    setProgress(null);
+    setError(null);
+    setDetailAnalysis(null);
+    detailConfigRef.current = null;
+    setRefining(false);
+    setRefineProgress(null);
+    const timer = setTimeout(() => {
+      requestAnalysis({ ...nextConfig, timeRange: targetTime }, 'base');
+    }, 150);
+    return () => clearTimeout(timer);
+  }, [timeStart, timeEnd, maxFrames, maxBins, primaryAnalysis, requestAnalysis]);
+
+  // After a zoom has been painted from the cached matrix, quietly replace the
+  // visible window with a finer 50%-overlap pass. This never changes `status`,
+  // so the controls stay enabled and the plot is never blank.
+  useEffect(() => {
+    if (status !== 'ready' || !workerReadyRef.current || !primaryAnalysis) return undefined;
+    if (inFlightRef.current?.kind === 'base') return undefined;
+
+    const { duration, sampleRate } = metaRef.current;
+    if (!(duration > 0) || !(sampleRate > 0)) return undefined;
+
+    const requested = clampTimeRange(
+      timeRange ?? rangeRef.current ?? [0, duration],
+      duration,
+      sampleRate,
+    );
+    if (!coversTimeRange(primaryAnalysis, requested)) return undefined;
+
+    const fftSize = primaryAnalysis.fftSize || selectFftSize(sampleRate);
+    const halfHop = Math.floor(fftSize / 2);
+    const spanSamples = Math.max(1, Math.round((requested[1] - requested[0]) * sampleRate));
+    const expectedHop = Math.max(
+      halfHop,
+      Math.ceil(spanSamples / Math.max(1, maxFrames - 1)),
+    );
+
+    if (expectedHop >= primaryAnalysis.hopSize) {
+      setRefining(false);
+      setRefineProgress(null);
+      return undefined;
+    }
+
+    const detailConfig = detailConfigRef.current;
+    const detailMatches = detailAnalysis
+      && detailConfig
+      && detailConfig.maxFrames === maxFrames
+      && detailConfig.maxBins === maxBins;
+    if (
+      detailMatches
+      && coversTimeRange(detailAnalysis, requested)
+      && detailAnalysis.hopSize <= expectedHop
+    ) {
+      setRefining(false);
+      setRefineProgress(null);
+      return undefined;
+    }
+
+    const inFlight = inFlightRef.current;
+    if (
+      inFlight?.kind === 'detail'
+      && inFlight.maxFrames === maxFrames
+      && inFlight.maxBins === maxBins
+      && timeRangeCovers(inFlight.timeRange, requested)
+    ) {
+      const inFlightSpan = Math.max(
+        1,
+        Math.round((inFlight.timeRange[1] - inFlight.timeRange[0]) * sampleRate),
+      );
+      const inFlightHop = Math.max(
+        halfHop,
+        Math.ceil(inFlightSpan / Math.max(1, maxFrames - 1)),
+      );
+      if (inFlightHop <= expectedHop) return undefined;
+    }
+
+    setRefining(true);
+    setRefineProgress(null);
+    const timer = setTimeout(() => {
+      requestAnalysis({ maxFrames, maxBins, timeRange: requested }, 'detail');
+    }, 250);
+    return () => clearTimeout(timer);
+  }, [
+    status,
+    primaryAnalysis,
+    detailAnalysis,
+    timeStart,
+    timeEnd,
+    maxFrames,
+    maxBins,
+    requestAnalysis,
+  ]);
+
+  const rerenderVisible = useCallback(() => {
+    if (status !== 'ready' || !workerReadyRef.current) return false;
+    const { duration, sampleRate } = metaRef.current;
+    if (!(duration > 0) || !(sampleRate > 0)) return false;
+
+    const requested = clampTimeRange(
+      timeRange ?? rangeRef.current.timeRange ?? [0, duration],
+      duration,
+      sampleRate,
+    );
+    const requestedFrequency = clampRange(
+      frequencyRange ?? rangeRef.current.frequencyRange ?? [0, sampleRate / 2],
+      0,
+      sampleRate / 2,
+      sampleRate / selectFftSize(sampleRate),
+    );
+    requestAnalysis({
+      maxFrames,
+      maxBins,
+      timeRange: requested,
+      frequencyRange: requestedFrequency,
+    }, 'detail');
+    return true;
+  }, [status, timeRange, frequencyRange, maxFrames, maxBins, requestAnalysis]);
 
   const retry = useCallback(() => {
     setRetryCount((count) => count + 1);
   }, []);
+
+  const referenceAnalysis = primaryAnalysis ?? detailAnalysis;
+  const viewDuration = referenceAnalysis?.duration ?? metaRef.current.duration;
+  const viewSampleRate = referenceAnalysis?.sampleRate ?? metaRef.current.sampleRate;
+  let analysis = referenceAnalysis;
+  if (viewDuration > 0 && viewSampleRate > 0) {
+    const requested = clampTimeRange(
+      timeRange ?? [0, viewDuration],
+      viewDuration,
+      viewSampleRate,
+    );
+    const requestedFrequency = clampRange(
+      frequencyRange ?? [0, viewSampleRate / 2],
+      0,
+      viewSampleRate / 2,
+      viewSampleRate / selectFftSize(viewSampleRate),
+    );
+    const detailConfig = detailConfigRef.current;
+    const detailMatches = detailAnalysis
+      && detailConfig
+      && detailConfig.maxFrames === maxFrames
+      && detailConfig.maxBins === maxBins;
+    if (
+      detailMatches
+      && coversTimeRange(detailAnalysis, requested)
+      && frequencyRangeCovers(detailAnalysis.frequencyRange, requestedFrequency)
+    ) {
+      analysis = detailAnalysis;
+    } else if (primaryAnalysis && coversTimeRange(primaryAnalysis, requested)) {
+      analysis = primaryAnalysis;
+    } else {
+      analysis = primaryAnalysis ?? detailAnalysis;
+    }
+  }
 
   return {
     status,
     progress,
     error,
     analysis,
+    refining,
+    refineProgress,
+    rerenderVisible,
     retry,
   };
 };

@@ -13,6 +13,7 @@ import Stack from '@mui/material/Stack';
 import TextField from '@mui/material/TextField';
 import Tooltip from '@mui/material/Tooltip';
 import CloudDownloadRoundedIcon from '@mui/icons-material/CloudDownloadRounded';
+import DownloadRoundedIcon from '@mui/icons-material/DownloadRounded';
 import SaveRoundedIcon from '@mui/icons-material/SaveRounded';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
@@ -28,7 +29,15 @@ import InsertAudioRequest from '../../services/rest/RequestORM/SpectralAnalysis/
  * Audio source toolbar: local upload, load from the database, and persist the
  * current file with node/timestamp metadata.
  */
-export default function DataManager({ audioFile, setAudioFile, setDefaultX, setDefaultY, setStats }) {
+export default function DataManager({
+  audioFile,
+  setAudioFile,
+  setDefaultX,
+  setDefaultY,
+  setStats,
+  canExport = false,
+  onExportScreenshot,
+}) {
   const { addError } = useErrors();
   const [saveOpen, setSaveOpen] = useState(false);
   const [loaderOpen, setLoaderOpen] = useState(false);
@@ -129,6 +138,22 @@ export default function DataManager({ audioFile, setAudioFile, setDefaultX, setD
             disabled={!audioFile}
           >
             <SaveRoundedIcon />
+          </IconButton>
+        </span>
+      </Tooltip>
+
+      <Tooltip
+        title={canExport
+          ? 'Export the visible spectrogram frame as a PNG'
+          : 'Load a recording to export its spectrogram'}
+      >
+        <span>
+          <IconButton
+            aria-label="Export the visible spectrogram as a PNG"
+            onClick={() => onExportScreenshot?.()}
+            disabled={!canExport}
+          >
+            <DownloadRoundedIcon />
           </IconButton>
         </span>
       </Tooltip>

@@ -1,0 +1,30 @@
+# Build context excludes — keeps `docker compose build` fast and reproducible.
+.git
+.github
+.gitignore
+.opencode
+.specify
+.vscode
+.venv
+
+# Frontend dependencies/build output (rebuilt inside the image)
+frontend/node_modules
+frontend/dist
+
+# Python caches
+**/__pycache__
+**/*.pyc
+.pytest_cache
+
+# Local data & logs
+log
+machine_learning/dataset
+machine_learning/processed
+mosquitto/data
+mosquitto/log
+
+# Local secrets/certs are copied explicitly by the Dockerfiles, but keep the
+# rest of the working tree lean.
+*.nix
+.envrc
+.direnv

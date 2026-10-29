@@ -1,4 +1,4 @@
-import { computeSpectrogram } from './spectrogramAnalysis';
+import { computeSpectrogram, detectSignalNotice } from './spectrogramAnalysis';
 import { createAnalysisError } from './spectrogramModel';
 
 const normalizeError = (error, fileName) => {
@@ -24,6 +24,7 @@ export const createWorkerHandler = (scope) => {
     sampleRate: 0,
     duration: 0,
     fileId: '',
+    signalNotice: null,
     currentRequestId: -1,
     cancelledRequestId: -1,
   };
@@ -40,6 +41,7 @@ export const createWorkerHandler = (scope) => {
       state.sampleRate = message.sampleRate;
       state.duration = message.duration;
       state.fileId = message.fileId ?? '';
+      state.signalNotice = detectSignalNotice(message.samples);
       state.currentRequestId = -1;
       state.cancelledRequestId = -1;
       scope.postMessage({ type: 'ready', fileId: state.fileId });
@@ -53,6 +55,7 @@ export const createWorkerHandler = (scope) => {
 
     if (message.type === 'dispose') {
       state.samples = null;
+      state.signalNotice = null;
       state.currentRequestId = -1;
       state.cancelledRequestId = -1;
       scope.close?.();
@@ -77,6 +80,7 @@ export const createWorkerHandler = (scope) => {
         displayMaxDb: message.displayMaxDb,
         analysisId: requestId,
         fileId: state.fileId,
+        signalNotice: state.signalNotice,
         onProgress: (progress) => {
           if (!isCancelled(requestId)) {
             scope.postMessage({

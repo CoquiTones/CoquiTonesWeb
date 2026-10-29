@@ -1,4 +1,4 @@
-import { fireEvent, screen } from '@testing-library/react';
+import { fireEvent, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
 import SpectrogramPlot from '../src/components/SoundAnalysisTools/render/SpectrogramPlot';
@@ -48,6 +48,39 @@ describe('Spectrogram keyboard readout', () => {
     expect(screen.getByRole('status')).toBeTruthy();
     fireEvent.keyDown(plot, { key: 'Escape' });
     expect(screen.queryByRole('status')).toBeNull();
+  });
+
+  it('dismisses the readout when the plot loses focus', () => {
+    renderPlot();
+    const plot = screen.getByRole('application');
+    fireEvent.focus(plot);
+    expect(screen.getByRole('status')).toBeTruthy();
+    fireEvent.blur(plot);
+    expect(screen.queryByRole('status')).toBeNull();
+  });
+
+  it('renders a visible keyboard cursor and moves it by one row', async () => {
+    renderPlot();
+    const plot = screen.getByRole('application');
+    fireEvent.focus(plot);
+
+    expect(screen.getByTestId('spectrogram-keyboard-cursor')).toBeTruthy();
+    expect(screen.getByTestId('spectrogram-announcement').textContent).toMatch(/1\.00 kHz/);
+
+    await new Promise((resolve) => { setTimeout(resolve, 300); });
+    fireEvent.keyDown(plot, { key: 'ArrowUp' });
+    await waitFor(() => {
+      expect(screen.getByTestId('spectrogram-announcement').textContent).toMatch(/2\.00 kHz/);
+    });
+
+    await new Promise((resolve) => { setTimeout(resolve, 300); });
+    fireEvent.keyDown(plot, { key: 'ArrowDown' });
+    await waitFor(() => {
+      expect(screen.getByTestId('spectrogram-announcement').textContent).toMatch(/1\.00 kHz/);
+    });
+
+    fireEvent.keyDown(plot, { key: 'Escape' });
+    expect(screen.queryByTestId('spectrogram-keyboard-cursor')).toBeNull();
   });
 
   it('keeps the keyboard readout inside the visible time window', () => {

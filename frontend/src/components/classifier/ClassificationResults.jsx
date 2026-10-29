@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import PropTypes from 'prop-types';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import Chip from '@mui/material/Chip';
@@ -13,12 +14,13 @@ import Typography from '@mui/material/Typography';
 import DownloadRoundedIcon from '@mui/icons-material/DownloadRounded';
 
 import { SPECIES } from './species';
+import ClassificationWaveform from './ClassificationWaveform';
 import { downloadCsv, toCsv } from '../../utils/format';
 
 /**
  * Paginated classification report with CSV export.
  */
-export default function ClassificationResults({ report, fileName }) {
+export default function ClassificationResults({ report, fileName, audioFile }) {
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
 
@@ -71,6 +73,8 @@ export default function ClassificationResults({ report, fileName }) {
           Export CSV
         </Button>
       </Box>
+
+      <ClassificationWaveform slices={slices} audioFile={audioFile} fileName={fileName} />
 
       <Box
         sx={{
@@ -144,3 +148,12 @@ export default function ClassificationResults({ report, fileName }) {
     </Box>
   );
 }
+
+ClassificationResults.propTypes = {
+  report: PropTypes.shape({
+    length: PropTypes.number.isRequired,
+    slice: PropTypes.func.isRequired,
+  }).isRequired,
+  fileName: PropTypes.string,
+  audioFile: PropTypes.instanceOf(File),
+};

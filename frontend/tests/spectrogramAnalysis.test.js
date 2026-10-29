@@ -162,8 +162,8 @@ describe('spectrogramAnalysis', () => {
     expect(validateAnalysis(analysis)).toEqual([]);
   });
 
-  it('honours the requested frame and bin budgets for short recordings', async () => {
-    const signal = makeSine({ sampleRate: 8000, duration: 1, frequency: 1000 });
+  it('honours the requested frame and bin budgets for longer recordings', async () => {
+    const signal = makeSine({ sampleRate: 8000, duration: 20, frequency: 1000 });
     const detailed = await computeTone(signal, { maxFrames: 512, maxBins: 256 });
     const sparse = await computeTone(signal, { maxFrames: 64, maxBins: 256 });
 
@@ -176,7 +176,57 @@ describe('spectrogramAnalysis', () => {
     expect(validateAnalysis(sparse)).toEqual([]);
   });
 
-  it('supports the maximum frequency detail', async () => {
+  it('uses 50% overlap for normal windows and widens the hop only for the frame cap', async () => {
+    const normal = makeSine({ sampleRate: 8000, duration: 10, frequency: 1000 });
+    const analysis = await computeSpectrogram({
+      samples: normal.samples,
+      sampleRate: normal.sampleRate,
+      duration: normal.duration,
+      timeRange: [0, normal.duration],
+      frequencyRange: [0, normal.sampleRate / 2],
+      fftSize: 1024,
+      maxFrames: 2048,
+      maxBins: 64,
+    });
+    expect(analysis.hopSize).toBe(512);
+    expect(analysis.frameCount).toBeLessThanOrEqual(2048);
+
+    const long = makeSine({ sampleRate: 8000, duration: 300, frequency: 1000 });
+    const capped = await computeSpectrogram({
+      samples: long.samples,
+      sampleRate: long.sampleRate,
+      duration: long.duration,
+      timeRange: [0, long.duration],
+      frequencyRange: [0, long.sampleRate / 2],
+      fftSize: 1024,
+      maxFrames: 2048,
+      maxBins: 64,
+    });
+    expect(capped.frameCount).toBeLessThanOrEqual(2048);
+    expect(capped.hopSize).toBeGreaterThan(512);
+  }, 20000);
+
+  it('limits a visible-band analysis to the selected frequency range', async () => {
+    const signal = makeSine({ sampleRate: 8000, duration: 1, frequency: 1000 });
+    const analysis = await computeSpectrogram({
+      samples: signal.samples,
+      sampleRate: signal.sampleRate,
+      duration: signal.duration,
+      timeRange: [0, signal.duration],
+      frequencyRange: [500, 1500],
+      fftSize: 1024,
+      maxFrames: 64,
+      maxBins: 128,
+    });
+
+    expect(analysis.frequencyRange).toEqual([500, 1500]);
+    expect(analysis.frequencies[0]).toBeGreaterThanOrEqual(500 - 1e-6);
+    expect(analysis.frequencies[analysis.binCount - 1]).toBeLessThanOrEqual(1500 + 1e-6);
+    expect(analysis.binCount).toBeLessThanOrEqual(128);
+    expect(validateAnalysis(analysis)).toEqual([]);
+  });
+
+  it('supports the maximum frequency detail within the plan bound', async () => {
     const signal = makeSine({ sampleRate: 44100, duration: 1, frequency: 1000 });
     const analysis = await computeSpectrogram({
       samples: signal.samples,
@@ -186,10 +236,10 @@ describe('spectrogramAnalysis', () => {
       frequencyRange: [0, signal.sampleRate / 2],
       fftSize: 4096,
       maxFrames: 64,
-      maxBins: 2048,
+      maxBins: 1024,
     });
 
-    expect(analysis.binCount).toBe(2048);
+    expect(analysis.binCount).toBe(1024);
     expect(validateAnalysis(analysis)).toEqual([]);
   });
 });

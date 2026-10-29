@@ -25,7 +25,7 @@ export const createHannWindow = (length) => {
   return window;
 };
 
-const detectSignalNotice = (samples) => {
+export const detectSignalNotice = (samples) => {
   if (!samples || samples.length === 0) return null;
   const first = samples[0];
   let allZero = first === 0;
@@ -39,13 +39,19 @@ const detectSignalNotice = (samples) => {
   return constant ? 'constant' : null;
 };
 
-const buildBinGroups = (rawBinCount, maxBins) => {
-  const binCount = Math.min(rawBinCount, Math.max(1, maxBins));
+const buildBinGroups = (rawBinCount, maxBins, startBin = 0, endBin = rawBinCount - 1) => {
+  const safeStart = Math.max(0, Math.min(startBin, rawBinCount - 1));
+  const safeEnd = Math.max(safeStart, Math.min(endBin, rawBinCount - 1));
+  const available = safeEnd - safeStart + 1;
+  const binCount = Math.min(available, Math.max(1, maxBins));
   const groups = [];
   for (let groupIndex = 0; groupIndex < binCount; groupIndex += 1) {
-    const start = Math.floor((groupIndex * rawBinCount) / binCount);
-    const end = Math.max(start + 1, Math.floor(((groupIndex + 1) * rawBinCount) / binCount));
-    groups.push([start, Math.min(end, rawBinCount)]);
+    const start = safeStart + Math.floor((groupIndex * available) / binCount);
+    const end = safeStart + Math.max(
+      Math.floor((groupIndex * available) / binCount) + 1,
+      Math.floor(((groupIndex + 1) * available) / binCount),
+    );
+    groups.push([start, Math.min(end, safeEnd + 1)]);
   }
   return groups;
 };
@@ -57,9 +63,11 @@ const buildFrameStarts = ({ startSample, endSample, fftSize, maxFrames }) => {
   if (lastStart < firstStart) lastStart = firstStart;
 
   const span = Math.max(1, lastStart - firstStart);
-  // The frame budget alone decides the hop, so the time-detail control works
-  // for short and long recordings alike.
-  const hop = Math.max(1, Math.ceil(span / Math.max(1, maxFrames - 1)));
+  // Half a window gives the documented 50% overlap. Only when that would blow
+  // the frame budget do we widen the hop; the cap is recorded on the analysis.
+  const overlapHop = Math.max(1, halfWindow);
+  const budgetHop = Math.max(1, Math.ceil(span / Math.max(1, maxFrames - 1)));
+  const hop = Math.max(overlapHop, budgetHop);
   let starts = [];
   for (let start = firstStart; start <= lastStart; start += hop) starts.push(start);
   if (starts.length === 0) starts = [firstStart];
@@ -94,6 +102,7 @@ export const computeSpectrogram = async ({
   analysisId = 0,
   fileId = '',
   fftSize: requestedFftSize,
+  signalNotice,
   onProgress,
   shouldCancel,
 } = {}) => {
@@ -117,7 +126,13 @@ export const computeSpectrogram = async ({
   const windowSum = window.reduce((sum, value) => sum + value, 0);
   const halfWindow = fftSize / 2;
   const rawBinCount = Math.floor(fftSize / 2) + 1;
-  const groups = buildBinGroups(rawBinCount, maxBins);
+  const startBin = Math.max(0, Math.floor((freqStart * fftSize) / sampleRate));
+  const endBin = Math.min(
+    rawBinCount - 1,
+    Math.ceil((freqEnd * fftSize) / sampleRate),
+  );
+  const availableBins = Math.max(1, endBin - startBin + 1);
+  const groups = buildBinGroups(rawBinCount, maxBins, startBin, endBin);
   const binCount = groups.length;
   const frequencies = new Float32Array(binCount);
   for (let groupIndex = 0; groupIndex < binCount; groupIndex += 1) {
@@ -224,10 +239,10 @@ export const computeSpectrogram = async ({
     db,
     minDb,
     maxDb,
-    signalNotice: detectSignalNotice(samples),
+    signalNotice: signalNotice === undefined ? detectSignalNotice(samples) : signalNotice,
     displayMinDb,
     displayMaxDb,
-    frequencyPooling: rawBinCount / binCount,
+    frequencyPooling: availableBins / binCount,
     timeResolution,
     frequencyResolution,
     createdAt: Date.now(),

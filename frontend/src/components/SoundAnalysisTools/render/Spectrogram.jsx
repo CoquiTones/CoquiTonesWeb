@@ -1,4 +1,4 @@
-import { memo, useEffect } from 'react';
+import { forwardRef, memo, useEffect, useImperativeHandle, useMemo } from 'react';
 import PropTypes from 'prop-types';
 import Box from '@mui/material/Box';
 import { useTheme } from '@mui/material/styles';
@@ -8,15 +8,21 @@ import SpectrogramLegend from './SpectrogramLegend';
 import SpectrogramPlot from './SpectrogramPlot';
 import { useSpectrogram } from '../processing/useSpectrogram';
 import {
+  createSpectrogramImage,
+  downloadSpectrogramImage,
+  spectrogramFileName,
+} from '../processing/spectrogramExport';
+import {
   DEFAULT_DISPLAY_MAX_DB,
   DEFAULT_DISPLAY_MIN_DB,
   DEFAULT_MAX_BINS,
   DEFAULT_MAX_FRAMES,
+  clampRange,
 } from '../processing/spectrogramModel';
 
 const DEFAULT_DISPLAY_RANGE = [DEFAULT_DISPLAY_MIN_DB, DEFAULT_DISPLAY_MAX_DB];
 
-const Spectrogram = memo(function Spectrogram({
+const Spectrogram = memo(forwardRef(function Spectrogram({
   audioFile,
   timeRange,
   frequencyRange,
@@ -25,18 +31,85 @@ const Spectrogram = memo(function Spectrogram({
   maxFrames = DEFAULT_MAX_FRAMES,
   maxBins = DEFAULT_MAX_BINS,
   onProcessingChange,
-}) {
+  audioRef = null,
+}, ref) {
   const theme = useTheme();
   const isDesktop = useMediaQuery(theme.breakpoints.up('md'));
-  const { status, progress, error, analysis, retry } = useSpectrogram({
+  const {
+    status,
+    progress,
+    error,
+    analysis,
+    refining = false,
+    refineProgress = null,
+    rerenderVisible,
+    retry,
+  } = useSpectrogram({
     audioFile,
+    timeRange,
+    frequencyRange,
     maxFrames,
     maxBins,
   });
 
   useEffect(() => {
-    onProcessingChange?.({ status, progress, error });
-  }, [status, progress, error, onProcessingChange]);
+    onProcessingChange?.({ status, progress, error, refining });
+  }, [status, progress, error, refining, onProcessingChange]);
+
+  const safeTimeRange = useMemo(
+    () => (analysis
+      ? clampRange(timeRange, 0, analysis.duration, analysis.timeResolution || 0)
+      : timeRange),
+    [analysis, timeRange],
+  );
+  const safeFrequencyRange = useMemo(
+    () => (analysis
+      ? clampRange(frequencyRange, 0, analysis.nyquist, analysis.frequencyResolution || 0)
+      : frequencyRange),
+    [analysis, frequencyRange],
+  );
+  const analysisCoversTime = Boolean(
+    analysis
+    && analysis.timeRange
+    && analysis.timeRange[0] <= safeTimeRange[0] + 1e-6
+    && analysis.timeRange[1] >= safeTimeRange[1] - 1e-6,
+  );
+  const plotTimeRange = analysisCoversTime
+    ? safeTimeRange
+    : (analysis?.timeRange ?? safeTimeRange);
+  // The matrix is always full-band, so frequency zoom is an instant crop.
+  const plotFrequencyRange = safeFrequencyRange;
+
+  useImperativeHandle(ref, () => ({
+    exportScreenshot: () => {
+      if (!analysis) return false;
+      const canvas = createSpectrogramImage({
+        analysis,
+        timeRange: plotTimeRange,
+        frequencyRange: plotFrequencyRange,
+        colorscale,
+        displayRange,
+        fileName: audioFile?.name ?? 'spectrogram',
+        theme,
+      });
+      if (!canvas) return false;
+      return downloadSpectrogramImage(
+        canvas,
+        spectrogramFileName(audioFile?.name, plotTimeRange),
+      );
+    },
+    rerenderVisibleSegment: rerenderVisible,
+  }), [
+    analysis,
+    plotTimeRange,
+    plotFrequencyRange,
+    colorscale,
+    displayRange,
+    audioFile,
+    theme,
+    rerenderVisible,
+    ref,
+  ]);
 
   return (
     <Box
@@ -53,14 +126,17 @@ const Spectrogram = memo(function Spectrogram({
         <SpectrogramPlot
           analysis={analysis}
           fileName={audioFile?.name ?? ''}
-          timeRange={timeRange}
-          frequencyRange={frequencyRange}
+          timeRange={plotTimeRange}
+          frequencyRange={plotFrequencyRange}
           colorscale={colorscale}
           displayRange={displayRange}
           status={status}
           progress={progress}
+          refining={refining}
+          refineProgress={refineProgress}
           error={error}
           onRetry={retry}
+          audioRef={audioRef}
         />
       </Box>
       {analysis && (
@@ -74,7 +150,7 @@ const Spectrogram = memo(function Spectrogram({
       )}
     </Box>
   );
-});
+}));
 
 // The audio player no longer re-renders the page while playing, but memoising
 // the plot also keeps unrelated parent updates from reconciling this subtree.
@@ -87,6 +163,9 @@ Spectrogram.propTypes = {
   maxFrames: PropTypes.number,
   maxBins: PropTypes.number,
   onProcessingChange: PropTypes.func,
+  audioRef: PropTypes.shape({
+    current: PropTypes.object,
+  }),
 };
 
 export default Spectrogram;

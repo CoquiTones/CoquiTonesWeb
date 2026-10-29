@@ -1,4 +1,4 @@
-import { renderHook, waitFor } from '@testing-library/react';
+import { act, renderHook, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import {
@@ -10,6 +10,9 @@ import { makeSineFile } from './helpers/syntheticAudio';
 
 class FakeWorker {
   static instances = [];
+  static duration = 1;
+  static sampleRate = 8000;
+  static fftSize = 1024;
 
   constructor() {
     this.messages = [];
@@ -24,6 +27,12 @@ class FakeWorker {
     }
     if (message.type === 'analyze') {
       queueMicrotask(() => {
+        const [start, end] = message.timeRange;
+        const span = Math.max(0, end - start);
+        const budgetHop = Math.ceil(
+          (span * FakeWorker.sampleRate) / Math.max(1, message.maxFrames - 1),
+        );
+        const hopSize = Math.max(FakeWorker.fftSize / 2, budgetHop);
         this.onmessage?.({ data: { type: 'progress', requestId: message.requestId, progress: 0.5 } });
         this.onmessage?.({
           data: {
@@ -33,8 +42,16 @@ class FakeWorker {
               analysisId: message.requestId,
               timeRange: message.timeRange,
               frequencyRange: message.frequencyRange,
-              analysisStart: message.timeRange[0],
-              analysisEnd: message.timeRange[1],
+              analysisStart: start,
+              analysisEnd: end,
+              duration: FakeWorker.duration,
+              sampleRate: FakeWorker.sampleRate,
+              fftSize: FakeWorker.fftSize,
+              hopSize,
+              timeResolution: hopSize / FakeWorker.sampleRate,
+              frameCount: 3,
+              binCount: 3,
+              times: Float32Array.from([start, start + span / 2, end]),
             }),
           },
         });
@@ -63,6 +80,9 @@ const makeAudioContext = (samples, sampleRate = 8000, duration = 1) =>
 afterEach(() => {
   vi.unstubAllGlobals();
   FakeWorker.instances = [];
+  FakeWorker.duration = 1;
+  FakeWorker.sampleRate = 8000;
+  FakeWorker.fftSize = 1024;
 });
 
 describe('estimateDecodedBytes', () => {
@@ -109,7 +129,7 @@ describe('useSpectrogram', () => {
     expect(result.current.error.code).toBe('over-budget');
   });
 
-  it('analyzes the whole file in a single worker request', async () => {
+  it('precomputes the whole file when it fits the frame budget', async () => {
     const samples = new Float32Array(8000);
     window.AudioContext = makeAudioContext(samples);
     window.webkitAudioContext = window.AudioContext;
@@ -117,7 +137,7 @@ describe('useSpectrogram', () => {
 
     const file = makeSineFile({ sampleRate: 8000, duration: 1 });
     const { result } = renderHook(() =>
-      useSpectrogram({ audioFile: file }),
+      useSpectrogram({ audioFile: file, timeRange: [0.25, 0.75] }),
     );
 
     await waitFor(() => expect(result.current.status).toBe('ready'));
@@ -127,7 +147,7 @@ describe('useSpectrogram', () => {
     expect(analyze.frequencyRange).toEqual([0, 4000]);
   });
 
-  it('does not re-analyze when the visible range changes', async () => {
+  it('does not re-analyze when zooming inside a precomputed full file', async () => {
     const samples = new Float32Array(8000);
     window.AudioContext = makeAudioContext(samples);
     window.webkitAudioContext = window.AudioContext;
@@ -135,25 +155,164 @@ describe('useSpectrogram', () => {
 
     const file = makeSineFile({ sampleRate: 8000, duration: 1 });
     const { result, rerender } = renderHook(
-      ({ timeRange, frequencyRange }) =>
-        useSpectrogram({ audioFile: file, timeRange, frequencyRange }),
-      { initialProps: { timeRange: [0, 1], frequencyRange: [0, 4000] } },
+      ({ timeRange }) => useSpectrogram({ audioFile: file, timeRange }),
+      { initialProps: { timeRange: [0, 1] } },
     );
 
     await waitFor(() => expect(result.current.status).toBe('ready'));
-    const initialAnalysis = result.current.analysis;
     const worker = FakeWorker.instances[0];
     const analyzeCount = () => worker.messages.filter((message) => message.type === 'analyze').length;
 
     expect(analyzeCount()).toBe(1);
 
-    rerender({ timeRange: [0.25, 0.75], frequencyRange: [500, 2000] });
+    rerender({ timeRange: [0.25, 0.75] });
+    expect(result.current.status).toBe('ready');
+    expect(analyzeCount()).toBe(1);
+    expect(result.current.analysis.timeRange).toEqual([0, 1]);
+  });
 
-    // Viewport changes are presentation-only: the cached full-file analysis is
-    // returned untouched and no new worker request is issued.
-    expect(result.current.analysis).toBe(initialAnalysis);
+  it('treats a frequency-only change as a crop without re-analysis', async () => {
+    const samples = new Float32Array(8000);
+    window.AudioContext = makeAudioContext(samples);
+    window.webkitAudioContext = window.AudioContext;
+    vi.stubGlobal('Worker', FakeWorker);
+
+    const file = makeSineFile({ sampleRate: 8000, duration: 1 });
+    const { result, rerender } = renderHook(
+      ({ frequencyRange }) => useSpectrogram({
+        audioFile: file,
+        timeRange: [0, 1],
+        frequencyRange,
+      }),
+      { initialProps: { frequencyRange: [0, 4000] } },
+    );
+
+    await waitFor(() => expect(result.current.status).toBe('ready'));
+    const worker = FakeWorker.instances[0];
+    const analyzeCount = () => worker.messages.filter((message) => message.type === 'analyze').length;
+    expect(analyzeCount()).toBe(1);
+
+    rerender({ frequencyRange: [500, 2000] });
+
     expect(analyzeCount()).toBe(1);
     expect(result.current.status).toBe('ready');
+    expect(result.current.analysis.frequencyRange).toEqual([0, 4000]);
+  });
+
+  it('quietly refines a zoomed full-file window at 50% overlap', async () => {
+    const samples = new Float32Array(8000);
+    window.AudioContext = makeAudioContext(samples, 8000, 200);
+    window.webkitAudioContext = window.AudioContext;
+    vi.stubGlobal('Worker', FakeWorker);
+    FakeWorker.duration = 200;
+
+    const file = makeSineFile({ sampleRate: 8000, duration: 1 });
+    const { result, rerender } = renderHook(
+      ({ timeRange }) => useSpectrogram({ audioFile: file, timeRange, maxFrames: 2048 }),
+      { initialProps: { timeRange: [0, 15] } },
+    );
+
+    await waitFor(() => expect(result.current.status).toBe('ready'));
+    const worker = FakeWorker.instances[0];
+    const analyses = () => worker.messages.filter((message) => message.type === 'analyze');
+    await waitFor(() => expect(analyses()).toHaveLength(2));
+
+    // The first pass caches the whole file; the second refines only the view.
+    expect(analyses()[0].timeRange).toEqual([0, 200]);
+    expect(analyses()[1].timeRange).toEqual([0, 15]);
+
+    await waitFor(() => expect(result.current.analysis.timeRange).toEqual([0, 15]));
+    expect(result.current.analysis.hopSize).toBe(512);
+    expect(result.current.status).toBe('ready');
+    await waitFor(() => expect(result.current.refining).toBe(false));
+
+    // Zooming inside the refined view is immediate and does not re-analyze.
+    rerender({ timeRange: [5, 10] });
+    expect(analyses()).toHaveLength(2);
+    expect(result.current.analysis.timeRange).toEqual([0, 15]);
+  });
+
+  it('manually re-renders only the visible segment', async () => {
+    const samples = new Float32Array(8000);
+    window.AudioContext = makeAudioContext(samples);
+    window.webkitAudioContext = window.AudioContext;
+    vi.stubGlobal('Worker', FakeWorker);
+
+    const file = makeSineFile({ sampleRate: 8000, duration: 1 });
+    const { result } = renderHook(() =>
+      useSpectrogram({
+        audioFile: file,
+        timeRange: [0.25, 0.75],
+        frequencyRange: [500, 2000],
+      }),
+    );
+
+    await waitFor(() => expect(result.current.status).toBe('ready'));
+    const worker = FakeWorker.instances[0];
+    const analyses = () => worker.messages.filter((message) => message.type === 'analyze');
+    expect(analyses()).toHaveLength(1);
+
+    act(() => {
+      expect(result.current.rerenderVisible()).toBe(true);
+    });
+
+    expect(result.current.status).toBe('ready');
+    await waitFor(() => expect(analyses()).toHaveLength(2));
+    expect(analyses()[1].timeRange).toEqual([0.25, 0.75]);
+    expect(analyses()[1].frequencyRange).toEqual([500, 2000]);
+    await waitFor(() => expect(result.current.refining).toBe(false));
+    expect(result.current.analysis.timeRange).toEqual([0.25, 0.75]);
+  });
+
+  it('clamps requested ranges before sending them to the worker', async () => {
+    const samples = new Float32Array(8000);
+    window.AudioContext = makeAudioContext(samples);
+    window.webkitAudioContext = window.AudioContext;
+    vi.stubGlobal('Worker', FakeWorker);
+
+    const file = makeSineFile({ sampleRate: 8000, duration: 1 });
+    const { result } = renderHook(() =>
+      useSpectrogram({ audioFile: file, timeRange: [-1, 5], maxFrames: 8 }),
+    );
+
+    await waitFor(() => expect(result.current.status).toBe('ready'));
+    const analyze = FakeWorker.instances[0].messages.find((message) => message.type === 'analyze');
+    expect(analyze.timeRange).toEqual([0, 1]);
+    expect(analyze.frequencyRange).toEqual([0, 4000]);
+  });
+
+  it('re-analyzes a new window only when the cached analysis does not cover it', async () => {
+    const samples = new Float32Array(8000);
+    window.AudioContext = makeAudioContext(samples);
+    window.webkitAudioContext = window.AudioContext;
+    vi.stubGlobal('Worker', FakeWorker);
+
+    const file = makeSineFile({ sampleRate: 8000, duration: 1 });
+    const { result, rerender } = renderHook(
+      ({ timeRange }) => useSpectrogram({ audioFile: file, timeRange, maxFrames: 8 }),
+      { initialProps: { timeRange: [0, 0.5] } },
+    );
+
+    await waitFor(() => expect(result.current.status).toBe('ready'));
+    const worker = FakeWorker.instances[0];
+    const analyzeCount = () => worker.messages.filter((message) => message.type === 'analyze').length;
+
+    expect(analyzeCount()).toBe(1);
+
+    // This zoom stays inside the analyzed [0, 0.5] window: no new STFT.
+    rerender({ timeRange: [0.1, 0.4] });
+    expect(analyzeCount()).toBe(1);
+    expect(result.current.status).toBe('ready');
+
+    // This window is outside the cached extent, so a new visible-window
+    // analysis is required.
+    rerender({ timeRange: [0.5, 1] });
+    await waitFor(() => expect(analyzeCount()).toBe(2));
+    const analyses = worker.messages.filter((message) => message.type === 'analyze');
+    expect(analyses[1].timeRange).toEqual([0.5, 1]);
+    expect(analyses[1].frequencyRange).toEqual([0, 4000]);
+    await waitFor(() => expect(result.current.status).toBe('ready'));
+    expect(result.current.analysis.timeRange).toEqual([0.5, 1]);
   });
 
   it('regenerates with new detail without decoding the file again', async () => {

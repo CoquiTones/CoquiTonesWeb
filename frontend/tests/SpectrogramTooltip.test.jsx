@@ -30,6 +30,19 @@ describe('SpectrogramTooltip', () => {
     expect(Number.parseFloat(tooltip.style.top)).toBeGreaterThanOrEqual(plotRect.top);
   });
 
+  it('flips away from the inspected cell near the right and top edges', () => {
+    const pointer = { x: plotRect.left + plotRect.width - 10, y: plotRect.top + 5 };
+    renderWithTheme(
+      <SpectrogramTooltip cell={cell} pointer={pointer} plotRect={plotRect} />,
+    );
+
+    const tooltip = screen.getByRole('status');
+    const left = Number.parseFloat(tooltip.style.left);
+    const top = Number.parseFloat(tooltip.style.top);
+    expect(left + 190).toBeLessThanOrEqual(pointer.x);
+    expect(top).toBeGreaterThan(pointer.y);
+  });
+
   it('renders nothing without a cell', () => {
     renderWithTheme(<SpectrogramTooltip cell={null} pointer={null} plotRect={plotRect} />);
     expect(screen.queryByRole('status')).toBeNull();

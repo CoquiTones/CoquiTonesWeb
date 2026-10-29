@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import Dialog from '@mui/material/Dialog';
@@ -37,6 +37,8 @@ export default function SpectralAnalysis() {
   const theme = useTheme();
   const isDesktop = useMediaQuery(theme.breakpoints.up('md'));
 
+  const audioRef = useRef(null);
+  const spectrogramRef = useRef(null);
   const [audioFile, setAudioFile] = useState(null);
   const [colorscale, setColorscale] = useState('jet');
   const [xrange, setXrange] = useState([0, 15]);
@@ -47,7 +49,12 @@ export default function SpectralAnalysis() {
   const [panelOpen, setPanelOpen] = useState(false);
   const [stats, setStats] = useState(null);
   const [fileInfoOpen, setFileInfoOpen] = useState(false);
-  const [processing, setProcessing] = useState({ status: 'idle', progress: null, error: null });
+  const [processing, setProcessing] = useState({
+    status: 'idle',
+    progress: null,
+    error: null,
+    refining: false,
+  });
 
   useEffect(() => {
     const [min, max] = defaultX;
@@ -73,9 +80,10 @@ export default function SpectralAnalysis() {
       defaultY={defaultY}
       detailProfile={detailProfile}
       setDetailProfile={setDetailProfile}
-      duration={stats?.duration}
       sampleRate={stats?.sampleRate}
       disabled={processing.status !== 'ready'}
+      rerendering={Boolean(processing.refining)}
+      onRerenderVisible={() => spectrogramRef.current?.rerenderVisibleSegment()}
     />
   );
 
@@ -104,6 +112,8 @@ export default function SpectralAnalysis() {
             setDefaultX={setDefaultX}
             setDefaultY={setDefaultY}
             setStats={setStats}
+            canExport={Boolean(audioFile) && processing.status === 'ready'}
+            onExportScreenshot={() => spectrogramRef.current?.exportScreenshot()}
           />
         </Paper>
 
@@ -144,6 +154,7 @@ export default function SpectralAnalysis() {
                     file={audioFile}
                     yrange={yrange}
                     xrange={xrange}
+                    audioRef={audioRef}
                   />
                   <IconButton aria-label="Show file details" onClick={() => setFileInfoOpen(true)}>
                     <InfoOutlinedIcon />
@@ -164,6 +175,7 @@ export default function SpectralAnalysis() {
 
             <Box sx={{ flex: 1, minHeight: 0 }}>
               <Spectrogram
+                ref={spectrogramRef}
                 audioFile={audioFile}
                 colorscale={colorscale}
                 timeRange={xrange}
@@ -171,6 +183,7 @@ export default function SpectralAnalysis() {
                 maxFrames={detail.maxFrames}
                 maxBins={detail.maxBins}
                 onProcessingChange={setProcessing}
+                audioRef={audioRef}
               />
             </Box>
           </Paper>

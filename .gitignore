@@ -40,3 +40,8 @@ mosquitto/data
 mosquitto/config/pwfile
 mosquitto/data/mosquitto.db
 mosquitto/config/dynamic_security.json
+
+
+.specify/
+.opencode/
+specs

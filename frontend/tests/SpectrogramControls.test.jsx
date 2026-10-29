@@ -13,11 +13,13 @@ const makeProps = (overrides = {}) => ({
   setYrange: vi.fn(),
   defaultX: [0, 60],
   defaultY: [0, 22050],
-  detailProfile: 'medium',
+  detailProfile: 'high',
   setDetailProfile: vi.fn(),
   duration: 60,
   sampleRate: 44100,
   disabled: false,
+  rerendering: false,
+  onRerenderVisible: vi.fn(),
   ...overrides,
 });
 
@@ -40,7 +42,7 @@ describe('SpectrogramControls advanced settings', () => {
 
     expect(screen.getByRole('combobox', { name: /Resolution profile/i })).toBeTruthy();
     expect(screen.getAllByText(/2,048 frames/).length).toBeGreaterThan(0);
-    expect(screen.getAllByText(/29 ms\/frame/).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/46 ms\/frame at 50% overlap/).length).toBeGreaterThan(0);
     expect(screen.getAllByText(/1,024 bins/).length).toBeGreaterThan(0);
     expect(screen.getAllByText(/22 Hz\/bin/).length).toBeGreaterThan(0);
   });
@@ -51,9 +53,29 @@ describe('SpectrogramControls advanced settings', () => {
     expandAdvancedSettings();
 
     fireEvent.mouseDown(screen.getByRole('combobox', { name: /Resolution profile/i }));
-    fireEvent.click(screen.getByRole('option', { name: /High/ }));
+    fireEvent.click(screen.getByRole('option', { name: /Low/ }));
 
-    expect(props.setDetailProfile).toHaveBeenCalledWith('high');
+    expect(props.setDetailProfile).toHaveBeenCalledWith('low');
+  });
+
+  it('re-renders only the visible segment from advanced settings', () => {
+    const props = makeProps();
+    renderWithTheme(<SpectrogramControls {...props} />);
+    expandAdvancedSettings();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Re-render visible segment' }));
+
+    expect(props.onRerenderVisible).toHaveBeenCalledTimes(1);
+  });
+
+  it('disables the segment re-render while one is running', () => {
+    renderWithTheme(
+      <SpectrogramControls {...makeProps({ rerendering: true })} />,
+    );
+    expandAdvancedSettings();
+
+    const button = screen.getByRole('button', { name: /Re-rendering visible segment/ });
+    expect(button.disabled).toBe(true);
   });
 
   it('reports the effective bin count when the file cannot use the profile detail', () => {

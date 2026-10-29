@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import PropTypes from 'prop-types';
+import Alert from '@mui/material/Alert';
 import Box from '@mui/material/Box';
 import LinearProgress from '@mui/material/LinearProgress';
 
 import SpectrogramAxes from './SpectrogramAxes';
 import SpectrogramCanvas from './SpectrogramCanvas';
+import SpectrogramPlayhead from './SpectrogramPlayhead';
 import SpectrogramStatus from './SpectrogramStatus';
 import SpectrogramTooltip from './SpectrogramTooltip';
 import { formatDbfs, formatFrequency, formatTime } from '../processing/spectrogramFormat';
@@ -13,8 +15,10 @@ import {
   createPlotRect,
   findBinWindow,
   findFrameWindow,
+  frequencyCellBoundaries,
   frequencyToY,
   isInsidePlot,
+  timeCellBoundaries,
   timeToX,
 } from '../processing/spectrogramTransforms';
 
@@ -35,6 +39,11 @@ const hiddenLiveRegion = {
   border: 0,
 };
 
+const SIGNAL_NOTICES = {
+  silent: 'This recording contains no measurable signal; the plot shows the -100 dBFS floor.',
+  constant: 'This recording is constant; only DC energy is visible.',
+};
+
 export default function SpectrogramPlot({
   analysis = null,
   fileName = '',
@@ -44,8 +53,11 @@ export default function SpectrogramPlot({
   displayRange,
   status,
   progress = null,
+  refining = false,
+  refineProgress = null,
   error = null,
   onRetry = null,
+  audioRef = null,
 }) {
   const containerRef = useRef(null);
   const keyboardRef = useRef(null);
@@ -81,6 +93,25 @@ export default function SpectrogramPlot({
     keyboardRef.current = null;
   }, [analysis, timeRange, frequencyRange]);
 
+  useEffect(() => {
+    if (status === 'ready') return;
+    setReadout(null);
+    setPinned(false);
+  }, [status]);
+
+  useEffect(() => {
+    if (!pinned) return undefined;
+
+    const dismissOutside = (event) => {
+      if (!containerRef.current?.contains(event.target)) {
+        setReadout(null);
+        setPinned(false);
+      }
+    };
+    document.addEventListener('pointerdown', dismissOutside);
+    return () => document.removeEventListener('pointerdown', dismissOutside);
+  }, [pinned]);
+
   useEffect(
     () => () => {
       if (announceTimerRef.current) clearTimeout(announceTimerRef.current);
@@ -91,6 +122,28 @@ export default function SpectrogramPlot({
   const width = size.width || containerRef.current?.clientWidth || FALLBACK_WIDTH;
   const height = size.height || containerRef.current?.clientHeight || FALLBACK_HEIGHT;
   const plotRect = createPlotRect({ width, height });
+
+  let keyboardBox = null;
+  if (readout?.keyboardMode && analysis && readout.cell) {
+    const [left, right] = timeCellBoundaries(
+      readout.cell.time,
+      analysis.timeResolution || 0,
+      timeRange,
+      plotRect,
+    );
+    const [top, bottom] = frequencyCellBoundaries(
+      readout.cell.frequency,
+      analysis.frequencyResolution || 0,
+      frequencyRange,
+      plotRect,
+    );
+    keyboardBox = {
+      left,
+      top,
+      width: Math.max(1, right - left),
+      height: Math.max(1, bottom - top),
+    };
+  }
 
   const announce = useCallback((cell) => {
     if (announceTimerRef.current) return;
@@ -170,6 +223,11 @@ export default function SpectrogramPlot({
     if (!pinned) setReadout(null);
   };
 
+  const handleBlur = () => {
+    setReadout(null);
+    setPinned(false);
+  };
+
   const handleFocus = () => {
     if (!analysis || keyboardRef.current) return;
     const [frameStart, frameEnd] = findFrameWindow(analysis.times, timeRange);
@@ -234,7 +292,8 @@ export default function SpectrogramPlot({
   };
 
   const showFullStatus = !analysis || status === 'idle' || status === 'decoding' || status === 'failed';
-  const showInlineProgress = status === 'analyzing' && Boolean(analysis);
+  const showInlineProgress = (status === 'analyzing' && Boolean(analysis)) || refining;
+  const inlineProgress = refining ? refineProgress : progress;
 
   return (
     <Box
@@ -247,6 +306,7 @@ export default function SpectrogramPlot({
       onPointerDown={handlePointerDown}
       onPointerLeave={handlePointerLeave}
       onFocus={handleFocus}
+      onBlur={handleBlur}
       onKeyDown={handleKeyDown}
       sx={{
         position: 'relative',
@@ -274,16 +334,54 @@ export default function SpectrogramPlot({
         frequencyRange={frequencyRange}
         plotRect={plotRect}
       />
+      {analysis && (
+        <SpectrogramPlayhead audioRef={audioRef} timeRange={timeRange} plotRect={plotRect} />
+      )}
+      {keyboardBox && (
+        <Box
+          data-testid="spectrogram-keyboard-cursor"
+          sx={{
+            position: 'absolute',
+            left: keyboardBox.left,
+            top: keyboardBox.top,
+            width: keyboardBox.width,
+            height: keyboardBox.height,
+            border: '2px solid',
+            borderColor: 'primary.main',
+            pointerEvents: 'none',
+            zIndex: 2,
+          }}
+        />
+      )}
       <SpectrogramTooltip
         cell={readout?.cell ?? null}
         pointer={readout?.pointer ?? null}
         plotRect={plotRect}
         keyboardMode={readout?.keyboardMode ?? false}
       />
+      {status === 'ready' && analysis?.signalNotice && (
+        <Alert
+          severity="info"
+          role="status"
+          aria-live="polite"
+          data-testid="spectrogram-signal-notice"
+          sx={{
+            position: 'absolute',
+            top: plotRect.top + 8,
+            left: plotRect.left + 8,
+            maxWidth: Math.max(160, plotRect.width - 16),
+            zIndex: 2,
+            pointerEvents: 'none',
+          }}
+        >
+          {SIGNAL_NOTICES[analysis.signalNotice]}
+        </Alert>
+      )}
       {showInlineProgress && (
         <LinearProgress
-          variant={typeof progress === 'number' ? 'determinate' : 'indeterminate'}
-          value={typeof progress === 'number' ? Math.round(progress * 100) : undefined}
+          aria-label={refining ? 'Refining the visible spectrogram window' : 'Analyzing spectrogram'}
+          variant={typeof inlineProgress === 'number' ? 'determinate' : 'indeterminate'}
+          value={typeof inlineProgress === 'number' ? Math.round(inlineProgress * 100) : undefined}
           sx={{ position: 'absolute', top: 0, left: plotRect.left, width: plotRect.width, zIndex: 4 }}
         />
       )}
@@ -317,6 +415,11 @@ SpectrogramPlot.propTypes = {
   displayRange: PropTypes.arrayOf(PropTypes.number).isRequired,
   status: PropTypes.oneOf(['idle', 'decoding', 'analyzing', 'ready', 'failed']).isRequired,
   progress: PropTypes.number,
+  refining: PropTypes.bool,
+  refineProgress: PropTypes.number,
   error: PropTypes.object,
   onRetry: PropTypes.func,
+  audioRef: PropTypes.shape({
+    current: PropTypes.object,
+  }),
 };

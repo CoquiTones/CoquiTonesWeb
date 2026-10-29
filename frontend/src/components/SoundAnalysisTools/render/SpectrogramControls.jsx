@@ -1,6 +1,7 @@
 import { useId, useState } from 'react';
 import PropTypes from 'prop-types';
 import Box from '@mui/material/Box';
+import Button from '@mui/material/Button';
 import ButtonBase from '@mui/material/ButtonBase';
 import Collapse from '@mui/material/Collapse';
 import FormControl from '@mui/material/FormControl';
@@ -9,6 +10,7 @@ import MenuItem from '@mui/material/MenuItem';
 import Select from '@mui/material/Select';
 import Typography from '@mui/material/Typography';
 import ExpandMoreRoundedIcon from '@mui/icons-material/ExpandMoreRounded';
+import RefreshRoundedIcon from '@mui/icons-material/RefreshRounded';
 import useMediaQuery from '@mui/material/useMediaQuery';
 
 import SpectrogramRangeSlider from './SpectrogramRangeSlider';
@@ -58,9 +60,10 @@ export default function SpectrogramControls({
   defaultY,
   detailProfile,
   setDetailProfile,
-  duration,
   sampleRate,
   disabled = false,
+  rerendering = false,
+  onRerenderVisible,
 }) {
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const reduceMotion = useMediaQuery('(prefers-reduced-motion: reduce)');
@@ -70,11 +73,11 @@ export default function SpectrogramControls({
   const advancedContentId = `${uid}-advanced-settings-content`;
 
   const profile = getDetailProfile(detailProfile);
-  const frameSpacing = Number.isFinite(duration) && duration > 0
-    ? (duration * 1000) / profile.maxFrames
-    : null;
   const fftSize = Number.isFinite(sampleRate) && sampleRate > 0
     ? selectFftSize(sampleRate)
+    : null;
+  const frameSpacing = fftSize && Number.isFinite(sampleRate) && sampleRate > 0
+    ? ((fftSize / 2) / sampleRate) * 1000
     : null;
   const rawBins = fftSize ? Math.floor(fftSize / 2) + 1 : null;
   const effectiveBins = rawBins ? Math.min(profile.maxBins, rawBins) : profile.maxBins;
@@ -232,8 +235,11 @@ export default function SpectrogramControls({
               </Select>
 
               <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1.5 }}>
-                Time: {profile.maxFrames.toLocaleString()} frames
-                {frameSpacing ? ` • ${formatSpacing(frameSpacing)} ms/frame` : ''}
+                Time: up to {profile.maxFrames.toLocaleString()} frames
+                {frameSpacing ? ` • ≈ ${formatSpacing(frameSpacing)} ms/frame at 50% overlap` : ''}
+              </Typography>
+              <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
+                Long recordings may widen the hop to stay within the frame cap.
               </Typography>
               <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
                 Frequency: {effectiveBins.toLocaleString()} bins
@@ -242,6 +248,20 @@ export default function SpectrogramControls({
               </Typography>
               <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1.5 }}>
                 Changing the profile regenerates the full-file analysis.
+              </Typography>
+              <Button
+                variant="outlined"
+                size="small"
+                startIcon={<RefreshRoundedIcon />}
+                onClick={() => onRerenderVisible?.()}
+                disabled={disabled || rerendering}
+                sx={{ mt: 2, minHeight: 40 }}
+              >
+                {rerendering ? 'Re-rendering visible segment…' : 'Re-render visible segment'}
+              </Button>
+              <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1 }}>
+                Re-runs the analysis for only the visible time and frequency window using the
+                current resolution profile.
               </Typography>
             </Box>
           </Collapse>
@@ -262,7 +282,8 @@ SpectrogramControls.propTypes = {
   defaultY: PropTypes.arrayOf(PropTypes.number).isRequired,
   detailProfile: PropTypes.string.isRequired,
   setDetailProfile: PropTypes.func.isRequired,
-  duration: PropTypes.number,
   sampleRate: PropTypes.number,
   disabled: PropTypes.bool,
+  rerendering: PropTypes.bool,
+  onRerenderVisible: PropTypes.func,
 };

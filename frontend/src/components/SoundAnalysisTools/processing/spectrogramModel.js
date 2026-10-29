@@ -4,8 +4,8 @@ export const DEFAULT_DISPLAY_MAX_DB = 0;
 export const DEFAULT_DETAIL_PROFILE = 'medium';
 export const DETAIL_PROFILES = Object.freeze({
   low: Object.freeze({ label: 'Low', maxFrames: 1024, maxBins: 512 }),
-  medium: Object.freeze({ label: 'Medium', maxFrames: 2048, maxBins: 1024 }),
-  high: Object.freeze({ label: 'High', maxFrames: 4096, maxBins: 2048 }),
+  medium: Object.freeze({ label: 'Medium', maxFrames: 1536, maxBins: 768 }),
+  high: Object.freeze({ label: 'High', maxFrames: 2048, maxBins: 1024 }),
 });
 
 const PROFILE_VALUES = Object.values(DETAIL_PROFILES);

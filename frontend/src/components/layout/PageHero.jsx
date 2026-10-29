@@ -29,7 +29,7 @@ export default function PageHero({
 }) {
   const prefersReducedMotion = useMediaQuery('(prefers-reduced-motion: reduce)');
   const videoRef = useRef(null);
-  const [videoPlaying, setVideoPlaying] = useState(false);
+  const [videoPlaying, setVideoPlaying] = useState(true);
   const hasVideo = Boolean(videoSrc);
   const titleId = `${id ?? 'page'}-title`;
 

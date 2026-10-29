@@ -107,7 +107,7 @@ export const makeTicks = (min, max, count = 6) => {
   });
 };
 
-const nearestIndex = (values, target) => {
+export const nearestIndex = (values, target) => {
   if (!values || values.length === 0) return 0;
   let bestIndex = 0;
   let bestDistance = Infinity;

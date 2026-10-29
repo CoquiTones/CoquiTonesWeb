@@ -9,9 +9,10 @@ import Box from '@mui/material/Box';
  * Playback time is handled inside the element (rather than lifted to React
  * state) so time updates do not re-render the spectrogram while audio plays.
  */
-export default function SoundPlayer({ file, yrange, xrange }) {
+export default function SoundPlayer({ file, yrange, xrange, audioRef: externalAudioRef = null }) {
   const [audioUrl, setAudioUrl] = useState(null);
-  const audioRef = useRef(null);
+  const localAudioRef = useRef(null);
+  const audioRef = externalAudioRef ?? localAudioRef;
   const audioContextRef = useRef(null);
   const filterRef = useRef(null);
 
@@ -42,9 +43,28 @@ export default function SoundPlayer({ file, yrange, xrange }) {
 
   useEffect(() => {
     const audio = audioRef.current;
-    if (!audio || !xrange || audio.currentTime <= xrange[1]) return;
-    audio.currentTime = xrange[0];
-  }, [xrange]);
+    if (!audio || !xrange) return;
+    if (audio.currentTime < xrange[0] || audio.currentTime > xrange[1]) {
+      audio.currentTime = xrange[0];
+    }
+  }, [audioRef, audioUrl, xrange]);
+
+  // timeupdate fires roughly four times a second; nudge the playhead back at
+  // the visible-window boundary promptly so the line does not sit outside the
+  // plot between events.
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (!audio || !xrange) return undefined;
+
+    const enforceVisibleLoop = () => {
+      if (audio.paused) return;
+      if (audio.currentTime < xrange[0] || audio.currentTime > xrange[1]) {
+        audio.currentTime = xrange[0];
+      }
+    };
+    const interval = setInterval(enforceVisibleLoop, 100);
+    return () => clearInterval(interval);
+  }, [audioRef, audioUrl, xrange]);
 
   useEffect(
     () => () => {
@@ -82,8 +102,10 @@ export default function SoundPlayer({ file, yrange, xrange }) {
 
   const handleTimeUpdate = (event) => {
     const audio = event.currentTarget;
-    if (!xrange || audio.currentTime <= xrange[1]) return;
-    audio.currentTime = xrange[0];
+    if (!xrange) return;
+    if (audio.currentTime < xrange[0] || audio.currentTime > xrange[1]) {
+      audio.currentTime = xrange[0];
+    }
   };
 
   if (!file || !audioUrl) return null;
@@ -109,4 +131,7 @@ SoundPlayer.propTypes = {
   file: PropTypes.instanceOf(File),
   yrange: PropTypes.arrayOf(PropTypes.number),
   xrange: PropTypes.arrayOf(PropTypes.number),
+  audioRef: PropTypes.shape({
+    current: PropTypes.object,
+  }),
 };

@@ -15,7 +15,7 @@ describe('spectrogramModel', () => {
     expect(validateAnalysis(makeAnalysis())).toEqual([]);
   });
 
-  it('exposes three increasing generation profiles', () => {
+  it('exposes three increasing generation profiles within the plan bound', () => {
     expect(Object.keys(DETAIL_PROFILES)).toEqual(['low', 'medium', 'high']);
     expect(DEFAULT_DETAIL_PROFILE).toBe('medium');
     expect(getDetailProfile('missing')).toBe(DETAIL_PROFILES.medium);
@@ -24,6 +24,11 @@ describe('spectrogramModel', () => {
     expect(DETAIL_PROFILES.medium.maxFrames).toBeLessThan(DETAIL_PROFILES.high.maxFrames);
     expect(DETAIL_PROFILES.low.maxBins).toBeLessThan(DETAIL_PROFILES.medium.maxBins);
     expect(DETAIL_PROFILES.medium.maxBins).toBeLessThan(DETAIL_PROFILES.high.maxBins);
+    expect(DETAIL_PROFILES.medium.maxFrames).toBe(1536);
+    expect(DETAIL_PROFILES.medium.maxBins).toBe(768);
+    expect(DETAIL_PROFILES.high.maxFrames).toBe(2048);
+    expect(DETAIL_PROFILES.high.maxBins).toBe(1024);
+    expect(MAX_FRAMES).toBe(2048);
   });
 
   it('rejects mismatched db dimensions', () => {

@@ -101,7 +101,11 @@ export default function Classifier() {
 
         {status === 'ready' && report && report.length > 0 && (
           <Paper sx={{ p: { xs: 2, md: 3 } }}>
-            <ClassificationResults report={report} fileName={audioFile?.name} />
+            <ClassificationResults
+              report={report}
+              fileName={audioFile?.name}
+              audioFile={audioFile}
+            />
           </Paper>
         )}
 
