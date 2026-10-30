@@ -23,6 +23,7 @@ export class APIHandlerNetworkMonitor extends APIHandlerBase {
         method: 'POST',
         body: insertNewNodeRequest.toFormData(),
         expect: 'none',
+        timeoutMs: 20000,
       });
     } catch (error) {
       throw new APIHandlerError(`Could not add the node: ${error.message}`);

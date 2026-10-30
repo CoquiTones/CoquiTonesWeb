@@ -10,6 +10,7 @@ import { BackendError } from './Errors';
 export default class APIHandlerBase {
   constructor() {
     this.web_url = import.meta.env.VITE_BACKEND_API_URL ?? '';
+    this.timeout_ms = 60000;
   }
 
   getAuthenticationHeader() {
@@ -25,31 +26,57 @@ export default class APIHandlerBase {
    *   headers?: Record<string,string>,
    *   auth?: boolean,
    *   expect?: 'json'|'blob'|'text'|'none',
+   *   timeoutMs?: number,
    * }} [options]
    */
-  async request(path, { method = 'GET', body, headers = {}, auth = true, expect = 'json' } = {}) {
+  async request(
+    path,
+    {
+      method = 'GET',
+      body,
+      headers = {},
+      auth = true,
+      expect = 'json',
+      timeoutMs = this.timeout_ms,
+    } = {},
+  ) {
     if (!this.web_url) {
       throw new BackendError('The API URL is not configured. Set VITE_BACKEND_API_URL.');
     }
 
-    const response = await fetch(`${this.web_url}${path}`, {
-      method,
-      body,
-      headers: {
-        ...(auth ? this.getAuthenticationHeader() : {}),
-        ...headers,
-      },
-    });
+    // Always bound the request: a backend stall or a proxy that never answers
+    // must not leave the UI stuck on a loading state forever.
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
 
-    if (!response.ok) {
-      const detail = response.statusText ? ` ${response.statusText}` : '';
-      throw new BackendError(`${method} ${path} failed (${response.status}${detail}).`);
+    try {
+      const response = await fetch(`${this.web_url}${path}`, {
+        method,
+        body,
+        headers: {
+          ...(auth ? this.getAuthenticationHeader() : {}),
+          ...headers,
+        },
+        signal: controller.signal,
+      });
+
+      if (!response.ok) {
+        const detail = response.statusText ? ` ${response.statusText}` : '';
+        throw new BackendError(`${method} ${path} failed (${response.status}${detail}).`);
+      }
+
+      if (expect === 'none') return null;
+      if (expect === 'blob') return response.blob();
+      if (expect === 'text') return response.text();
+      return response.json();
+    } catch (error) {
+      if (error?.name === 'AbortError') {
+        throw new BackendError(`${method} ${path} timed out after ${timeoutMs} ms.`);
+      }
+      throw error;
+    } finally {
+      clearTimeout(timer);
     }
-
-    if (expect === 'none') return null;
-    if (expect === 'blob') return response.blob();
-    if (expect === 'text') return response.text();
-    return response.json();
   }
 
   /**

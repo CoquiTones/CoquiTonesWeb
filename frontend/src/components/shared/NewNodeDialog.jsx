@@ -83,15 +83,24 @@ export default function NewNodeDialog({ onCreated }) {
         form.password,
       );
       await apiHandler.insert_new_node(request);
-      setOpen(false);
-      setForm(EMPTY_FORM);
-      setFormError('');
-      await onCreated?.();
     } catch (error) {
       addError(error);
       setFormError('The node could not be added. Check the values and try again.');
-    } finally {
       setSubmitting(false);
+      return;
+    }
+
+    // The node is registered: close immediately and stop the spinner before
+    // refreshing the list, so a slow refresh cannot leave the form stuck.
+    setOpen(false);
+    setForm(EMPTY_FORM);
+    setFormError('');
+    setSubmitting(false);
+
+    try {
+      await onCreated?.();
+    } catch (error) {
+      addError(error);
     }
   };
 

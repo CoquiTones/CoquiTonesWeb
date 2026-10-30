@@ -147,7 +147,9 @@ async def node_insert(
 
     if client_error is not None:
         raise client_error
-    if client_task is None or not client_task.result():
+    # Secondary nodes do not get their own MQTT client, so only primary nodes
+    # need the client-creation task to have succeeded.
+    if ntype == "primary" and (client_task is None or not client_task.result()):
         raise HTTPException(
             status_code=500,
             detail="Failed to create MQTT client for primary node.",

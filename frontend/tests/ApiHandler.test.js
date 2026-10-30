@@ -68,4 +68,27 @@ describe('APIHandlerBase audio endpoints', () => {
 
     await expect(handler.getAudioById(makeRequest())).rejects.toThrow(/405/);
   });
+
+  it('aborts a request that never answers', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(
+        (_url, options) =>
+          new Promise((_resolve, reject) => {
+            options.signal.addEventListener('abort', () => {
+              const error = new Error('aborted');
+              error.name = 'AbortError';
+              reject(error);
+            });
+          }),
+      ),
+    );
+
+    const handler = new APIHandlerBase();
+    handler.web_url = 'https://example.test';
+
+    await expect(
+      handler.request('/api/node/insert', { method: 'POST', timeoutMs: 5 }),
+    ).rejects.toThrow(/timed out after 5 ms/);
+  });
 });

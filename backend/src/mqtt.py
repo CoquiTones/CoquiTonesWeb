@@ -23,7 +23,6 @@ from enum import Enum
 from datetime import datetime
 from audio.basic_service import classify_and_save
 from mlutil import get_model
-from queue import Queue
 from random import randint
 from logger import Logger
 from constants import MQTT_LISTENER_PASSWORD_ENV, MQTT_ADMIN_PASSWORD_ENV, MQTT_BROKER_HOSTNAME_ENV
@@ -39,8 +38,9 @@ MQTT_BROKER_PORT = 2043
 CONTROL_TOPIC = "$CONTROL/dynamic-security/v1"
 CONTROL_RESPONSE_TOPIC = "$CONTROL/dynamic-security/v1/response"
 
-MAX_COMMAND_QUEUE_SIZE = 10
-COMMAND_CHECK_PERIOD = 0.1  # seconds
+# Broker commands normally answer within milliseconds. Timing out keeps a lost
+# response (or an unreachable broker) from leaving an HTTP request hanging.
+MQTT_OPERATION_TIMEOUT = 10  # seconds
 
 
 # ---Report Data Types---
@@ -221,16 +221,26 @@ class CommandExcept(BaseException):
 
     def __str__(self) -> str:
         return self.detail.error
-    
+
+
+@dataclass
+class PendingCommand:
+    """A command that has been sent to the broker and awaits its response."""
+
+    handle: CommandHandle
+    event: asyncio.Event
+    output: bytes | None = None
+
+
 @dataclass
 class TaskHandles:
     command_listener_task: asyncio.Task
     report_listener_task: asyncio.Task
 
-command_sender_info_queue: Queue[tuple[CommandHandle, asyncio.Event]] = Queue(
-    MAX_COMMAND_QUEUE_SIZE
-)
-receive_command_output_channel: dict[CommandHandle, bytes] = {}
+
+# Commands are serialized by `global_command_lock`, so at most one command can
+# be waiting for a response at a time.
+pending_command: PendingCommand | None = None
 global_command_lock = asyncio.Lock()
 listener_ready = asyncio.Event()
 
@@ -266,18 +276,22 @@ async def listen_for_commands():
         username="admin",
         password=ADMIN_PASSWORD,
     ) as client:
-        # Don't start sending commands until they can be received
-        listener_ready.set()
         await client.subscribe(CONTROL_RESPONSE_TOPIC)
+        # Don't start sending commands until their responses can be received.
+        listener_ready.set()
         async for message in client.messages:
             assert isinstance(message.payload, bytes)
             handle_command_output(message.payload)
 
 
 def handle_command_output(command_output: bytes):
-    handle, event = command_sender_info_queue.get()
-    receive_command_output_channel[handle] = command_output
-    event.set()
+    global pending_command
+    pending = pending_command
+    if pending is None:
+        LOGGER.warning("Received an MQTT command response with no command pending")
+        return
+    pending.output = command_output
+    pending.event.set()
 
 
 def reports_main():
@@ -391,6 +405,7 @@ async def all_clients() -> dict[str, MQTTClientDescription]:
         identifier="admin",
         username="admin",
         password=ADMIN_PASSWORD,
+        timeout=MQTT_OPERATION_TIMEOUT,
     ) as client:
         return clients_from_command(await _execute_command(client, args))
 
@@ -408,6 +423,7 @@ async def broker_sync():
         identifier="admin",
         username="admin",
         password=ADMIN_PASSWORD,
+        timeout=MQTT_OPERATION_TIMEOUT,
     ) as client:
         async with get_transaction() as transaction:
             db = transaction.connection
@@ -515,6 +531,7 @@ async def create_node(user_id: int, node_username: str, node_password: SecretStr
         identifier="admin",
         username="admin",
         password=ADMIN_PASSWORD,
+        timeout=MQTT_OPERATION_TIMEOUT,
     ) as client:
         await _execute_command(client, args)
 
@@ -536,6 +553,7 @@ async def add_topic_access(user_id: int, node_id: int):
         identifier="admin",
         username="admin",
         password=ADMIN_PASSWORD,
+        timeout=MQTT_OPERATION_TIMEOUT,
     ) as client:
         await _add_topic_access(client, user_id, node_id)
 
@@ -590,6 +608,7 @@ async def create_user_role(user_id: int):
         identifier="admin",
         username="admin",
         password=ADMIN_PASSWORD,
+        timeout=MQTT_OPERATION_TIMEOUT,
     ) as client:
         await _create_user_role(client, user_id)
 
@@ -628,25 +647,41 @@ async def _execute_command(admin_client: Client, args: MQTTArgs) -> SuccessfulRe
         Command output (only if successful)
 
     Raises:
-        CommandExcept when command fails
+        CommandExcept when command fails or the broker does not answer in time
     """
-    
+    global pending_command
+
     async with global_command_lock:
         await listener_ready.wait()
         message = MQTTCommands(commands=[args]).model_dump_json(exclude_none=True)
-        await admin_client.publish(CONTROL_TOPIC, message)
 
-        handle = command_handle()
-        # Create an event to let us know when our command's output will be ready for us to read
-        # Note that the asyncio event primitive isn't thread safe; however, due to the 1 producer-1 consumer nature of how
-        # we are executing and reading the output of commands, no race conditions can occur.
-        output_received = asyncio.Event()
-        # Send the command listener thread a message telling it we want to receive the output for the command we sent out
-        command_sender_info_queue.put((handle, output_received))
-        # Wait until the output from that command is available
-        await output_received.wait()
-        # Retreive output
-        output = receive_command_output_channel.get(handle)
+        # Register the pending command *before* publishing. The broker can
+        # answer while `publish` is still yielding to the event loop; attaching
+        # the response afterwards would lose it and hang forever.
+        pending = PendingCommand(handle=command_handle(), event=asyncio.Event())
+        pending_command = pending
+
+        try:
+            await admin_client.publish(CONTROL_TOPIC, message)
+            try:
+                await asyncio.wait_for(
+                    pending.event.wait(), timeout=MQTT_OPERATION_TIMEOUT
+                )
+            except asyncio.TimeoutError:
+                raise CommandExcept(
+                    ErrorResponse(
+                        command=args.command,
+                        error=(
+                            "Timed out waiting for the MQTT broker to respond to "
+                            f"'{args.command}'."
+                        ),
+                    )
+                )
+        finally:
+            if pending_command is pending:
+                pending_command = None
+
+    output = pending.output
     assert output is not None
     raw_command_output = MQTTCommandResponses.model_validate_json(output.decode())
     # We get exactly 1 response.
