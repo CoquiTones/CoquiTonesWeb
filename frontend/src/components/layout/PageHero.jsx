@@ -1,10 +1,9 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import Box from '@mui/material/Box';
 import Container from '@mui/material/Container';
 import IconButton from '@mui/material/IconButton';
 import Typography from '@mui/material/Typography';
 import Tooltip from '@mui/material/Tooltip';
-import useMediaQuery from '@mui/material/useMediaQuery';
 import { alpha } from '@mui/material/styles';
 import PauseRoundedIcon from '@mui/icons-material/PauseRounded';
 import PlayArrowRoundedIcon from '@mui/icons-material/PlayArrowRounded';
@@ -12,8 +11,8 @@ import PlayArrowRoundedIcon from '@mui/icons-material/PlayArrowRounded';
 /**
  * Shared page hero used by every top-level page.
  *
- * The background video is decorative (muted, `aria-hidden`), pauses when the
- * user prefers reduced motion, and exposes an explicit pause/play control.
+ * The background video is decorative (muted, `aria-hidden`), starts playing by
+ * default, and exposes an explicit pause/play control so visitors can stop it.
  */
 export default function PageHero({
   id,
@@ -27,26 +26,92 @@ export default function PageHero({
   compact = false,
   children,
 }) {
-  const prefersReducedMotion = useMediaQuery('(prefers-reduced-motion: reduce)');
   const videoRef = useRef(null);
+  // Tracks whether the visitor explicitly paused the video, so browser
+  // events (tab switches, stalled loads) do not override their choice.
+  const userPausedRef = useRef(false);
   const [videoPlaying, setVideoPlaying] = useState(true);
-  const hasVideo = Boolean(videoSrc);
+  const [videoFailed, setVideoFailed] = useState(false);
+  const hasVideo = Boolean(videoSrc) && !videoFailed;
   const titleId = `${id ?? 'page'}-title`;
 
-  useEffect(() => {
-    if (prefersReducedMotion) setVideoPlaying(false);
-  }, [prefersReducedMotion]);
-
-  useEffect(() => {
+  /**
+   * Start playback. `play()` is called directly from the click handler (not
+   * from an effect) so browsers count the click as a user gesture.
+   */
+  const playVideo = useCallback(() => {
     const video = videoRef.current;
     if (!video) return;
 
-    if (videoPlaying && !prefersReducedMotion) {
-      video.play().catch(() => setVideoPlaying(false));
-    } else {
-      video.pause();
+    const attempt = video.play();
+    if (attempt && typeof attempt.catch === 'function') {
+      attempt.catch((error) => {
+        // A newer play/pause request replaced this one; not a real failure.
+        if (error?.name === 'AbortError') return;
+        setVideoPlaying(false);
+      });
     }
-  }, [videoPlaying, prefersReducedMotion]);
+  }, []);
+
+  const pauseVideo = useCallback(() => {
+    videoRef.current?.pause();
+  }, []);
+
+  /**
+   * Some browsers (notably Safari) only allow muted autoplay when the `muted`
+   * content attribute is present. React sets the property, so set the
+   * attribute explicitly as soon as the element is attached.
+   */
+  const attachVideo = useCallback((node) => {
+    videoRef.current = node;
+    if (!node) return;
+    node.muted = true;
+    node.defaultMuted = true;
+    node.setAttribute('muted', '');
+  }, []);
+
+  // Kick off playback on mount (and if the source changes) unless the visitor
+  // has paused it. This also recovers from interrupted autoplay attempts.
+  useEffect(() => {
+    if (!hasVideo) return;
+    if (userPausedRef.current) pauseVideo();
+    else playVideo();
+  }, [hasVideo, videoSrc, playVideo, pauseVideo]);
+
+  // Resume when the tab/page becomes visible again, unless the visitor paused.
+  useEffect(() => {
+    if (!hasVideo) return undefined;
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible' && !userPausedRef.current) {
+        playVideo();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, [hasVideo, playVideo]);
+
+  const toggleVideo = () => {
+    const video = videoRef.current;
+    if (!video) return;
+
+    if (video.paused) {
+      userPausedRef.current = false;
+      playVideo();
+    } else {
+      userPausedRef.current = true;
+      pauseVideo();
+    }
+  };
+
+  const handleCanPlay = () => {
+    // If autoplay was interrupted while the media was loading, retry once the
+    // browser has enough data. Explicit user pauses are never overridden.
+    if (!userPausedRef.current && videoRef.current?.paused) {
+      playVideo();
+    }
+  };
 
   return (
     <Box
@@ -83,17 +148,23 @@ export default function PageHero({
         >
           {hasVideo && (
             <Box
-              ref={videoRef}
+              ref={attachVideo}
               component="video"
               src={videoSrc}
               poster={image}
               muted
               loop
               playsInline
-              preload="metadata"
-              autoPlay={!prefersReducedMotion}
+              preload="auto"
+              autoPlay
+              disablePictureInPicture
               onPlay={() => setVideoPlaying(true)}
               onPause={() => setVideoPlaying(false)}
+              onCanPlay={handleCanPlay}
+              onError={() => {
+                setVideoFailed(true);
+                setVideoPlaying(false);
+              }}
             />
           )}
           {!hasVideo && image && (
@@ -152,11 +223,11 @@ export default function PageHero({
         </Box>
       </Container>
 
-      {hasVideo && !prefersReducedMotion && (
+      {hasVideo && (
         <Tooltip title={videoPlaying ? 'Pause background video' : 'Play background video'}>
           <IconButton
             aria-label={videoPlaying ? 'Pause background video' : 'Play background video'}
-            onClick={() => setVideoPlaying((playing) => !playing)}
+            onClick={toggleVideo}
             sx={{
               position: 'absolute',
               right: { xs: 12, md: 24 },
