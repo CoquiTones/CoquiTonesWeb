@@ -4,7 +4,9 @@ import Button from '@mui/material/Button';
 import Dialog from '@mui/material/Dialog';
 import DialogActions from '@mui/material/DialogActions';
 import DialogContent from '@mui/material/DialogContent';
+import DialogContentText from '@mui/material/DialogContentText';
 import DialogTitle from '@mui/material/DialogTitle';
+import Divider from '@mui/material/Divider';
 import Drawer from '@mui/material/Drawer';
 import IconButton from '@mui/material/IconButton';
 import Paper from '@mui/material/Paper';
@@ -19,6 +21,15 @@ import DataManager from '../components/shared/DataManager';
 import SoundPlayer from '../components/SoundAnalysisTools/render/SoundPlayer';
 import Spectrogram from '../components/SoundAnalysisTools/render/Spectrogram';
 import SpectrogramControls from '../components/SoundAnalysisTools/render/SpectrogramControls';
+import AnnotationPanel from '../components/SoundAnalysisTools/annotation/AnnotationPanel';
+import { useAnnotationReport } from '../components/SoundAnalysisTools/annotation/useAnnotationReport';
+import { useUnsavedChangesGuard } from '../components/SoundAnalysisTools/annotation/useUnsavedChangesGuard';
+import {
+  buildAnnotationExport,
+  downloadAnnotationExport,
+  exportFileName,
+} from '../components/SoundAnalysisTools/annotation/annotationExport';
+import { hasSessionToken } from '../services/Authentication/sessionToken';
 import {
   DEFAULT_DETAIL_PROFILE,
   getDetailProfile,
@@ -40,6 +51,7 @@ export default function SpectralAnalysis() {
   const audioRef = useRef(null);
   const spectrogramRef = useRef(null);
   const [audioFile, setAudioFile] = useState(null);
+  const [recording, setRecording] = useState(null);
   const [colorscale, setColorscale] = useState('jet');
   const [xrange, setXrange] = useState([0, 15]);
   const [yrange, setYrange] = useState([0, 10000]);
@@ -49,12 +61,21 @@ export default function SpectralAnalysis() {
   const [panelOpen, setPanelOpen] = useState(false);
   const [stats, setStats] = useState(null);
   const [fileInfoOpen, setFileInfoOpen] = useState(false);
+  const [exportError, setExportError] = useState(null);
+  const [exporting, setExporting] = useState(false);
   const [processing, setProcessing] = useState({
     status: 'idle',
     progress: null,
     error: null,
     refining: false,
   });
+
+  const annotation = useAnnotationReport({
+    audioFile,
+    durationSeconds: stats?.duration ?? 0,
+    recording,
+  });
+  const unsavedChanges = useUnsavedChangesGuard({ when: annotation.dirty });
 
   useEffect(() => {
     const [min, max] = defaultX;
@@ -87,12 +108,124 @@ export default function SpectralAnalysis() {
     />
   );
 
+  const requestAnnotationMode = (nextMode) => {
+    if (nextMode === 'editor') {
+      annotation.enterEditor();
+      return;
+    }
+    if (annotation.dirty) {
+      unsavedChanges.requestLeave(() => annotation.discardDraft());
+      return;
+    }
+    annotation.showReported();
+  };
+
+  const handleSelectAudioFile = (nextFile, nextRecording = null) => {
+    const select = () => {
+      setRecording(nextRecording);
+      setAudioFile(nextFile);
+    };
+
+    if (annotation.dirty) {
+      unsavedChanges.requestLeave(select);
+      return;
+    }
+    select();
+  };
+
+  const canExportAnnotations = Boolean(
+    audioFile
+    && annotation.windowCount > 0
+    && (stats?.duration ?? 0) > 0,
+  );
+  const exportDisabledReason = !audioFile
+    ? 'Load a recording to export annotations.'
+    : !canExportAnnotations
+      ? 'Wait for the recording duration before exporting annotations.'
+      : null;
+
+  const handleExportAnnotations = () => {
+    setExportError(null);
+    setExporting(true);
+    try {
+      const payload = buildAnnotationExport({
+        audioFile,
+        durationSeconds: stats?.duration ?? 0,
+        afid: recording?.afid ?? null,
+        source: annotation.source,
+        isDraft: annotation.dirty || !recording?.afid,
+        windows: annotation.windows,
+      });
+      downloadAnnotationExport(payload, exportFileName(audioFile.name));
+    } catch (error) {
+      setExportError(error);
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  const saveDisabledReason = !audioFile
+    ? 'Load a recording to save annotations.'
+    : !recording?.afid
+      ? 'Save the recording to the database before saving annotations.'
+      : !hasSessionToken()
+        ? 'Sign in to save annotations.'
+        : !annotation.dirty
+          ? 'No unsaved changes.'
+          : null;
+
+  const annotationPanel = (
+    <AnnotationPanel
+      mode={annotation.isEditor ? 'editor' : 'reported'}
+      onModeChange={requestAnnotationMode}
+      source={annotation.source}
+      pinnedWindow={annotation.pinnedWindow}
+      pinnedWindowIndex={annotation.pinnedWindowIndex}
+      windowCount={annotation.windowCount}
+      onPinWindow={annotation.pinWindow}
+      onToggleSpecies={annotation.toggleSpecies}
+      readOnly={annotation.isReported}
+      dirty={annotation.dirty}
+      warnings={annotation.warnings}
+      status={annotation.status}
+      error={annotation.error}
+      canSave={annotation.canSave}
+      onSave={annotation.save}
+      saving={annotation.saving}
+      saveError={annotation.saveError}
+      saveMessage={annotation.saveMessage}
+      saveDisabledReason={saveDisabledReason}
+      conflict={annotation.conflict}
+      onReloadConflict={annotation.reloadConflict}
+      onOverwriteConflict={annotation.overwriteConflict}
+      onCancelConflict={annotation.cancelConflict}
+      onDismissSaveFeedback={annotation.dismissSaveFeedback}
+      canExport={canExportAnnotations}
+      onExport={handleExportAnnotations}
+      exportDisabledReason={exportDisabledReason}
+      exporting={exporting}
+      exportError={exportError}
+      savedAt={annotation.savedAt}
+    />
+  );
+
+  const sidePanel = (
+    <>
+      {annotationPanel}
+      <Divider sx={{ my: 3 }} />
+      <Typography component="h2" variant="h6" color="text.primary" sx={{ mb: 2 }}>
+        Spectrogram settings
+      </Typography>
+      {controls}
+    </>
+  );
+
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: { md: 'calc(100dvh - 64px)' } }}>
       <PageHeader
         eyebrow="Analysis workspace"
         title="Spectral analysis"
-        description="Upload or load a recording, tune the analysis detail, then narrow the spectrogram to the time and frequency band you care about."
+        description="Upload or load a recording, annotate ten-second windows, tune the analysis detail, then narrow the spectrogram to the time and frequency band you care about."
       />
 
       <Box
@@ -108,12 +241,13 @@ export default function SpectralAnalysis() {
         <Paper sx={{ p: 2 }}>
           <DataManager
             audioFile={audioFile}
-            setAudioFile={setAudioFile}
+            setAudioFile={handleSelectAudioFile}
             setDefaultX={setDefaultX}
             setDefaultY={setDefaultY}
             setStats={setStats}
             canExport={Boolean(audioFile) && processing.status === 'ready'}
             onExportScreenshot={() => spectrogramRef.current?.exportScreenshot()}
+            onRecordingSaved={(saved) => setRecording(saved)}
           />
         </Paper>
 
@@ -184,16 +318,16 @@ export default function SpectralAnalysis() {
                 maxBins={detail.maxBins}
                 onProcessingChange={setProcessing}
                 audioRef={audioRef}
+                annotationWindows={annotation.windows}
+                pinnedWindowIndex={annotation.pinnedWindowIndex}
+                onPinWindow={annotation.pinWindow}
               />
             </Box>
           </Paper>
 
           {isDesktop && (
             <Paper sx={{ width: PANEL_WIDTH, flexShrink: 0, p: 2.5, overflowY: 'auto' }}>
-              <Typography component="h2" variant="h6" color="text.primary" sx={{ mb: 2 }}>
-                Spectrogram settings
-              </Typography>
-              {controls}
+              {sidePanel}
             </Paper>
           )}
         </Box>
@@ -201,12 +335,29 @@ export default function SpectralAnalysis() {
 
       <Drawer anchor="right" open={panelOpen} onClose={() => setPanelOpen(false)}>
         <Box sx={{ width: { xs: '88vw', sm: 380 }, p: 2.5 }} role="presentation">
-          <Typography component="h2" variant="h6" color="text.primary" sx={{ mb: 2 }}>
-            Spectrogram settings
-          </Typography>
-          {controls}
+          {sidePanel}
         </Box>
       </Drawer>
+
+      <Dialog
+        open={unsavedChanges.isPromptOpen}
+        onClose={unsavedChanges.cancelLeave}
+        fullWidth
+        maxWidth="xs"
+      >
+        <DialogTitle>Discard annotation changes?</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            {unsavedChanges.message} If you continue, your annotation draft will be discarded.
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={unsavedChanges.cancelLeave}>Keep editing</Button>
+          <Button color="warning" variant="contained" onClick={unsavedChanges.confirmLeave}>
+            Discard changes
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       <Dialog open={fileInfoOpen} onClose={() => setFileInfoOpen(false)} fullWidth maxWidth="xs">
         <DialogTitle>File information</DialogTitle>

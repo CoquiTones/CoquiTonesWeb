@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import DataManager from '../src/components/shared/DataManager';
 import { ErrorProvider } from '../src/components/shared/ErrorContext';
+import { GlobalStateProvider } from '../src/services/Authentication/GlobalStateManager';
 import { renderWithTheme } from './helpers/renderWithTheme';
 
 const makeProps = (overrides = {}) => ({
@@ -17,9 +18,11 @@ const makeProps = (overrides = {}) => ({
 });
 
 const renderManager = (props) => renderWithTheme(
-  <ErrorProvider>
-    <DataManager {...props} />
-  </ErrorProvider>,
+  <GlobalStateProvider>
+    <ErrorProvider>
+      <DataManager {...props} />
+    </ErrorProvider>
+  </GlobalStateProvider>,
 );
 
 describe('DataManager export control', () => {
@@ -40,5 +43,17 @@ describe('DataManager export control', () => {
     }));
 
     expect(props.onExportScreenshot).toHaveBeenCalledTimes(1);
+  });
+
+  it('explains that database loading requires a session', async () => {
+    renderManager(makeProps());
+
+    fireEvent.click(screen.getByRole('button', {
+      name: 'Load a recording from the database',
+    }));
+
+    expect(await screen.findByText(
+      'Sign in to load recordings stored in the database.',
+    )).toBeTruthy();
   });
 });

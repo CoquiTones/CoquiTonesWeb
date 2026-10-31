@@ -42,6 +42,53 @@ The app is then available at:
 - <https://localhost:5173> — frontend dev server
 - <https://localhost:8080> — backend API and built frontend
 
+### Annotation schema upgrade for existing databases
+
+Fresh database volumes get the annotation tables from [`init.sql`](../init.sql). If you already
+have a PostgreSQL volume, apply the additive migration once:
+
+```bash
+docker compose exec -T database psql -U postgres -d postgres \
+  < scripts/migrations/001_add_annotation_tables.sql
+```
+
+The migration creates `annotationreport` and `annotationslice` without dropping existing data.
+It is safe to run again because the table and index creation use `IF NOT EXISTS`.
+
+### Annotating spectral windows
+
+The Spectral Analysis page splits the loaded recording into contiguous ten-second windows.
+Hovering a window previews it on the spectrogram; click, tap, or press Enter/Space on the
+focused plot to pin it. The **Reported** view is read-only and the **Editor** view toggles the
+eight species flags for the pinned window.
+
+The authoritative report is resolved per signed-in user:
+
+1. **Manual** — that user's most recent saved report for the recording. Manual reports are
+   private and are stored separately from classifier output.
+2. **Classifier** — the existing `audioslice` rows when the user has no manual report. Rows
+   that do not align with the ten-second grid are skipped and a warning is shown.
+3. **None** — every species is absent when neither source exists.
+
+Local uploads can be annotated and exported immediately. To save annotations, first use the
+save button in the toolbar to persist the recording to the database; the recording then gains
+an `afid` and the in-progress draft is preserved. Saving annotations requires a signed-in
+session and a database-backed recording. If a newer report was saved in another tab, the
+conflict dialog offers **Reload latest** or an explicit **Overwrite**; it never overwrites
+silently. Browser unloads, internal navigation, mode switches, and loading another recording
+all prompt before discarding unsaved changes.
+
+**Export annotations** downloads a timestamped JSON file derived from the recording name for
+any loaded recording, including local-only ones. The export reflects the current on-screen
+windows and sets `is_draft` when the values are local-only or contain unsaved edits.
+
+### Demo data
+
+`scripts/test/generate_mock_data.py` resets the annotation tables and sequences along with the
+rest of the demo data. It creates ten-second-aligned classifier windows for a deterministic
+subset of recordings and leaves the rest unclassified so both the **Classifier** and **None**
+report sources can be reviewed.
+
 ## [Scripts](../scripts/)
 
 **Scripts but only for based unix users.**

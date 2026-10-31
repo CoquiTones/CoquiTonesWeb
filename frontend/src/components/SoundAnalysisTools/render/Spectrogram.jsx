@@ -32,6 +32,9 @@ const Spectrogram = memo(forwardRef(function Spectrogram({
   maxBins = DEFAULT_MAX_BINS,
   onProcessingChange,
   audioRef = null,
+  annotationWindows = [],
+  pinnedWindowIndex = null,
+  onPinWindow = null,
 }, ref) {
   const theme = useTheme();
   const isDesktop = useMediaQuery(theme.breakpoints.up('md'));
@@ -137,6 +140,9 @@ const Spectrogram = memo(forwardRef(function Spectrogram({
           error={error}
           onRetry={retry}
           audioRef={audioRef}
+          annotationWindows={annotationWindows}
+          pinnedWindowIndex={pinnedWindowIndex}
+          onPinWindow={onPinWindow}
         />
       </Box>
       {analysis && (
@@ -166,6 +172,9 @@ Spectrogram.propTypes = {
   audioRef: PropTypes.shape({
     current: PropTypes.object,
   }),
+  annotationWindows: PropTypes.arrayOf(PropTypes.object),
+  pinnedWindowIndex: PropTypes.number,
+  onPinWindow: PropTypes.func,
 };
 
 export default Spectrogram;

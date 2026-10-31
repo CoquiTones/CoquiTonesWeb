@@ -6,13 +6,19 @@ import Typography from '@mui/material/Typography';
 import { formatDbfs, formatFrequency, formatTime } from '../processing/spectrogramFormat';
 
 const TOOLTIP_WIDTH = 190;
-const TOOLTIP_HEIGHT = 96;
+const TOOLTIP_HEIGHT = 112;
 const EDGE_MARGIN = 8;
 const POINTER_OFFSET = 14;
 
 const clamp = (value, min, max) => Math.min(Math.max(value, min), max);
 
-export default function SpectrogramTooltip({ cell = null, pointer = null, plotRect, keyboardMode = false }) {
+export default function SpectrogramTooltip({
+  cell = null,
+  pointer = null,
+  plotRect,
+  keyboardMode = false,
+  window = null,
+}) {
   if (!cell || !pointer) return null;
 
   const minLeft = plotRect.left + EDGE_MARGIN;
@@ -47,6 +53,11 @@ export default function SpectrogramTooltip({ cell = null, pointer = null, plotRe
       <Typography component="p" variant="caption" color="text.secondary" sx={{ mb: 0.5 }}>
         Spectrogram readout
       </Typography>
+      {window && (
+        <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.75 }}>
+          Window {window.index + 1} · {formatTime(window.start)} – {formatTime(window.end)}
+        </Typography>
+      )}
       <Box component="dl" sx={{ m: 0, display: 'grid', gridTemplateColumns: 'auto 1fr', columnGap: 1.5, rowGap: 0.25 }}>
         <Typography component="dt" variant="caption" color="text.secondary">Time</Typography>
         <Typography component="dd" variant="caption" sx={{ m: 0, fontVariantNumeric: 'tabular-nums' }}>
@@ -82,6 +93,11 @@ SpectrogramTooltip.propTypes = {
     height: PropTypes.number.isRequired,
   }).isRequired,
   keyboardMode: PropTypes.bool,
+  window: PropTypes.shape({
+    index: PropTypes.number,
+    start: PropTypes.number,
+    end: PropTypes.number,
+  }),
 };
 
 

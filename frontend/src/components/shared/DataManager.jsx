@@ -37,6 +37,7 @@ export default function DataManager({
   setStats,
   canExport = false,
   onExportScreenshot,
+  onRecordingSaved,
 }) {
   const { addError } = useErrors();
   const [saveOpen, setSaveOpen] = useState(false);
@@ -108,10 +109,13 @@ export default function DataManager({
     try {
       const apiHandler = new APIHandlerSpectralAnalysis();
       const request = new InsertAudioRequest(audioFile, nodeId.trim(), recordedAt.valueOf());
-      await apiHandler.insertAudio(request);
+      const receipt = await apiHandler.insertAudio(request);
       setSaveOpen(false);
       setNodeId('');
       setSavedMessage('Recording saved to the database.');
+      if (receipt?.afid) {
+        onRecordingSaved?.({ afid: receipt.afid, nid: Number(request.nodeID) });
+      }
     } catch (error) {
       setSaveError(error?.message ?? 'The recording could not be saved.');
       addError(error);
@@ -167,8 +171,8 @@ export default function DataManager({
       <AudioLoader
         open={loaderOpen}
         onClose={() => setLoaderOpen(false)}
-        onSelect={(file) => {
-          setAudioFile(file);
+        onSelect={(file, recording) => {
+          setAudioFile(file, recording);
           setLoaderOpen(false);
         }}
       />

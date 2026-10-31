@@ -6,9 +6,12 @@ export class ValidationError extends Error {
 }
 
 export class BackendError extends Error {
-    constructor(message) {
+    constructor(message, { status = null, detail = null, payload = null } = {}) {
         super(message);
-        this.name = "BackendError"
+        this.name = "BackendError";
+        this.status = status;
+        this.detail = detail;
+        this.payload = payload;
     }
 }
 

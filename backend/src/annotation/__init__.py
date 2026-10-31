@@ -1,0 +1,1 @@
+"""Manual spectral annotation domain."""

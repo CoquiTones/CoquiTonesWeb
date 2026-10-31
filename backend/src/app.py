@@ -8,6 +8,7 @@ from audio.router import router as audio_router
 from weather.router import router as weather_router
 from node.router import router as node_router
 from dashboard.router import router as dashboard_router
+from annotation.router import router as annotation_router
 import mqtt
 import os
 import dotenv
@@ -58,6 +59,7 @@ api.include_router(audio_router)
 api.include_router(weather_router)
 api.include_router(node_router)
 api.include_router(dashboard_router)
+api.include_router(annotation_router)
 
 app.include_router(api)
 

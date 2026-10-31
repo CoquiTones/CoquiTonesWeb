@@ -69,6 +69,33 @@ describe('APIHandlerBase audio endpoints', () => {
     await expect(handler.getAudioById(makeRequest())).rejects.toThrow(/405/);
   });
 
+  it('preserves structured backend error details', async () => {
+    const payload = {
+      detail: {
+        message: 'A newer manual report exists for this recording.',
+        latest_report_id: 8,
+      },
+    };
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: false,
+        status: 409,
+        statusText: 'Conflict',
+        json: async () => payload,
+      }),
+    );
+
+    const handler = new APIHandlerBase();
+    handler.web_url = 'https://example.test';
+
+    await expect(handler.getAudioById(makeRequest())).rejects.toMatchObject({
+      status: 409,
+      detail: payload.detail,
+      payload,
+    });
+  });
+
   it('aborts a request that never answers', async () => {
     vi.stubGlobal(
       'fetch',

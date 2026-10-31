@@ -1,6 +1,14 @@
 import { getSessionToken } from '../../Authentication/sessionToken';
 import { BackendError } from './Errors';
 
+const readErrorPayload = async (response) => {
+  try {
+    return await response.json();
+  } catch {
+    return null;
+  }
+};
+
 /**
  * Small fetch wrapper shared by every API handler.
  *
@@ -61,8 +69,18 @@ export default class APIHandlerBase {
       });
 
       if (!response.ok) {
-        const detail = response.statusText ? ` ${response.statusText}` : '';
-        throw new BackendError(`${method} ${path} failed (${response.status}${detail}).`);
+        const payload = await readErrorPayload(response);
+        const detail = payload?.detail ?? null;
+        const detailMessage = typeof detail === 'string'
+          ? detail
+          : (detail && typeof detail.message === 'string' ? detail.message : null);
+        const statusText = !detailMessage && response.statusText
+          ? ` ${response.statusText}`
+          : '';
+        throw new BackendError(
+          `${method} ${path} failed (${response.status}${statusText}).`,
+          { status: response.status, detail, payload },
+        );
       }
 
       if (expect === 'none') return null;

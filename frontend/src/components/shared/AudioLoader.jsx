@@ -15,6 +15,10 @@ import { DateTimePicker } from '@mui/x-date-pickers/DateTimePicker';
 import CloudDownloadRoundedIcon from '@mui/icons-material/CloudDownloadRounded';
 
 import { useErrors } from './ErrorContext';
+import {
+  AuthenticationStatus,
+  useGlobalState,
+} from '../../services/Authentication/GlobalStateManager';
 import { APIHandlerDashboard } from '../../services/rest/APIHandler/APIHandlerDashboard';
 import RecentDataRequest from '../../services/rest/RequestORM/Dashboard/RecentDataRequest';
 import AudioFileRequest from '../../services/rest/RequestORM/Shared/AudioFileRequest';
@@ -33,6 +37,8 @@ const extensionFor = (mimeType = '') => {
 export default function AudioLoader({ open, onClose, onSelect }) {
   const apiHandler = useMemo(() => new APIHandlerDashboard(), []);
   const { addError } = useErrors();
+  const { authStatus } = useGlobalState();
+  const isAuthenticated = authStatus === AuthenticationStatus.AUTHENTICATED;
   const [rows, setRows] = useState([]);
   const [minTime, setMinTime] = useState(() => dayjs().subtract(100, 'day'));
   const [maxTime, setMaxTime] = useState(() => dayjs());
@@ -41,6 +47,7 @@ export default function AudioLoader({ open, onClose, onSelect }) {
   const [loadingAfid, setLoadingAfid] = useState(null);
 
   const fetchRows = useCallback(async () => {
+    if (!isAuthenticated) return;
     if (!minTime || !maxTime || minTime.isAfter(maxTime)) return;
 
     setLoading(true);
@@ -55,11 +62,11 @@ export default function AudioLoader({ open, onClose, onSelect }) {
     } finally {
       setLoading(false);
     }
-  }, [apiHandler, addError, minTime, maxTime]);
+  }, [apiHandler, addError, isAuthenticated, minTime, maxTime]);
 
   useEffect(() => {
-    if (open) fetchRows();
-  }, [open, fetchRows]);
+    if (open && isAuthenticated) fetchRows();
+  }, [open, isAuthenticated, fetchRows]);
 
   const handleLoad = async (row) => {
     setLoadingAfid(row.afid);
@@ -68,7 +75,7 @@ export default function AudioLoader({ open, onClose, onSelect }) {
       const file = new File([blob], `node-${row.nid}-${row.afid}.${extensionFor(blob.type)}`, {
         type: blob.type || 'audio/mpeg',
       });
-      onSelect(file);
+      onSelect(file, { afid: row.afid, nid: row.nid });
     } catch (loadError) {
       addError(loadError?.message ?? 'That recording could not be downloaded.');
     } finally {
@@ -92,7 +99,7 @@ export default function AudioLoader({ open, onClose, onSelect }) {
           variant="outlined"
           startIcon={<CloudDownloadRoundedIcon />}
           onClick={() => handleLoad(params.row)}
-          disabled={loadingAfid === params.row.afid}
+          disabled={!isAuthenticated || loadingAfid === params.row.afid}
         >
           {loadingAfid === params.row.afid ? 'Loading…' : 'Load'}
         </Button>
@@ -104,6 +111,12 @@ export default function AudioLoader({ open, onClose, onSelect }) {
     <Dialog open={open} onClose={onClose} fullWidth maxWidth="md" aria-labelledby="audio-loader-title">
       <DialogTitle id="audio-loader-title">Load a recording</DialogTitle>
       <DialogContent>
+        {!isAuthenticated && (
+          <Alert severity="info" sx={{ mb: 2 }}>
+            Sign in to load recordings stored in the database.
+          </Alert>
+        )}
+
         <LocalizationProvider dateAdapter={AdapterDayjs}>
           <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} sx={{ mt: 1, mb: 2 }}>
             <DateTimePicker

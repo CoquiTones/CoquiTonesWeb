@@ -38,4 +38,4 @@ jobs:
         echo "PYTHONPATH=$(readlink -f ./backend/src)" >> "$GITHUB_ENV"
     - name: Test with unittest
       run: |
-        python -m unittest discover -v -s ./backend/tests/unit/ -p mlutil_test.py
+        python -m unittest discover -v -s ./backend/tests/unit/ -p "*_test.py"

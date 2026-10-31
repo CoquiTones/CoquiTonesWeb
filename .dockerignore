@@ -10,6 +10,7 @@
 # Frontend dependencies/build output (rebuilt inside the image)
 frontend/node_modules
 frontend/dist
+frontend/coverage
 
 # Python caches
 **/__pycache__

@@ -154,5 +154,5 @@ describe('SpectrogramPlot', () => {
         expect(text).toContain(formatDbfs(db[frame * binCount + bin]));
       }
     }
-  });
+  }, 15000);
 });

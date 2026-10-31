@@ -9,6 +9,7 @@ import SpectrogramCanvas from './SpectrogramCanvas';
 import SpectrogramPlayhead from './SpectrogramPlayhead';
 import SpectrogramStatus from './SpectrogramStatus';
 import SpectrogramTooltip from './SpectrogramTooltip';
+import { windowAtTime } from '../annotation/annotationModel';
 import { formatDbfs, formatFrequency, formatTime } from '../processing/spectrogramFormat';
 import {
   cellFromPoint,
@@ -58,15 +59,26 @@ export default function SpectrogramPlot({
   error = null,
   onRetry = null,
   audioRef = null,
+  annotationWindows = [],
+  pinnedWindowIndex = null,
+  onPinWindow = null,
 }) {
   const containerRef = useRef(null);
   const keyboardRef = useRef(null);
   const announceTimerRef = useRef(null);
+  const previewWindowRef = useRef(null);
   const helpId = useId();
   const [size, setSize] = useState({ width: 0, height: 0 });
   const [readout, setReadout] = useState(null);
   const [pinned, setPinned] = useState(false);
+  const [previewWindowIndex, setPreviewWindowIndex] = useState(null);
   const [announcement, setAnnouncement] = useState('');
+
+  const setPreview = useCallback((index) => {
+    if (previewWindowRef.current === index) return;
+    previewWindowRef.current = index;
+    setPreviewWindowIndex(index);
+  }, []);
 
   useEffect(() => {
     const element = containerRef.current;
@@ -90,14 +102,16 @@ export default function SpectrogramPlot({
   useEffect(() => {
     setReadout(null);
     setPinned(false);
+    setPreview(null);
     keyboardRef.current = null;
-  }, [analysis, timeRange, frequencyRange]);
+  }, [analysis, timeRange, frequencyRange, setPreview]);
 
   useEffect(() => {
     if (status === 'ready') return;
     setReadout(null);
     setPinned(false);
-  }, [status]);
+    setPreview(null);
+  }, [status, setPreview]);
 
   useEffect(() => {
     if (!pinned) return undefined;
@@ -180,9 +194,10 @@ export default function SpectrogramPlot({
       };
       setReadout({ cell, pointer, keyboardMode });
       setPinned(pin);
+      setPreview(windowAtTime(annotationWindows, cell.time));
       if (keyboardMode) announce(cell);
     },
-    [announce, frequencyRange, plotRect, timeRange],
+    [announce, annotationWindows, frequencyRange, plotRect, setPreview, timeRange],
   );
 
   const handlePointerMove = (event) => {
@@ -192,14 +207,17 @@ export default function SpectrogramPlot({
     const y = event.clientY - rect.top;
     if (!isInsidePlot(x, y, plotRect)) {
       if (!pinned) setReadout(null);
+      setPreview(null);
       return;
     }
     const cell = cellFromPoint(analysis, { x, y }, timeRange, frequencyRange, plotRect);
     if (!cell) {
       if (!pinned) setReadout(null);
+      setPreview(null);
       return;
     }
     setReadout({ cell, pointer: { x, y }, keyboardMode: false });
+    setPreview(windowAtTime(annotationWindows, cell.time));
   };
 
   const handlePointerDown = (event) => {
@@ -216,16 +234,20 @@ export default function SpectrogramPlot({
     if (cell) {
       setReadout({ cell, pointer: { x, y }, keyboardMode: false });
       setPinned(event.pointerType === 'touch');
+      const windowIndex = windowAtTime(annotationWindows, cell.time);
+      if (windowIndex !== null) onPinWindow?.(windowIndex);
     }
   };
 
   const handlePointerLeave = () => {
     if (!pinned) setReadout(null);
+    setPreview(null);
   };
 
   const handleBlur = () => {
     setReadout(null);
     setPinned(false);
+    setPreview(null);
   };
 
   const handleFocus = () => {
@@ -255,6 +277,10 @@ export default function SpectrogramPlot({
     }
     if (['Enter', ' '].includes(event.key)) {
       event.preventDefault();
+      if (readout?.cell) {
+        const windowIndex = windowAtTime(annotationWindows, readout.cell.time);
+        if (windowIndex !== null) onPinWindow?.(windowIndex);
+      }
       setPinned((current) => !current);
       return;
     }
@@ -295,6 +321,34 @@ export default function SpectrogramPlot({
   const showInlineProgress = (status === 'analyzing' && Boolean(analysis)) || refining;
   const inlineProgress = refining ? refineProgress : progress;
 
+  const windowForIndex = (index) => (
+    index === null || index === undefined ? null : annotationWindows[index] ?? null
+  );
+  const pinnedWindow = windowForIndex(pinnedWindowIndex);
+  const previewWindow = previewWindowIndex !== null && previewWindowIndex !== pinnedWindowIndex
+    ? windowForIndex(previewWindowIndex)
+    : null;
+  const readoutWindow = readout?.cell
+    ? windowForIndex(windowAtTime(annotationWindows, readout.cell.time))
+    : null;
+  const windowRect = (window) => {
+    if (!window) return null;
+    const left = clamp(
+      timeToX(window.start, timeRange, plotRect),
+      plotRect.left,
+      plotRect.left + plotRect.width,
+    );
+    const right = clamp(
+      timeToX(window.end, timeRange, plotRect),
+      plotRect.left,
+      plotRect.left + plotRect.width,
+    );
+    if (right <= left) return null;
+    return { left, width: right - left };
+  };
+  const pinnedRect = windowRect(pinnedWindow);
+  const previewRect = previewWindow ? windowRect(previewWindow) : null;
+
   return (
     <Box
       ref={containerRef}
@@ -334,6 +388,40 @@ export default function SpectrogramPlot({
         frequencyRange={frequencyRange}
         plotRect={plotRect}
       />
+      {pinnedRect && (
+        <Box
+          data-testid="spectrogram-annotation-pinned"
+          sx={{
+            position: 'absolute',
+            left: pinnedRect.left,
+            top: plotRect.top,
+            width: pinnedRect.width,
+            height: plotRect.height,
+            border: '2px solid',
+            borderColor: 'primary.main',
+            backgroundColor: 'action.selected',
+            pointerEvents: 'none',
+            zIndex: 1,
+          }}
+        />
+      )}
+      {previewRect && (
+        <Box
+          data-testid="spectrogram-annotation-preview"
+          sx={{
+            position: 'absolute',
+            left: previewRect.left,
+            top: plotRect.top,
+            width: previewRect.width,
+            height: plotRect.height,
+            border: '1px dashed',
+            borderColor: 'divider',
+            backgroundColor: 'action.hover',
+            pointerEvents: 'none',
+            zIndex: 1,
+          }}
+        />
+      )}
       {analysis && (
         <SpectrogramPlayhead audioRef={audioRef} timeRange={timeRange} plotRect={plotRect} />
       )}
@@ -358,6 +446,7 @@ export default function SpectrogramPlot({
         pointer={readout?.pointer ?? null}
         plotRect={plotRect}
         keyboardMode={readout?.keyboardMode ?? false}
+        window={readoutWindow}
       />
       {status === 'ready' && analysis?.signalNotice && (
         <Alert
@@ -396,8 +485,8 @@ export default function SpectrogramPlot({
       )}
       <span id={helpId} style={hiddenLiveRegion}>
         Use the arrow keys to move the readout by one time frame or frequency row. Press Home or End
-        to jump to the first or last time frame. Press Enter or Space to pin the readout, and Escape
-        to dismiss it.
+        to jump to the first or last time frame. Press Enter or Space to pin the readout and its
+        ten-second annotation window, and Escape to dismiss it.
       </span>
       <span aria-live="polite" data-testid="spectrogram-announcement" style={hiddenLiveRegion}>
         {announcement}
@@ -422,4 +511,7 @@ SpectrogramPlot.propTypes = {
   audioRef: PropTypes.shape({
     current: PropTypes.object,
   }),
+  annotationWindows: PropTypes.arrayOf(PropTypes.object),
+  pinnedWindowIndex: PropTypes.number,
+  onPinWindow: PropTypes.func,
 };

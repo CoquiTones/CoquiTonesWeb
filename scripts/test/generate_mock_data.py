@@ -54,6 +54,8 @@ def prepare_database(connection):
 
     with connection.cursor() as cursor:
         cursor.execute("DELETE FROM weatherdata")
+        cursor.execute("DELETE FROM annotationslice")
+        cursor.execute("DELETE FROM annotationreport")
         cursor.execute("DELETE FROM audiofile")
         cursor.execute("DELETE FROM audioslice")
         cursor.execute("DELETE FROM timestampindex")
@@ -65,6 +67,8 @@ def prepare_database(connection):
         cursor.execute("ALTER SEQUENCE weatherdata_wdid_seq RESTART WITH 1")
         cursor.execute("ALTER SEQUENCE audioslice_asid_seq RESTART WITH 1")
         cursor.execute("ALTER SEQUENCE audiofile_afid_seq RESTART WITH 1")
+        cursor.execute("ALTER SEQUENCE annotationreport_arid_seq RESTART WITH 1")
+        cursor.execute("ALTER SEQUENCE annotationslice_anid_seq RESTART WITH 1")
 
 
 def random_string(length: int) -> str:
@@ -230,32 +234,44 @@ def populate_audio(connection, number_of_inserts):
     LOGGER.info(
         "Successfully Populated Audiofile data. Proceeding to Generate audioslices "
     )
-    # Generate audioslices for the actual number of audio files created
+    # Leave a deterministic third of the recordings unclassified so the
+    # annotation UI can exercise the "None" source, and give the rest
+    # ten-second-aligned classifier windows.
     for afid in range(1, number_of_inserts + 1):
-        populate_audioslice(connection, afid, 6)
+        if afid % 3 != 0:
+            populate_audioslice(connection, afid, 6)
 
     connection.commit()
 
 
 def populate_audioslice(connection, audio_file_id, number_of_inserts):
+    """Insert ten-second-aligned classifier windows for one recording."""
     prepared_statement = "INSERT INTO audioslice (afid, starttime, endtime, coqui, wightmanae, gryllus, portoricensis, unicolor, hedricki, locustus, richmondi) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)"
+    species = (
+        "coqui",
+        "wightmanae",
+        "gryllus",
+        "portoricensis",
+        "unicolor",
+        "hedricki",
+        "locustus",
+        "richmondi",
+    )
     with connection.cursor() as cursor:
-        batch_values = [
-            (
-                audio_file_id,  # afid
-                f"00:00:{random_integer(1, 50):02d}",  # start time
-                f"00:00:{random_integer(1, 50):02d}",  # end time
-                random.choice((True, False)),  # coqui
-                random.choice((True, False)),  # wightmanae
-                random.choice((True, False)),  # gryllus
-                random.choice((True, False)),  # portoricensis
-                random.choice((True, False)),  # unicolor
-                random.choice((True, False)),  # hedricki
-                random.choice((True, False)),  # locustus
-                random.choice((True, False)),  # richmondi
+        batch_values = []
+        for window_index in range(number_of_inserts):
+            start_seconds = window_index * 10
+            end_seconds = start_seconds + 10
+            # Seeded per window so regenerating the demo data is reproducible.
+            rng = random.Random(audio_file_id * 1000 + window_index)
+            batch_values.append(
+                (
+                    audio_file_id,
+                    datetime.timedelta(seconds=start_seconds),
+                    datetime.timedelta(seconds=end_seconds),
+                    *(rng.choice((True, False)) for _ in species),
+                )
             )
-            for _ in range(number_of_inserts)
-        ]
         cursor.executemany(
             prepared_statement, batch_values
         )

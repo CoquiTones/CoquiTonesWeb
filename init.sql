@@ -1,4 +1,6 @@
 DROP TYPE IF EXISTS node_type CASCADE;
+DROP TABLE IF EXISTS annotationslice CASCADE;
+DROP TABLE IF EXISTS annotationreport CASCADE;
 DROP TABLE IF EXISTS appuser CASCADE;
 DROP TABLE IF EXISTS node CASCADE;
 DROP TABLE IF EXISTS timestampindex CASCADE;
@@ -116,15 +118,54 @@ CREATE TABLE audioslice (
 CREATE INDEX idx_audioslice_afid ON audioslice(afid);
 
 -- ============================================
+-- MANUAL ANNOTATION REPORT TABLES
+-- ============================================
+CREATE TABLE annotationreport (
+    arid        SERIAL PRIMARY KEY,
+    afid        INTEGER NOT NULL REFERENCES audiofile(afid) ON DELETE CASCADE,
+    ownerid     INTEGER NOT NULL REFERENCES appuser(auid) ON DELETE CASCADE,
+    savedat     TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX idx_annotationreport_latest
+    ON annotationreport (afid, ownerid, savedat DESC, arid DESC);
+
+CREATE TABLE annotationslice (
+    anid            SERIAL PRIMARY KEY,
+    arid            INTEGER NOT NULL REFERENCES annotationreport(arid) ON DELETE CASCADE,
+    windowindex     INTEGER NOT NULL CHECK (windowindex >= 0),
+    starttime       INTERVAL NOT NULL,
+    endtime         INTERVAL NOT NULL,
+    coqui           BOOLEAN NOT NULL,
+    wightmanae      BOOLEAN NOT NULL,
+    gryllus         BOOLEAN NOT NULL,
+    portoricensis   BOOLEAN NOT NULL,
+    unicolor        BOOLEAN NOT NULL,
+    hedricki        BOOLEAN NOT NULL,
+    locustus        BOOLEAN NOT NULL,
+    richmondi       BOOLEAN NOT NULL,
+    CONSTRAINT annotationslice_window_start
+        CHECK (starttime = windowindex * INTERVAL '10 seconds'),
+    CONSTRAINT annotationslice_window_duration
+        CHECK (endtime > starttime AND endtime - starttime <= INTERVAL '10 seconds'),
+    CONSTRAINT annotationslice_report_window_unique UNIQUE (arid, windowindex)
+);
+
+CREATE INDEX idx_annotationslice_arid ON annotationslice(arid);
+
+-- ============================================
 -- CASCADE DELETE CHAIN VERIFICATION
 -- ============================================
 -- Deleting timestampindex will cascade to:
 --   1. audiofile (via tid FK) -> CASCADE
 --   2. weatherdata (via tid FK) -> CASCADE
 --   3. audioslice (via audiofile deletion) -> CASCADE
+--   4. annotationreport (via audiofile deletion) -> annotationslice
 --
 -- Full chain when deleting a timestampindex (tid):
 --   timestampindex (tid) 
 --     -> audiofile (via tid) 
 --       -> audioslice (via afid)
+--       -> annotationreport (via afid)
+--         -> annotationslice (via arid)
 --     -> weatherdata (via tid)
