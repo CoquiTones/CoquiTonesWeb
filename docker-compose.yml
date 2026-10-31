@@ -6,11 +6,17 @@ services:
     volumes:
       - ./backend:/app/backend
       - ./frontend/dist:/app/frontend/dist
+      # Keep TLS certificates in sync with the host so regenerating them only
+      # needs a restart instead of an image rebuild.
+      - ./localhost.crt:/app/localhost.crt:ro
+      - ./localhost.key:/app/localhost.key:ro
     ports:
       - 8080:8080
     depends_on:
       database:
         condition: service_healthy
+      mqtt-broker:
+        condition: service_started
     command: uvicorn --app-dir backend/src app:app --reload --host 0.0.0.0 --port 8080 --ssl-keyfile ./localhost.key --ssl-certfile ./localhost.crt
 
   frontend:
@@ -47,12 +53,19 @@ services:
     image: eclipse-mosquitto:latest
     container_name: mosquitto
     volumes:
-      - ./mosquitto/config:/mosquitto/config
-      - ./mosquitto/data:/mosquitto/data
-      - ./mosquitto/log:/mosquitto/log
+      # Config stays on the host; writable broker state lives in Docker volumes
+      # because the project may sit on a filesystem (vfat/exfat) that cannot
+      # honour the container user's chown/write permissions.
+      - ./mosquitto/config:/mosquitto/config:ro
+      - mosquitto_data:/mosquitto/data
+      - mosquitto_log:/mosquitto/log
     ports:
       - 1883:1883
       - 2043:2043
     stdin_open: true
     tty: true
     env_file: "./backend/src/.env"
+
+volumes:
+  mosquitto_data:
+  mosquitto_log:

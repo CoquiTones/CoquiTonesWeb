@@ -55,7 +55,7 @@ async def insert_audio_and_timestamp(
         if node.result() is None:
             LOGGER.error(f"Attempted to save audio file created by node {nid} but that node does not belong to user {owner} or does not exist.")
             raise ValueError # this rolls back the transaction.
-    
+
     audio_file_id = await repository.AudioFile.insert(db, data.result(), nid, tid.result())
     return audio_file_id
     

@@ -4,7 +4,8 @@ echo "Cleaning project files..."
 
 # Define paths
 FRONTEND_DIR="frontend"
-VENV_DIR=".venv"
+# Matches scripts/build.sh; override VENV_DIR for a custom location.
+VENV_DIR="${VENV_DIR:-$HOME/.venvs/coquitonesweb}"
 LOG_DIR="log"
 
 # Clean Frontend artifacts

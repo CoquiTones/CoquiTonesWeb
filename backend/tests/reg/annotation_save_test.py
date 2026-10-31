@@ -10,6 +10,16 @@ from tests.reg.util import certfile, host_url, login
 TEST_AUDIO_PATH = "./backend/tests/reg/test_audio.wav"
 
 
+def wait_until_readable(session, afid, timeout=2.0) -> int:
+    """Wait for the insert transaction to become visible to follow-up reads."""
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        if session.get(f"{host_url}api/annotations/report/{afid}").status_code == 200:
+            return afid
+        time.sleep(0.05)
+    raise AssertionError(f"Recording {afid} never became readable")
+
+
 def fresh_afid(session) -> int:
     """Insert a new recording owned by the test user."""
     with open(TEST_AUDIO_PATH, "rb") as file:
@@ -24,7 +34,7 @@ def fresh_afid(session) -> int:
         )
     if response.status_code != 200:
         raise unittest.SkipTest("Could not create a recording for the save test")
-    return int(response.json()["afid"])
+    return wait_until_readable(session, int(response.json()["afid"]))
 
 
 def make_slices(count=2, coqui=False):
@@ -149,7 +159,7 @@ class AnnotationSaveEndpointTest(unittest.TestCase):
         username = f"anno{uuid.uuid4().hex[:12]}"
         password = "annotation-test-pw"
         created = requests.post(
-            host_url + "api/user/createuser",
+            host_url + "api/createuser",
             data={"username": username, "password": password},
             verify=certfile,
         )

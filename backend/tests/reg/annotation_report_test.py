@@ -1,4 +1,5 @@
 import datetime
+import time
 import unittest
 
 import requests
@@ -22,7 +23,14 @@ def owned_afid(session) -> int:
         )
     if response.status_code != 200:
         raise unittest.SkipTest("Could not create a recording for the report test")
-    return int(response.text)
+    afid = int(response.text)
+
+    deadline = time.monotonic() + 2.0
+    while time.monotonic() < deadline:
+        if session.get(f"{host_url}api/annotations/report/{afid}").status_code == 200:
+            break
+        time.sleep(0.05)
+    return afid
 
 
 class AnnotationReportEndpointTest(unittest.TestCase):

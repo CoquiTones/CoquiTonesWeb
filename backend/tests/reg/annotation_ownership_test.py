@@ -34,7 +34,7 @@ class AnnotationOwnershipTest(unittest.TestCase):
         username = f"own{uuid.uuid4().hex[:12]}"
         password = "ownership-test-pw"
         created = requests.post(
-            f"{host_url}api/user/createuser",
+            f"{host_url}api/createuser",
             data={"username": username, "password": password},
             verify="./localhost.crt",
         )
