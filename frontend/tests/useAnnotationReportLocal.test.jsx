@@ -8,7 +8,7 @@ const makeFile = (name = 'fixture.wav') => (
 );
 
 describe('useAnnotationReport local state', () => {
-  it('builds the window grid and starts clean in Reported mode', () => {
+  it('builds the window grid and starts clean in Read Only mode', () => {
     const file = makeFile();
     const { result } = renderHook(() => useAnnotationReport({
       audioFile: file,
@@ -17,7 +17,7 @@ describe('useAnnotationReport local state', () => {
 
     expect(result.current.windows).toHaveLength(3);
     expect(result.current.windows[2]).toMatchObject({ start: 20, end: 25 });
-    expect(result.current.isReported).toBe(true);
+    expect(result.current.isReadOnly).toBe(true);
     expect(result.current.source).toBe('None');
     expect(result.current.dirty).toBe(false);
   });

@@ -19,9 +19,9 @@ import {
   AuthenticationStatus,
   useGlobalState,
 } from '../../services/Authentication/GlobalStateManager';
-import { APIHandlerDashboard } from '../../services/rest/APIHandler/APIHandlerDashboard';
-import RecentDataRequest from '../../services/rest/RequestORM/Dashboard/RecentDataRequest';
+import { APIHandlerSpectralAnalysis } from '../../services/rest/APIHandler/APIHandlerSpectralAnalysis';
 import AudioFileRequest from '../../services/rest/RequestORM/Shared/AudioFileRequest';
+import { formatDateTime, parseApiDate } from '../../utils/format';
 
 const extensionFor = (mimeType = '') => {
   if (mimeType.includes('mpeg')) return 'mp3';
@@ -35,38 +35,62 @@ const extensionFor = (mimeType = '') => {
  * Dialog for loading a stored recording into the analysis workspace.
  */
 export default function AudioLoader({ open, onClose, onSelect }) {
-  const apiHandler = useMemo(() => new APIHandlerDashboard(), []);
+  const apiHandler = useMemo(() => new APIHandlerSpectralAnalysis(), []);
   const { addError } = useErrors();
   const { authStatus } = useGlobalState();
   const isAuthenticated = authStatus === AuthenticationStatus.AUTHENTICATED;
   const [rows, setRows] = useState([]);
-  const [minTime, setMinTime] = useState(() => dayjs().subtract(100, 'day'));
+  const [minTime, setMinTime] = useState(() => dayjs().subtract(1, 'year'));
   const [maxTime, setMaxTime] = useState(() => dayjs());
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [loadingAfid, setLoadingAfid] = useState(null);
 
-  const fetchRows = useCallback(async () => {
+  const loadRows = useCallback(async (from, to) => {
     if (!isAuthenticated) return;
-    if (!minTime || !maxTime || minTime.isAfter(maxTime)) return;
+    if (!from || !to || from.isAfter(to)) return;
 
     setLoading(true);
     setError('');
     try {
-      const request = new RecentDataRequest(minTime.valueOf(), maxTime.valueOf());
-      const recentData = await apiHandler.get_recent_data(request);
-      setRows(recentData.getData());
+      const audioFiles = await apiHandler.getAudioFiles();
+      const minTimestamp = from.valueOf();
+      const maxTimestamp = to.valueOf();
+      const nextRows = (Array.isArray(audioFiles) ? audioFiles : [])
+        .map((entry, index) => {
+          const parsed = parseApiDate(entry.time);
+          return {
+            id: entry.afid ?? index,
+            afid: entry.afid,
+            nid: entry.nid,
+            tid: entry.tid,
+            time: formatDateTime(entry.time),
+            timestamp: parsed.getTime(),
+          };
+        })
+        .filter((row) => (
+          Number.isFinite(row.timestamp)
+          && row.timestamp > minTimestamp
+          && row.timestamp < maxTimestamp
+        ));
+
+      setRows(nextRows);
     } catch (fetchError) {
       setError('Recordings could not be loaded. Check the API connection and try again.');
       addError(fetchError);
     } finally {
       setLoading(false);
     }
-  }, [apiHandler, addError, isAuthenticated, minTime, maxTime]);
+  }, [apiHandler, addError, isAuthenticated]);
 
   useEffect(() => {
-    if (open && isAuthenticated) fetchRows();
-  }, [open, isAuthenticated, fetchRows]);
+    if (!open || !isAuthenticated) return;
+    // Refresh the upper bound when the dialog opens; a recording saved after
+    // the page loaded must still fall inside the default range.
+    const now = dayjs();
+    setMaxTime(now);
+    loadRows(minTime, now);
+  }, [open, isAuthenticated, loadRows, minTime]);
 
   const handleLoad = async (row) => {
     setLoadingAfid(row.afid);
@@ -133,7 +157,11 @@ export default function AudioLoader({ open, onClose, onSelect }) {
               minDateTime={minTime ?? undefined}
               slotProps={{ textField: { size: 'small' } }}
             />
-            <Button variant="outlined" onClick={fetchRows} disabled={loading}>
+            <Button
+              variant="outlined"
+              onClick={() => loadRows(minTime, maxTime)}
+              disabled={loading}
+            >
               Search
             </Button>
           </Stack>
@@ -153,6 +181,7 @@ export default function AudioLoader({ open, onClose, onSelect }) {
             disableRowSelectionOnClick
             initialState={{ pagination: { paginationModel: { page: 0, pageSize: 10 } } }}
             pageSizeOptions={[10, 25, 50]}
+            localeText={{ noRowsLabel: 'No recordings found in this date range.' }}
             sx={{ borderColor: 'divider' }}
           />
         </Box>

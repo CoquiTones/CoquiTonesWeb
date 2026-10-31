@@ -15,7 +15,6 @@ const makeProps = (overrides = {}) => ({
   windowCount: 2,
   onPinWindow: vi.fn(),
   onToggleSpecies: vi.fn(),
-  readOnly: false,
   dirty: true,
   warnings: [],
   status: 'ready',
@@ -35,6 +34,22 @@ const makeProps = (overrides = {}) => ({
 });
 
 describe('AnnotationPanel save controls', () => {
+  it('hides save controls outside Editor mode', () => {
+    renderWithTheme(
+      <AnnotationPanel
+        {...makeProps({
+          mode: 'readOnly',
+          dirty: false,
+          canSave: false,
+          saveDisabledReason: 'No unsaved changes.',
+        })}
+      />,
+    );
+
+    expect(screen.queryByRole('button', { name: 'Save annotations' })).toBeNull();
+    expect(screen.queryByText('No unsaved changes.')).toBeNull();
+  });
+
   it('disables saving and explains why when changes cannot be saved', () => {
     renderWithTheme(
       <AnnotationPanel

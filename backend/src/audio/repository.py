@@ -100,6 +100,8 @@ class AudioFile(DAO):
     tid: int
     ownerid: int | None = None
     data: bytes | None = None
+    nid: int | None = None
+    time: datetime | None = None
 
     @staticmethod
     def table(): return sql.Identifier("audiofile")
@@ -131,12 +133,12 @@ class AudioFile(DAO):
             try:
                 await curs.execute(
                     """
-                    SELECT af.afid, af.tid, n.ownerid
+                    SELECT af.afid, af.tid, n.ownerid, n.nid, ti.ttime AS time
                     FROM audiofile af
                     INNER JOIN timestampindex ti ON ti.tid = af.tid
                     INNER JOIN node n ON n.nid = ti.nid
                     WHERE n.ownerid = %s
-                    ORDER BY af.afid
+                    ORDER BY ti.ttime DESC, af.afid DESC
                     """,
                     (owner,),
                 )

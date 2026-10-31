@@ -58,7 +58,7 @@ describe('SpectralAnalysis annotation flow', () => {
     fireEvent.click(screen.getByRole('checkbox', { name: 'Coquí' }));
     expect(screen.getByText('Unsaved changes')).toBeTruthy();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Reported' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Read Only' }));
     expect(screen.getByText('Discard annotation changes?')).toBeTruthy();
 
     fireEvent.click(screen.getByRole('button', { name: 'Keep editing' }));

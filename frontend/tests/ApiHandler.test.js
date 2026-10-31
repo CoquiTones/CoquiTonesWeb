@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import APIHandlerBase from '../src/services/rest/APIHandler/APIHandlerBase';
+import { APIHandlerSpectralAnalysis } from '../src/services/rest/APIHandler/APIHandlerSpectralAnalysis';
 
 const makeRequest = (afid = 101) => ({
   toFormData: () => {
@@ -51,6 +52,24 @@ describe('APIHandlerBase audio endpoints', () => {
     await handler.insertAudio(makeRequest());
 
     expect(fetchMock.mock.calls[0][0]).toBe('https://example.test/api/audio/insert');
+  });
+
+  it('lists stored recordings from the audio endpoint', async () => {
+    const audioFiles = [
+      { afid: 101, tid: 101, ownerid: 1, nid: 1, time: '2026-10-31T19:18:51' },
+    ];
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => audioFiles,
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const handler = new APIHandlerSpectralAnalysis();
+    handler.web_url = 'https://example.test';
+
+    await expect(handler.getAudioFiles()).resolves.toEqual(audioFiles);
+    expect(fetchMock.mock.calls[0][0]).toBe('https://example.test/api/audio/all');
   });
 
   it('surfaces backend failures as errors', async () => {

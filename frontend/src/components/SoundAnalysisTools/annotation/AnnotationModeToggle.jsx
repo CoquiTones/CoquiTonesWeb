@@ -23,10 +23,10 @@ export default function AnnotationModeToggle({
           if (nextMode) onChange?.(nextMode);
         }}
         aria-label="Annotation mode"
-        sx={{ '& .MuiToggleButton-root': { minHeight: 40 } }}
+        sx={{ '& .MuiToggleButton-root': { minHeight: 44, textTransform: 'none' } }}
       >
-        <ToggleButton value="reported">
-          Reported
+        <ToggleButton value="readOnly">
+          Read Only
         </ToggleButton>
         <ToggleButton value="editor">
           Editor
@@ -37,7 +37,7 @@ export default function AnnotationModeToggle({
 }
 
 AnnotationModeToggle.propTypes = {
-  mode: PropTypes.oneOf(['reported', 'editor']).isRequired,
+  mode: PropTypes.oneOf(['readOnly', 'editor']).isRequired,
   onChange: PropTypes.func,
   disabled: PropTypes.bool,
 };

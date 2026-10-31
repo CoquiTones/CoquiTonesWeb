@@ -6,7 +6,7 @@ import { makeWindow } from './helpers/annotationFixtures';
 import { renderWithTheme } from './helpers/renderWithTheme';
 
 const makeProps = (overrides = {}) => ({
-  mode: 'reported',
+  mode: 'readOnly',
   onModeChange: vi.fn(),
   source: 'None',
   pinnedWindow: makeWindow(1, { coqui: true }),
@@ -14,31 +14,41 @@ const makeProps = (overrides = {}) => ({
   windowCount: 3,
   onPinWindow: vi.fn(),
   onToggleSpecies: vi.fn(),
-  readOnly: true,
   dirty: false,
   warnings: [],
   status: 'ready',
   error: null,
+  canExport: true,
   ...overrides,
 });
 
 describe('AnnotationPanel', () => {
-  it('shows the reported source and disables species editing', () => {
+  it('shows read-only values without editor controls', () => {
     const props = makeProps();
     renderWithTheme(<AnnotationPanel {...props} />);
 
-    expect(screen.getByText('Source: None')).toBeTruthy();
+    expect(screen.queryByText('Source: None')).toBeNull();
     expect(screen.getByText('Window 2 of 3')).toBeTruthy();
-    const coqui = screen.getByRole('checkbox', { name: 'Coquí' });
-    expect(coqui.checked).toBe(true);
-    expect(coqui.disabled).toBe(true);
+    expect(screen.getByRole('button', { name: 'Read Only' })).toBeTruthy();
+    expect(screen.getByText('Present')).toBeTruthy();
+    expect(screen.getAllByText('Absent').length).toBeGreaterThan(0);
+    expect(screen.queryByRole('checkbox', { name: 'Coquí' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Save annotations' })).toBeNull();
+    expect(screen.getByRole('button', { name: 'Export annotations' })).toBeTruthy();
 
     fireEvent.click(screen.getByRole('button', { name: 'Editor' }));
     expect(props.onModeChange).toHaveBeenCalledWith('editor');
   });
 
+  it('shows the empty source in Editor mode', () => {
+    renderWithTheme(<AnnotationPanel {...makeProps({ mode: 'editor' })} />);
+
+    expect(screen.getByText('Source: None')).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Save annotations' })).toBeTruthy();
+  });
+
   it('allows species editing in Editor mode', () => {
-    const props = makeProps({ mode: 'editor', readOnly: false });
+    const props = makeProps({ mode: 'editor' });
     renderWithTheme(<AnnotationPanel {...props} />);
 
     const wightmanae = screen.getByRole('checkbox', { name: 'Wightmanae' });

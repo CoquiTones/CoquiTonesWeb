@@ -15,7 +15,7 @@ import {
 } from './annotationModel';
 
 export const ANNOTATION_MODES = Object.freeze({
-  reported: 'reported',
+  readOnly: 'readOnly',
   editor: 'editor',
 });
 
@@ -24,8 +24,8 @@ const cloneWindows = (windows) => windows.map((window) => ({ ...window }));
 /**
  * Shared report state for the Spectral Analysis annotation workflow.
  *
- * This foundational version owns the local empty report. Remote report
- * loading and persistence are layered onto the same state in later stories.
+ * Owns the authoritative read-only report, the editable draft, remote loading,
+ * save/conflict handling, and the pinned ten-second window.
  */
 export const useAnnotationReport = ({
   audioFile = null,
@@ -36,7 +36,7 @@ export const useAnnotationReport = ({
   const windows = useMemo(() => buildWindows(duration), [duration]);
   const afid = recording?.afid ?? null;
 
-  const [mode, setMode] = useState(ANNOTATION_MODES.reported);
+  const [mode, setMode] = useState(ANNOTATION_MODES.readOnly);
   const [authoritativeWindows, setAuthoritativeWindows] = useState([]);
   const [draftWindows, setDraftWindows] = useState([]);
   const [pinnedWindowIndex, setPinnedWindowIndex] = useState(null);
@@ -55,7 +55,7 @@ export const useAnnotationReport = ({
     const empty = createEmptyWindows(duration);
     setAuthoritativeWindows(empty);
     setDraftWindows(empty);
-    setMode(ANNOTATION_MODES.reported);
+    setMode(ANNOTATION_MODES.readOnly);
     setPinnedWindowIndex(null);
     setSource('None');
     setWarnings([]);
@@ -127,7 +127,7 @@ export const useAnnotationReport = ({
     let cancelled = false;
     const empty = createEmptyWindows(duration);
 
-    setMode(ANNOTATION_MODES.reported);
+    setMode(ANNOTATION_MODES.readOnly);
     setAuthoritativeWindows(empty);
     setDraftWindows(empty);
     setPinnedWindowIndex(null);
@@ -277,13 +277,13 @@ export const useAnnotationReport = ({
     setMode(ANNOTATION_MODES.editor);
   }, [authoritativeWindows]);
 
-  const showReported = useCallback(() => {
-    setMode(ANNOTATION_MODES.reported);
+  const showReadOnly = useCallback(() => {
+    setMode(ANNOTATION_MODES.readOnly);
   }, []);
 
   const discardDraft = useCallback(() => {
     setDraftWindows(cloneWindows(authoritativeWindows));
-    setMode(ANNOTATION_MODES.reported);
+    setMode(ANNOTATION_MODES.readOnly);
   }, [authoritativeWindows]);
 
   const pinWindow = useCallback((index) => {
@@ -304,10 +304,10 @@ export const useAnnotationReport = ({
 
   return {
     mode,
-    isReported: mode === ANNOTATION_MODES.reported,
+    isReadOnly: mode === ANNOTATION_MODES.readOnly,
     isEditor: mode === ANNOTATION_MODES.editor,
     windows: activeWindows,
-    reportedWindows: authoritativeWindows,
+    readOnlyWindows: authoritativeWindows,
     draftWindows,
     windowCount: activeWindows.length,
     pinnedWindowIndex,
@@ -331,7 +331,7 @@ export const useAnnotationReport = ({
     dismissSaveFeedback,
     canEdit: mode === ANNOTATION_MODES.editor && activeWindows.length > 0,
     enterEditor,
-    showReported,
+    showReadOnly,
     discardDraft,
     setMode,
     pinWindow,

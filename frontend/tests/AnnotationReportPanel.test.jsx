@@ -6,7 +6,7 @@ import { makeWindow } from './helpers/annotationFixtures';
 import { renderWithTheme } from './helpers/renderWithTheme';
 
 const makeProps = (overrides = {}) => ({
-  mode: 'reported',
+  mode: 'readOnly',
   onModeChange: vi.fn(),
   source: 'None',
   pinnedWindow: null,
@@ -14,7 +14,6 @@ const makeProps = (overrides = {}) => ({
   windowCount: 0,
   onPinWindow: vi.fn(),
   onToggleSpecies: vi.fn(),
-  readOnly: true,
   dirty: false,
   warnings: [],
   status: 'ready',
@@ -37,7 +36,8 @@ describe('AnnotationPanel report states', () => {
 
     expect(screen.getByText('Source: Manual')).toBeTruthy();
     expect(screen.getByText('Read-only report')).toBeTruthy();
-    expect(screen.getByRole('checkbox', { name: 'Coquí' }).disabled).toBe(true);
+    expect(screen.getByText('Present')).toBeTruthy();
+    expect(screen.queryByRole('checkbox', { name: 'Coquí' })).toBeNull();
   });
 
   it('labels a classifier fallback source', () => {
@@ -65,12 +65,20 @@ describe('AnnotationPanel report states', () => {
     expect(screen.getByLabelText('Loading annotation report')).toBeTruthy();
   });
 
-  it('explains when the recording has no ten-second windows', () => {
-    renderWithTheme(<AnnotationPanel {...makeProps()} />);
+  it('explains missing ten-second windows only in Editor mode', () => {
+    const { rerenderWithTheme } = renderWithTheme(
+      <AnnotationPanel {...makeProps({ mode: 'editor' })} />,
+    );
 
     expect(
       screen.getByText('No ten-second windows are available for this recording.'),
     ).toBeTruthy();
+
+    rerenderWithTheme(<AnnotationPanel {...makeProps()} />);
+
+    expect(
+      screen.queryByText('No ten-second windows are available for this recording.'),
+    ).toBeNull();
   });
 
   it('shows the report error without hiding the window grid', () => {
@@ -88,6 +96,6 @@ describe('AnnotationPanel report states', () => {
 
     expect(screen.getByText('The annotation report could not be loaded.')).toBeTruthy();
     expect(screen.getByText('Window 1 of 3')).toBeTruthy();
-    expect(screen.getByText('Source: None')).toBeTruthy();
+    expect(screen.queryByText('Source: None')).toBeNull();
   });
 });

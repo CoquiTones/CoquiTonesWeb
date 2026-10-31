@@ -7,7 +7,7 @@ import { makeWindow } from './helpers/annotationFixtures';
 import { renderWithTheme } from './helpers/renderWithTheme';
 
 const makeProps = (overrides = {}) => ({
-  mode: 'reported',
+  mode: 'readOnly',
   onModeChange: vi.fn(),
   source: 'None',
   pinnedWindow: makeWindow(0),
@@ -15,7 +15,6 @@ const makeProps = (overrides = {}) => ({
   windowCount: 2,
   onPinWindow: vi.fn(),
   onToggleSpecies: vi.fn(),
-  readOnly: true,
   dirty: false,
   warnings: [],
   status: 'ready',
@@ -29,10 +28,11 @@ const makeProps = (overrides = {}) => ({
 });
 
 describe('AnnotationPanel export controls', () => {
-  it('disables export and explains why when no recording is loaded', () => {
+  it('shows only a concise empty state when no recording is loaded', () => {
     renderWithTheme(
       <AnnotationPanel
         {...makeProps({
+          status: 'idle',
           canExport: false,
           windowCount: 0,
           pinnedWindow: null,
@@ -42,8 +42,11 @@ describe('AnnotationPanel export controls', () => {
       />,
     );
 
-    expect(screen.getByRole('button', { name: 'Export annotations' }).disabled).toBe(true);
-    expect(screen.getByText('Load a recording to export annotations.')).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Export annotations' })).toBeNull();
+    expect(screen.queryByText('Load a recording to export annotations.')).toBeNull();
+    expect(
+      screen.getByText('Load a recording to view or annotate ten-second windows.'),
+    ).toBeTruthy();
   });
 
   it('exports the current annotations from the toolbar button', async () => {

@@ -130,7 +130,7 @@ export default function SignUpPage() {
 
         <Box sx={{ maxWidth: 420 }}>
           <Typography component="p" variant="h2" color="text.primary">
-            Monitor amphibians with open technology.
+            Monitor amphibians with open source technology.
           </Typography>
           <Typography variant="body1" color="text.secondary" sx={{ mt: 2 }}>
             An account gives researchers access to the full CoquiTones toolkit.

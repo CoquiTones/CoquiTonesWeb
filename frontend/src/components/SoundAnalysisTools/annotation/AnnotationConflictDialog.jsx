@@ -38,12 +38,19 @@ export default function AnnotationConflictDialog({
           draft is kept until you choose.
         </DialogContentText>
       </DialogContent>
-      <DialogActions sx={{ px: 3, pb: 3 }}>
-        <Button onClick={onCancel} color="inherit">
+      <DialogActions sx={{ px: 3, pb: 3, gap: 1, flexWrap: 'wrap' }}>
+        <Button onClick={onCancel} color="inherit" sx={{ minHeight: 44, textTransform: 'none' }}>
           Cancel
         </Button>
-        <Button onClick={onReload}>Reload latest</Button>
-        <Button onClick={onOverwrite} color="warning" variant="contained">
+        <Button onClick={onReload} sx={{ minHeight: 44, textTransform: 'none' }}>
+          Reload latest
+        </Button>
+        <Button
+          onClick={onOverwrite}
+          color="warning"
+          variant="contained"
+          sx={{ minHeight: 44, textTransform: 'none' }}
+        >
           Overwrite
         </Button>
       </DialogActions>

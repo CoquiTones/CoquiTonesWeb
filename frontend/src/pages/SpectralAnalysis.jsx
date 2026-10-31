@@ -117,7 +117,7 @@ export default function SpectralAnalysis() {
       unsavedChanges.requestLeave(() => annotation.discardDraft());
       return;
     }
-    annotation.showReported();
+    annotation.showReadOnly();
   };
 
   const handleSelectAudioFile = (nextFile, nextRecording = null) => {
@@ -176,7 +176,7 @@ export default function SpectralAnalysis() {
 
   const annotationPanel = (
     <AnnotationPanel
-      mode={annotation.isEditor ? 'editor' : 'reported'}
+      mode={annotation.isEditor ? 'editor' : 'readOnly'}
       onModeChange={requestAnnotationMode}
       source={annotation.source}
       pinnedWindow={annotation.pinnedWindow}
@@ -184,7 +184,6 @@ export default function SpectralAnalysis() {
       windowCount={annotation.windowCount}
       onPinWindow={annotation.pinWindow}
       onToggleSpecies={annotation.toggleSpecies}
-      readOnly={annotation.isReported}
       dirty={annotation.dirty}
       warnings={annotation.warnings}
       status={annotation.status}
